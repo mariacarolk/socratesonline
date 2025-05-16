@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Sócrates Online</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        body {
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 240px;
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .sidebar img {
+            max-width: 160px;
+            margin-bottom: 2rem;
+        }
+        .sidebar .nav-link {
+            color: #e2e8f0;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            width: 100%;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar .nav-link:hover {
+            background-color: #334155;
+            color: #ffffff;
+            text-decoration: none;
+        }
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div class="sidebar">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+        {% if session['categoria'] == 'produtor' %}
+            <a class="nav-link" href="#"><i class="bi bi-calendar-event"></i> Eventos</a>
+        {% elif session['categoria'] == 'administrativo' %}
+            <a class="nav-link" href="#"><i class="bi bi-calendar-event"></i> Eventos</a>
+            <a class="nav-link" href="#"><i class="bi bi-pencil-square"></i> Cadastros</a>
+        {% elif session['categoria'] == 'coreógrafo' %}
+            <a class="nav-link" href="#"><i class="bi bi-calendar-event"></i> Eventos</a>
+        {% endif %}
+        <a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Sair</a>
+    </div>
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+</body>
+</html>
