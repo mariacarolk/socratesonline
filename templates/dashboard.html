@@ -1,6 +1,103 @@
-
 {% extends 'base.html' %}
 {% block content %}
-<h1>Bem-vindo ao Sócrates Online</h1>
-<p>Esta é sua área inicial. Em breve, mais funcionalidades!</p>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-gradient-primary text-white">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">Bem-vindo ao Sócrates Online</h2>
+                        <p class="mb-0">Sistema de Gestão de Eventos para Circos</p>
+                    </div>
+                    <div>
+                        <i class="bi bi-graph-up-arrow" style="font-size: 3rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="dashboard-card border-left-primary bg-white">
+            <div class="icon text-primary">
+                <i class="bi bi-calendar-event"></i>
+            </div>
+            <div class="title">Eventos</div>
+            <div class="value">0</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="dashboard-card border-left-success bg-white">
+            <div class="icon text-success">
+                <i class="bi bi-cash-coin"></i>
+            </div>
+            <div class="title">Receitas</div>
+            <div class="value">R$ 0,00</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="dashboard-card border-left-danger bg-white">
+            <div class="icon text-danger">
+                <i class="bi bi-credit-card"></i>
+            </div>
+            <div class="title">Despesas</div>
+            <div class="value">R$ 0,00</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="dashboard-card border-left-primary bg-white">
+            <div class="icon text-primary">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="title">Colaboradores</div>
+            <div class="value">0</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Próximos Eventos</h5>
+                <a href="{{ url_for('listar_eventos') }}" class="btn btn-sm btn-outline-primary">Ver Todos</a>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>Em breve, você verá aqui seus próximos eventos agendados.
+                </div>
+                <p class="text-muted">O dashboard completo está em desenvolvimento e em breve estará disponível com gráficos e indicadores detalhados sobre seus eventos.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Acesso Rápido</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('listar_eventos') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <i class="bi bi-calendar-plus me-3 text-primary"></i>
+                        <span>Novo Evento</span>
+                    </a>
+                    <a href="{{ url_for('cadastrar_colaborador') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <i class="bi bi-person-plus me-3 text-primary"></i>
+                        <span>Cadastrar Colaborador</span>
+                    </a>
+                    <a href="{{ url_for('cadastrar_receita') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <i class="bi bi-cash-coin me-3 text-success"></i>
+                        <span>Registrar Receita</span>
+                    </a>
+                    <a href="{{ url_for('cadastrar_despesa') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <i class="bi bi-credit-card me-3 text-danger"></i>
+                        <span>Registrar Despesa</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

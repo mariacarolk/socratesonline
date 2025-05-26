@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card p-4">
+    <h4 class="mb-4">Cadastrar Evento</h4>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <input type="hidden" id="excluir_receita_ids" name="excluir_receita_ids">
+        <input type="hidden" id="excluir_despesa_ids" name="excluir_despesa_ids">
+        <div class="row g-3">
+            <div class="col-md-6">{{ form.nome.label(class="form-label") }}{{ form.nome(class="form-control") }}</div>
+            <div class="col-md-3">{{ form.data_inicio.label(class="form-label") }}{{ form.data_inicio(class="form-control") }}</div>
+            <div class="col-md-3">{{ form.data_fim.label(class="form-label") }}{{ form.data_fim(class="form-control") }}</div>
+
+            <div class="col-md-6">{{ form.cidade.label(class="form-label") }}{{ form.cidade(class="form-control") }}</div>
+            <div class="col-md-6">{{ form.estado.label(class="form-label") }}{{ form.estado(class="form-control") }}</div>
+
+            <div class="col-md-12">{{ form.endereco.label(class="form-label") }}{{ form.endereco(class="form-control") }}</div>
+
+            <div class="col-md-6">{{ form.id_circo.label(class="form-label") }}{{ form.id_circo(class="form-select") }}</div>
+            <div class="col-md-6">{{ form.id_produtor.label(class="form-label") }}{{ form.id_produtor(class="form-select") }}</div>
+
+            <div class="col-md-6">{{ form.status.label(class="form-label") }}{{ form.status(class="form-select") }}</div>
+
+            <div class="col-md-12">{{ form.observacoes.label(class="form-label") }}{{ form.observacoes(class="form-control", rows=3) }}</div>
+        </div>
+
+
+        <hr>
+        <h4 class="text-white bg-dark py-2 px-3 rounded">RECEITAS</h4>
+
+        {% for categoria in categorias_receita %}
+        <div class="card my-3 shadow-sm">
+            <div class="card-header bg-primary text-white text-center fw-semibold">
+                {{ categoria.nome }}
+            </div>
+            <div class="card-body p-2">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Receita</th>
+                            <th>Valor</th>
+                            <th>Obs</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoria-{{ categoria.id_categoria_receita }}">
+                        {% for r in receitas_salvas if r.receita.id_categoria_receita == categoria.id_categoria_receita %}
+                        <tr class="table-success">
+                            <td>{{ r.receita.nome }}</td>
+                            <td>R$ {{ r.valor }}</td>
+                            <td>{{ r.observacoes }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="marcarParaExcluirReceita(this, {{ r.id_receita_evento }})">×</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% for receita in categorias_receita_dict[categoria.id_categoria_receita] %}
+                        <tr>
+                            <td>
+                                <input type="hidden" name="receita_id[]" value="{{ receita.id_receita }}">
+                                {{ receita.nome }}
+                            </td>
+                            <td><input type="text" name="valor[]" class="form-control" placeholder="0,00"></td>
+                            <td><input type="text" name="obs[]" class="form-control"></td>
+                            <td></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="text-end">
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            data-categoria="{{ categoria.id_categoria_receita }}"
+                            data-receitas='{{ categorias_receita_dict[categoria.id_categoria_receita] | tojson | safe }}'
+                            onclick="handleAdicionarReceita(this)">
+                        + Receita
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <hr class="mt-5">
+        <h4 class="text-white bg-dark py-2 px-3 rounded">DESPESAS</h4>
+
+        {% for categoria in categorias_despesa %}
+        <div class="card my-3 shadow-sm">
+            <div class="card-header bg-primary text-white text-center fw-semibold">
+                {{ categoria.nome }}
+            </div>
+            <div class="card-body p-2">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Despesa</th>
+                            <th>Data</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Forma</th>
+                            <th>Pago por</th>
+                            <th>Obs</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="despesa-categoria-{{ categoria.id_categoria_despesa }}">
+                        {% for d in despesas_salvas if d.despesa.id_categoria_despesa == categoria.id_categoria_despesa %}
+                        <tr class="table-success">
+                            <td>{{ d.despesa.nome }}</td>
+                            <td>{{ d.data }}</td>
+                            <td>R$ {{ d.valor }}</td>
+                            <td>{{ d.status_pagamento }}</td>
+                            <td>{{ d.forma_pagamento }}</td>
+                            <td>{{ d.pago_por }}</td>
+                            <td>{{ d.observacoes }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="marcarParaExcluirDespesa(this, {{ d.id_despesa_evento }})">×</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa] %}
+                        <tr>
+                            <td>
+                                <input type="hidden" name="despesa_id[]" value="{{ despesa.id_despesa }}">
+                                {{ despesa.nome }}
+                            </td>
+                            <td><input type="date" name="despesa_data[]" class="form-control" value="{{ current_date }}"></td>
+                            <td><input type="text" name="despesa_valor[]" class="form-control" placeholder="0,00"></td>
+                            <td>
+                                <select name="despesa_status_pagamento[]" class="form-select">
+                                    <option value="pendente">Pendente</option>
+                                    <option value="pago">Pago</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="despesa_forma_pagamento[]" class="form-select">
+                                    <option value="débito">Débito</option>
+                                    <option value="crédito">Crédito</option>
+                                    <option value="espécie">Espécie</option>
+                                    <option value="pix">Pix</option>
+                                </select>
+                            </td>
+                            <td><input type="text" name="despesa_pago_por[]" class="form-control"></td>
+                            <td><input type="text" name="despesa_obs[]" class="form-control"></td>
+                            <td></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="text-end">
+                    <button type="button"
+                            class="btn btn-outline-primary btn-sm"
+                            data-categoria="{{ categoria.id_categoria_despesa }}"
+                            data-despesas='{{ categorias_despesa_dict[categoria.id_categoria_despesa] | tojson | safe }}'
+                            onclick="handleAdicionarDespesa(this)">
+                        + Despesa
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function marcarParaExcluirReceita(button, id) {
+  const input = document.getElementById("excluir_receita_ids");
+  const atuais = input.value ? input.value.split(",") : [];
+  if (!atuais.includes(String(id))) {
+    atuais.push(id);
+    input.value = atuais.join(",");
+  }
+  button.closest("tr").remove();
+}
+
+function marcarParaExcluirDespesa(button, id) {
+  const input = document.getElementById("excluir_despesa_ids");
+  const atuais = input.value ? input.value.split(",") : [];
+  if (!atuais.includes(String(id))) {
+    atuais.push(id);
+    input.value = atuais.join(",");
+  }
+  button.closest("tr").remove();
+}
+
+function handleAdicionarDespesa(button) {
+  const categoriaId = button.getAttribute("data-categoria");
+  const despesasJson = button.getAttribute("data-despesas");
+  try {
+    const despesas = JSON.parse(despesasJson);
+    adicionarLinhaDespesa(categoriaId, despesas);
+  } catch (e) {
+    console.error("Erro ao processar JSON de despesas:", e);
+  }
+}
+
+function adicionarLinhaDespesa(categoriaId, despesas) {
+  const tbody = document.getElementById("despesa-categoria-" + categoriaId);
+  if (!tbody) return;
+
+  const tr = document.createElement("tr");
+
+  const tdDespesa = document.createElement("td");
+  const select = document.createElement("select");
+  select.name = "despesa_id[]";
+  select.className = "form-select";
+  despesas.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.id_despesa;
+    opt.textContent = d.nome;
+    select.appendChild(opt);
+  });
+  tdDespesa.appendChild(select);
+  tr.appendChild(tdDespesa);
+
+  const tdData = document.createElement("td");
+  const inputData = document.createElement("input");
+  inputData.type = "date";
+  inputData.name = "despesa_data[]";
+  inputData.className = "form-control";
+  inputData.valueAsDate = new Date();
+  tdData.appendChild(inputData);
+  tr.appendChild(tdData);
+
+  tr.innerHTML += `
+    <td><input type="text" name="despesa_valor[]" class="form-control" placeholder="0,00"></td>
+    <td>
+      <select name="despesa_status_pagamento[]" class="form-select">
+        <option value="pendente">Pendente</option>
+        <option value="pago">Pago</option>
+      </select>
+    </td>
+    <td>
+      <select name="despesa_forma_pagamento[]" class="form-select">
+        <option value="débito">Débito</option>
+        <option value="crédito">Crédito</option>
+        <option value="espécie">Espécie</option>
+        <option value="pix">Pix</option>
+      </select>
+    </td>
+    <td><input type="text" name="despesa_pago_por[]" class="form-control"></td>
+    <td><input type="text" name="despesa_obs[]" class="form-control"></td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">×</button></td>
+  `;
+
+  tbody.appendChild(tr);
+}
+</script>
+{% endblock %}
