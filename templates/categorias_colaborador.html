@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cadastro de Categoria de Colaborador</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.nome.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.nome(class="form-control", placeholder="Nome da categoria", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-people"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe o nome da categoria.
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Categorias de Colaborador</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if categorias %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th class="text-center" style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in categorias %}
+                    <tr>
+                        <td>{{ cat.nome }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('editar_categoria_colaborador', id=cat.id_categoria_colaborador) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('excluir_categoria_colaborador', id=cat.id_categoria_colaborador) }}" class="btn btn-sm btn-outline-danger" 
+                                   onclick="return confirm('Tem certeza que deseja excluir esta categoria?')" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>Nenhuma categoria de colaborador cadastrada.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validação de formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    });
+</script>
+{% endblock %}

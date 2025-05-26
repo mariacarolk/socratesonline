@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cadastro de Fornecedor</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.nome.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.nome(class="form-control", placeholder="Nome do fornecedor", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-building"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe o nome do fornecedor.
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.telefone.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.telefone(class="form-control", placeholder="Telefone de contato") }}
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                {{ form.id_categoria_fornecedor.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.id_categoria_fornecedor(class="form-select", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, selecione uma categoria.
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Fornecedores</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if fornecedores %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Telefone</th>
+                        <th>Categoria</th>
+                        <th class="text-center" style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fornecedores %}
+                    <tr>
+                        <td>{{ f.nome }}</td>
+                        <td>{{ f.telefone }}</td>
+                        <td>{{ f.categoria.nome if f.categoria else '—' }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('editar_fornecedor', id=f.id_fornecedor) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('excluir_fornecedor', id=f.id_fornecedor) }}" class="btn btn-sm btn-outline-danger" 
+                                   onclick="return confirm('Tem certeza que deseja excluir este fornecedor?')" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>Nenhum fornecedor cadastrado.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validação de formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    });
+</script>
+{% endblock %}

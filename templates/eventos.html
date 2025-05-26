@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4>Eventos</h4>
+  <a href="{{ url_for('novo_evento') }}" class="btn btn-primary">
+    <i class="bi bi-plus-circle me-2"></i>Novo Evento
+  </a>
+</div>
+
+{% if eventos %}
+  <div class="row">
+    {% for evento in eventos %}
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm border-0 rounded-3 fade-in">
+          <div class="card-header bg-gradient-primary text-white py-3">
+            <h5 class="card-title mb-0 text-truncate">{{ evento.nome }}</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-calendar-event text-primary me-2"></i>
+                <span>{{ evento.data_inicio.strftime('%d/%m/%Y') }} até {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
+              </div>
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-geo-alt text-primary me-2"></i>
+                <span>{{ evento.cidade }}/{{ evento.estado }}</span>
+              </div>
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-building text-primary me-2"></i>
+                <span>{{ evento.circo.nome if evento.circo else '—' }}</span>
+              </div>
+              <div class="d-flex align-items-center">
+                <i class="bi bi-person text-primary me-2"></i>
+                <span>{{ evento.produtor.nome if evento.produtor else '—' }}</span>
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="badge
+                {% if evento.status == 'a realizar' %}bg-warning text-dark
+                {% elif evento.status == 'em andamento' %}bg-info text-white
+                {% elif evento.status == 'realizado' %}bg-success
+                {% else %}bg-secondary{% endif %} px-3 py-2">
+                {{ evento.status.capitalize() }}
+              </span>
+              
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-pencil me-2 text-primary"></i>Editar
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
+                      <i class="bi bi-eye me-2 text-info"></i>Ver Detalhes
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a href="#" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ evento.id_evento }}">
+                      <i class="bi bi-trash me-2"></i>Excluir
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Detalhes -->
+      <div class="modal fade" id="modalDetalhes{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+              <h5 class="modal-title">Detalhes do Evento</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <h6 class="text-primary">Informações Gerais</h6>
+                <div class="row">
+                  <div class="col-md-6 mb-2">
+                    <strong>Nome:</strong> {{ evento.nome }}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Status:</strong> {{ evento.status.capitalize() }}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Data Início:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Data Fim:</strong> {{ evento.data_fim.strftime('%d/%m/%Y') }}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h6 class="text-primary">Localização</h6>
+                <div class="row">
+                  <div class="col-md-6 mb-2">
+                    <strong>Cidade:</strong> {{ evento.cidade or '—' }}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Estado:</strong> {{ evento.estado or '—' }}
+                  </div>
+                  <div class="col-12 mb-2">
+                    <strong>Endereço:</strong> {{ evento.endereco or '—' }}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h6 class="text-primary">Responsáveis</h6>
+                <div class="row">
+                  <div class="col-md-6 mb-2">
+                    <strong>Circo:</strong> {{ evento.circo.nome if evento.circo else '—' }}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Produtor:</strong> {{ evento.produtor.nome if evento.produtor else '—' }}
+                  </div>
+                </div>
+              </div>
+              
+              {% if evento.observacoes %}
+              <div>
+                <h6 class="text-primary">Observações</h6>
+                <p>{{ evento.observacoes }}</p>
+              </div>
+              {% endif %}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+              <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="btn btn-primary">
+                <i class="bi bi-pencil me-2"></i>Editar
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Exclusão -->
+      <div class="modal fade" id="modalExcluir{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">Confirmar Exclusão</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+              <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+              <h5 class="mt-3">Tem certeza que deseja excluir?</h5>
+              <p class="text-muted">Esta ação não poderá ser desfeita e todos os dados do evento <strong>{{ evento.nome }}</strong> serão perdidos.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <a href="{{ url_for('excluir_evento', id=evento.id_evento) }}" class="btn btn-danger">
+                <i class="bi bi-trash me-2"></i>Excluir
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+      <h5 class="mt-3">Nenhum evento encontrado</h5>
+      <p class="text-muted">Comece criando seu primeiro evento!</p>
+      <a href="{{ url_for('novo_evento') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-circle me-2"></i>Novo Evento
+      </a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
