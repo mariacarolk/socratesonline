@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% block content %}
 <div class="card p-4 mb-4">
@@ -46,22 +45,34 @@
 <div class="card p-4">
     <h5 class="mb-3">Elenco Cadastrado</h5>
     {% if elenco %}
+    <!-- Campo de Busca -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Buscar integrantes, cidades..." onkeyup="searchTable()">
+            </div>
+        </div>
+    </div>
+    
     <div class="table-responsive">
-        <table class="table table-striped table-bordered align-middle">
-            <thead class="table-light">
+        <table class="table table-hover table-striped sortable-table" id="elencoTable">
+            <thead>
                 <tr>
                     <th>Nome</th>
+                    <th>CPF</th>
                     <th>Telefone</th>
-                    <th>E-mail</th>
-                    <th>Ações</th>
+                    <th>Cidade/Estado</th>
+                    <th class="text-center no-sort">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for e in elenco %}
                 <tr>
                     <td>{{ e.nome }}</td>
+                    <td>{{ e.cpf }}</td>
                     <td>{{ e.telefone }}</td>
-                    <td>{{ e.email }}</td>
+                    <td>{{ e.cidade }}/{{ e.estado }}</td>
                     <td class="text-nowrap">
                         <a href="{{ url_for('editar_elenco', id=e.id_elenco) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                         <a href="{{ url_for('excluir_elenco', id=e.id_elenco) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deseja excluir este integrante?')">Excluir</a>
@@ -75,4 +86,34 @@
     <p class="text-muted">Nenhum integrante cadastrado.</p>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('elencoTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
+</script>
 {% endblock %}

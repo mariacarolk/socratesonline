@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% if not form.id_categoria_veiculo.choices or form.id_categoria_veiculo.choices|length == 0 %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>
+        <strong>Atenção!</strong> É necessário cadastrar pelo menos uma categoria de veículo antes de poder cadastrar veículos.
+        <a href="{{ url_for('cadastrar_categoria_veiculo') }}" class="btn btn-sm btn-outline-warning ms-2">
+            <i class="bi bi-plus me-1"></i>Cadastrar Categoria
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cadastro de Veículo</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.nome.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.nome(class="form-control", placeholder="Nome/Identificação do veículo", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-truck"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe o nome do veículo.
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.id_categoria_veiculo.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.id_categoria_veiculo(class="form-select", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, selecione uma categoria.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form.marca.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.marca(class="form-control", placeholder="Marca do veículo") }}
+                        <span class="input-group-text"><i class="bi bi-building"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.modelo.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.modelo(class="form-control", placeholder="Modelo do veículo") }}
+                        <span class="input-group-text"><i class="bi bi-car-front"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.ano.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.ano(class="form-control", placeholder="Ano do veículo") }}
+                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form.placa.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.placa(class="form-control", placeholder="Placa do veículo") }}
+                        <span class="input-group-text"><i class="bi bi-credit-card-2-front"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.cor.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.cor(class="form-control", placeholder="Cor do veículo") }}
+                        <span class="input-group-text"><i class="bi bi-palette"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.combustivel.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.combustivel(class="form-select") }}
+                        <span class="input-group-text"><i class="bi bi-fuel-pump"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.capacidade_passageiros.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.capacidade_passageiros(class="form-control", placeholder="Número de passageiros") }}
+                        <span class="input-group-text"><i class="bi bi-people"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.observacoes.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.observacoes(class="form-control", placeholder="Observações", rows=3) }}
+                        <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Veículos</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if veiculos %}
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar veículos..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-striped sortable-table" id="veiculosTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Marca/Modelo</th>
+                        <th>Ano</th>
+                        <th>Placa</th>
+                        <th>Categoria</th>
+                        <th class="text-center no-sort" style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in veiculos %}
+                    <tr>
+                        <td>{{ v.nome }}</td>
+                        <td>{{ v.marca or '—' }}{% if v.marca and v.modelo %}/{% endif %}{{ v.modelo or '—' }}</td>
+                        <td>{{ v.ano or '—' }}</td>
+                        <td>{{ v.placa or '—' }}</td>
+                        <td>{{ v.categoria.nome if v.categoria else '—' }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('editar_veiculo', id=v.id_veiculo) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('excluir_veiculo', id=v.id_veiculo) }}" class="btn btn-sm btn-outline-danger" 
+                                   onclick="return confirm('Tem certeza que deseja excluir este veículo?')" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>Nenhum veículo cadastrado.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validação de formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('veiculosTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
+</script>
+{% endblock %} 

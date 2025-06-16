@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Despesas do Evento: {{ evento.nome }}</h4>
+        <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Evento
+        </a>
+    </div>
+
+    {% if not form.id_categoria_despesa.choices or form.id_categoria_despesa.choices|length == 0 %}
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>
+            <strong>Atenção!</strong> É necessário cadastrar pelo menos uma categoria de despesa antes de poder cadastrar despesas.
+            <a href="{{ url_for('cadastrar_categoria_despesa') }}" class="btn btn-sm btn-outline-warning ms-2">
+                <i class="bi bi-plus me-1"></i>Cadastrar Categoria
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Nova Despesa de Evento</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.nome.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.nome(class="form-control", placeholder="Nome da despesa", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe o nome da despesa.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.id_categoria_despesa.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.id_categoria_despesa(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma categoria.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.id_tipo_despesa.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.id_tipo_despesa(class="form-select", required=true, id="id_tipo_despesa") }}
+                            <span class="input-group-text"><i class="bi bi-diagram-3"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione um tipo de despesa.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-info">
+                                <i class="bi bi-info-circle"></i> Apenas tipos de evento disponíveis
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="valor_medio_despesa" class="form-label">
+                            Valor Médio da Despesa
+                            <span class="text-danger" id="required-indicator" style="display: none;">*</span>
+                        </label>
+                        <div class="input-group">
+                            {{ form.valor_medio_despesa(class="form-control", placeholder="0,00", id="valor_medio_despesa") }}
+                            <span class="input-group-text">R$</span>
+                            <div class="invalid-feedback" id="valor-feedback">
+                                Valor médio é obrigatório para despesas fixas.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <span id="valor-help-text">Use vírgula para separar decimais (ex: 100,50)</span>
+                            <span id="valor-required-text" style="display: none;" class="text-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Campo obrigatório para despesas fixas
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Despesas de Evento Cadastradas</h5>
+        </div>
+        <div class="card-body">
+            {% if despesas %}
+            <!-- Campo de Busca -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar despesas..." onkeyup="searchTable()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Categoria</th>
+                            <th>Tipo</th>
+                            <th>Valor Médio</th>
+                            <th class="text-center" style="width: 150px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in despesas %}
+                        <tr>
+                            <td>{{ d.nome }}</td>
+                            <td>{{ d.categoria.nome if d.categoria else '—' }}</td>
+                            <td>{{ d.tipo_nome }}</td>
+                            <td>
+                                {% if d.valor_medio_despesa %}
+                                    R$ {{ "%.2f"|format(d.valor_medio_despesa)|replace('.', ',') }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('editar_despesa', id=d.id_despesa) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('excluir_despesa', id=d.id_despesa) }}" class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir esta despesa?')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Nenhuma despesa de evento cadastrada.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validação de formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        const tipoSelect = document.getElementById('id_tipo_despesa');
+        const valorInput = document.getElementById('valor_medio_despesa');
+        const requiredIndicator = document.getElementById('required-indicator');
+        const valorRequiredText = document.getElementById('valor-required-text');
+        const valorHelpText = document.getElementById('valor-help-text');
+        
+        // Função para verificar se é despesa fixa
+        function isDespesaFixa(tipo) {
+            return tipo == '1' || tipo == '3'; // Fixas - Evento ou Fixas - SócratesOnline
+        }
+        
+        // Função para atualizar indicação de campo obrigatório
+        function updateRequiredIndication() {
+            const tipoSelecionado = tipoSelect.value;
+            const isFixa = isDespesaFixa(tipoSelecionado);
+            
+            if (isFixa) {
+                requiredIndicator.style.display = 'inline';
+                valorRequiredText.style.display = 'inline';
+                valorHelpText.style.display = 'none';
+                valorInput.setAttribute('required', 'required');
+            } else {
+                requiredIndicator.style.display = 'none';
+                valorRequiredText.style.display = 'none';
+                valorHelpText.style.display = 'inline';
+                valorInput.removeAttribute('required');
+            }
+        }
+        
+        // Atualizar indicação quando o tipo muda
+        if (tipoSelect) {
+            tipoSelect.addEventListener('change', updateRequiredIndication);
+            // Atualizar na carga da página
+            updateRequiredIndication();
+        }
+        
+        // Validação customizada do formulário
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                let isValid = true;
+                
+                // Validação específica para valor médio em despesas fixas
+                if (tipoSelect && valorInput) {
+                    const tipoSelecionado = tipoSelect.value;
+                    const valorPreenchido = valorInput.value.trim();
+                    
+                    if (isDespesaFixa(tipoSelecionado) && !valorPreenchido) {
+                        valorInput.setCustomValidity('Valor médio é obrigatório para despesas fixas.');
+                        isValid = false;
+                    } else if (isDespesaFixa(tipoSelecionado) && valorPreenchido) {
+                        // Validar se é um número válido
+                        const valorNumerico = valorPreenchido.replace(',', '.');
+                        if (isNaN(parseFloat(valorNumerico))) {
+                            valorInput.setCustomValidity('Valor médio deve ser um número válido.');
+                            isValid = false;
+                        } else {
+                            valorInput.setCustomValidity('');
+                        }
+                    } else {
+                        valorInput.setCustomValidity('');
+                    }
+                }
+                
+                if (!form.checkValidity() || !isValid) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        // Limpar validação customizada quando o usuário digita
+        if (valorInput) {
+            valorInput.addEventListener('input', function() {
+                this.setCustomValidity('');
+            });
+        }
+    });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('dataTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
+</script>
+{% endblock %} 

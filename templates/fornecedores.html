@@ -1,5 +1,17 @@
 {% extends 'base.html' %}
 {% block content %}
+
+{% if not form.id_categoria_fornecedor.choices or form.id_categoria_fornecedor.choices|length == 0 %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>
+        <strong>Atenção!</strong> É necessário cadastrar pelo menos uma categoria de fornecedor antes de poder cadastrar fornecedores.
+        <a href="{{ url_for('cadastrar_categoria_fornecedor') }}" class="btn btn-sm btn-outline-warning ms-2">
+            <i class="bi bi-plus me-1"></i>Cadastrar Categoria
+        </a>
+    </div>
+</div>
+{% else %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Cadastro de Fornecedor</h5>
@@ -44,6 +56,7 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -56,14 +69,24 @@
     </div>
     <div class="card-body">
         {% if fornecedores %}
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar fornecedores..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
         <div class="table-responsive">
-            <table class="table table-hover table-striped">
+            <table class="table table-hover table-striped sortable-table" id="fornecedoresTable">
                 <thead>
                     <tr>
                         <th>Nome</th>
                         <th>Telefone</th>
                         <th>Categoria</th>
-                        <th class="text-center" style="width: 150px;">Ações</th>
+                        <th class="text-center no-sort" style="width: 150px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -113,5 +136,31 @@
             }, false);
         });
     });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('fornecedoresTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
 </script>
 {% endblock %}

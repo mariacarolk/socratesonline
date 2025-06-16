@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <h3 class="mb-4">Relatório de Faturamento: {{ evento.nome }}</h3>
+  <div class="mb-3">
+    <span class="badge bg-primary">{{ evento.data_inicio.strftime('%d/%m/%Y') }} até {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
+    <span class="ms-3"><i class="bi bi-geo-alt text-primary me-1"></i>{{ evento.cidade }}/{{ evento.estado }}</span>
+  </div>
+  <div class="card mb-4">
+    <div class="card-header bg-gradient-primary text-white">
+      <strong>Receitas x Despesas</strong>
+    </div>
+    <div class="card-body">
+      <canvas id="graficoReceitasDespesas" height="80"></canvas>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('graficoReceitasDespesas').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Receitas', 'Despesas'],
+        datasets: [{
+            label: 'Total (R$)',
+            data: [
+                {{ receitas_values|sum }},
+                {{ despesas_values|sum }}
+            ],
+            backgroundColor: [
+                'rgba(40,167,69,0.7)',
+                'rgba(220,53,69,0.7)'
+            ],
+            borderColor: [
+                'rgba(40,167,69,1)',
+                'rgba(220,53,69,1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+</script>
+{% endblock %} 
