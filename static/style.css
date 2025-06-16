@@ -344,3 +344,78 @@ body {
   font-weight: 700;
   color: var(--primary);
 }
+
+/* Estilos para ordenação de tabelas */
+.sortable {
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+.sortable:hover {
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+.sortable .sort-icon {
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.sortable:hover .sort-icon {
+    opacity: 1;
+}
+
+.sortable .sort-icon.text-primary {
+    opacity: 1;
+    font-weight: bold;
+}
+
+/* Animação suave para reorganização das linhas */
+.sortable-table tbody {
+    transition: opacity 0.15s ease;
+}
+
+/* Estilo para cabeçalhos ordenáveis */
+.sortable-table thead th.sortable {
+    user-select: none;
+    position: relative;
+}
+
+.sortable-table thead th.sortable::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    transition: background 0.2s ease;
+}
+
+.sortable-table thead th.sortable:hover::before {
+    background: rgba(13, 110, 253, 0.05);
+}
+
+/* Melhoria visual para tabelas ordenáveis */
+.sortable-table {
+    position: relative;
+}
+
+.sortable-table thead th {
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Tooltip para indicar que é clicável */
+.sortable-table thead th.sortable {
+    position: relative;
+}
+
+.sortable-table thead th.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Responsividade para ícones de ordenação */
+@media (max-width: 768px) {
+    .sort-icon {
+        font-size: 0.7em !important;
+    }
+}

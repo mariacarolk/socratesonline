@@ -1,17 +1,52 @@
 {% extends "base.html" %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Eventos</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h4>Eventos</h4>
+  <h4>
+    {% if is_admin %}
+      Todos os Eventos
+    {% else %}
+      Meus Eventos
+    {% endif %}
+  </h4>
   <a href="{{ url_for('novo_evento') }}" class="btn btn-primary">
     <i class="bi bi-plus-circle me-2"></i>Novo Evento
   </a>
+</div>
+
+{% set period = request.args.get('period', '7dias') %}
+<div class="text-end mb-2" style="font-size: 0.95em;">
+  <div class="btn-group btn-group-sm" role="group">
+    <a href="?period=hoje" class="btn btn-filter-dark btn-group-sm {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+    <a href="?period=ontem" class="btn btn-filter-dark btn-group-sm {% if period == 'ontem' %}active{% endif %}">Ontem</a>
+    <a href="?period=7dias" class="btn btn-filter-dark btn-group-sm {% if period == '7dias' %}active{% endif %}">7 Dias</a>
+    <a href="?period=mes" class="btn btn-filter-dark btn-group-sm {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+    <a href="?period=custom" class="btn btn-filter-dark btn-group-sm {% if period == 'custom' %}active{% endif %}">Custom</a>
+  </div>
+  {% if period == 'custom' %}
+    <form method="get" class="d-inline ms-2">
+      <input type="hidden" name="period" value="custom">
+      <input type="date" name="data_inicio" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ request.args.get('data_inicio', '') }}">
+      <input type="date" name="data_fim" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ request.args.get('data_fim', '') }}">
+      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+    </form>
+  {% endif %}
 </div>
 
 {% if eventos %}
   <div class="row">
     {% for evento in eventos %}
       <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100 shadow-sm border-0 rounded-3 fade-in">
+        <div class="card h-100 shadow-sm border-0 rounded-3 fade-in event-card">
           <div class="card-header bg-gradient-primary text-white py-3">
             <h5 class="card-title mb-0 text-truncate">{{ evento.nome }}</h5>
           </div>
@@ -29,9 +64,52 @@
                 <i class="bi bi-building text-primary me-2"></i>
                 <span>{{ evento.circo.nome if evento.circo else '—' }}</span>
               </div>
-              <div class="d-flex align-items-center">
+              <div class="d-flex align-items-center mb-2">
                 <i class="bi bi-person text-primary me-2"></i>
                 <span>{{ evento.produtor.nome if evento.produtor else '—' }}</span>
+              </div>
+            </div>
+            
+            <!-- Botões de acesso rápido -->
+            <div class="mb-3">
+              <!-- Primeira linha: Despesa e Receita (maiores) -->
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <button type="button" class="btn btn-sm btn-outline-danger w-100" 
+                          data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}">
+                    <i class="bi bi-credit-card d-block"></i>
+                    <small class="text-nowrap">+ Despesa</small>
+                  </button>
+                </div>
+                <div class="col-6">
+                  <button type="button" class="btn btn-sm btn-outline-info w-100" 
+                          data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}">
+                    <i class="bi bi-cash-coin d-block"></i>
+                    <small class="text-nowrap">+ Receita</small>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Segunda linha: Equipe, Elenco, Fornecedores (menores) -->
+              <div class="row g-1">
+                <div class="col-4">
+                  <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" class="btn btn-xs btn-outline-primary w-100">
+                    <i class="bi bi-people d-block" style="font-size: 0.9rem;"></i>
+                    <small class="text-nowrap" style="font-size: 0.65rem;">Equipe</small>
+                  </a>
+                </div>
+                <div class="col-4">
+                  <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" class="btn btn-xs btn-outline-warning w-100">
+                    <i class="bi bi-person-video d-block" style="font-size: 0.9rem;"></i>
+                    <small class="text-nowrap" style="font-size: 0.65rem;">Elenco</small>
+                  </a>
+                </div>
+                <div class="col-4">
+                  <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" class="btn btn-xs btn-outline-success w-100">
+                    <i class="bi bi-shop d-block" style="font-size: 0.9rem;"></i>
+                    <small class="text-nowrap" style="font-size: 0.65rem;">Fornecedores</small>
+                  </a>
+                </div>
               </div>
             </div>
             
@@ -45,10 +123,10 @@
               </span>
               
               <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="btn btn-sm btn-outline-secondary rounded-circle dropdown-toggle-custom" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="dropdownMenuButton{{ evento.id_evento }}">
                   <i class="bi bi-three-dots-vertical"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end">
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
                   <li>
                     <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item">
                       <i class="bi bi-pencil me-2 text-primary"></i>Editar
@@ -57,6 +135,38 @@
                   <li>
                     <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
                       <i class="bi bi-eye me-2 text-info"></i>Ver Detalhes
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('relatorio_faturamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-bar-chart text-info me-2"></i>Relatório de Faturamento
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}">
+                      <i class="bi bi-credit-card me-2 text-danger"></i>Adicionar Despesa
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}">
+                      <i class="bi bi-cash-coin me-2 text-info"></i>Adicionar Receita
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-people me-2 text-primary"></i>Equipe do Evento
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-person-video me-2 text-warning"></i>Elenco do Evento
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-shop me-2 text-success"></i>Fornecedores do Evento
                     </a>
                   </li>
                   <li><hr class="dropdown-divider"></li>
@@ -68,6 +178,157 @@
                 </ul>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Adicionar Despesa -->
+      <div class="modal fade" id="modalAdicionarDespesa{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">
+                <i class="bi bi-credit-card me-2"></i>Adicionar Despesa - {{ evento.nome }}
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form onsubmit="adicionarDespesaRapida(event, '{{ evento.id_evento }}')">
+              <div class="modal-body">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Categoria da Despesa</label>
+                    <select name="categoria_despesa" class="form-select" required 
+                            onchange="carregarDespesasPorCategoria(this, '{{ evento.id_evento }}')">
+                      <option value="">Selecione uma categoria...</option>
+                      {% for categoria in categorias_despesa %}
+                      <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label">Despesa</label>
+                    <select name="despesa_id" class="form-select" required>
+                      <option value="">Primeiro selecione a categoria...</option>
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Data</label>
+                    <input type="date" name="data" class="form-control" required value="{{ current_date }}">
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Valor (R$)</label>
+                    <input type="text" name="valor" class="form-control" required placeholder="0,00"
+                           oninput="formatarMoeda(this)">
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label">Fornecedor</label>
+                    <select name="fornecedor_id" class="form-select">
+                      <option value="">Selecione um fornecedor...</option>
+                      {% for fornecedor in fornecedores %}
+                      <option value="{{ fornecedor.id_fornecedor }}">{{ fornecedor.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status_pagamento" class="form-select" required>
+                      <option value="pendente">Pendente</option>
+                      <option value="pago">Pago</option>
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Forma de Pagamento</label>
+                    <select name="forma_pagamento" class="form-select" required>
+                      <option value="débito">Débito</option>
+                      <option value="crédito">Crédito</option>
+                      <option value="espécie">Espécie</option>
+                      <option value="pix">Pix</option>
+                    </select>
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label">Pago por</label>
+                    <input type="text" name="pago_por" class="form-control">
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label">Observações</label>
+                    <textarea name="observacoes" class="form-control" rows="2"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Adicionar Receita -->
+      <div class="modal fade" id="modalAdicionarReceita{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+              <h5 class="modal-title">
+                <i class="bi bi-cash-coin me-2"></i>Adicionar Receita - {{ evento.nome }}
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form onsubmit="adicionarReceitaRapida(event, '{{ evento.id_evento }}')">
+              <div class="modal-body">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Categoria da Receita</label>
+                    <select name="categoria_receita" class="form-select" required 
+                            onchange="carregarReceitasPorCategoria(this, '{{ evento.id_evento }}')">
+                      <option value="">Selecione uma categoria...</option>
+                      {% for categoria in categorias_receita %}
+                      <option value="{{ categoria.id_categoria_receita }}">{{ categoria.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label">Receita</label>
+                    <select name="receita_id" class="form-select" required>
+                      <option value="">Primeiro selecione a categoria...</option>
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Data</label>
+                    <input type="date" name="data" class="form-control" required value="{{ current_date }}">
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label">Valor (R$)</label>
+                    <input type="text" name="valor" class="form-control" required placeholder="0,00"
+                           oninput="formatarMoeda(this)">
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label">Observações</label>
+                    <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-info">
+                  <i class="bi bi-plus-circle me-2"></i>Adicionar Receita
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -143,7 +404,7 @@
         </div>
       </div>
 
-      <!-- Modal Exclusão -->
+      <!-- Modal Excluir Evento -->
       <div class="modal fade" id="modalExcluir{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
@@ -179,4 +440,523 @@
     </div>
   </div>
 {% endif %}
+
+<style>
+.btn-filter-dark {
+  background-color: #22336b !important;
+  color: #fff !important;
+  border: 1px solid #22336b !important;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-filter-dark.active, .btn-filter-dark:active, .btn-filter-dark:hover, .btn-filter-dark:focus {
+  background-color: #1a2650 !important;
+  color: #fff !important;
+  border: 1px solid #1a2650 !important;
+}
+
+/* Corrigir dropdown - remover overflow hidden e ajustar z-index */
+.event-card {
+  overflow: visible !important;
+  position: relative;
+}
+
+.event-card .card-body {
+  overflow: visible !important;
+}
+
+.dropdown {
+  position: static !important;
+}
+
+.dropdown-menu {
+  position: absolute !important;
+  z-index: 1060 !important;
+  border: 1px solid #dee2e6 !important;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  min-width: 200px !important;
+}
+
+.dropdown-toggle-custom::after {
+  display: none !important;
+}
+
+/* Garantir que o dropdown apareça acima de outros elementos */
+.card:has(.dropdown-menu.show) {
+  z-index: 1070 !important;
+}
+
+/* Melhorar a aparência dos botões de acesso rápido */
+.btn-outline-primary:hover i,
+.btn-outline-warning:hover i,
+.btn-outline-success:hover i,
+.btn-outline-danger:hover i,
+.btn-outline-info:hover i {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Classe para botões extra pequenos */
+.btn-xs {
+  padding: 0.15rem 0.3rem;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  border-radius: 0.2rem;
+}
+
+/* Evitar quebra de linha nos botões */
+.text-nowrap {
+  white-space: nowrap !important;
+}
+
+/* Responsividade para mobile */
+@media (max-width: 576px) {
+  .event-card .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .event-card .btn-xs {
+    padding: 0.1rem 0.2rem;
+    font-size: 0.65rem;
+  }
+  
+  .event-card .btn-sm i {
+    font-size: 1rem;
+  }
+  
+  .event-card .btn-xs i {
+    font-size: 0.8rem !important;
+  }
+  
+  .event-card .btn-sm small {
+    font-size: 0.7rem;
+  }
+  
+  .event-card .btn-xs small {
+    font-size: 0.6rem !important;
+  }
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Função para formatar valor como moeda
+function formatarMoeda(input) {
+    // Remove tudo que não é dígito
+    let valor = input.value.replace(/\D/g, '');
+    
+    // Se não tem valor, limpa o campo
+    if (!valor) {
+        input.value = '';
+        return;
+    }
+    
+    // Converte para número e formata
+    valor = parseInt(valor);
+    
+    // Formatar como moeda brasileira
+    let valorFormatado = (valor / 100).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    input.value = valorFormatado;
+}
+
+// Função para converter valor formatado para número
+function converterMoedaParaNumero(valorFormatado) {
+    if (!valorFormatado) return 0;
+    
+    // Remove pontos de milhares e substitui vírgula por ponto
+    return parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.'));
+}
+
+// Função para carregar despesas por categoria
+function carregarDespesasPorCategoria(selectCategoria, eventoId) {
+    const categoriaId = selectCategoria.value;
+    const selectDespesa = selectCategoria.closest('form').querySelector('[name="despesa_id"]');
+    
+    console.log('🔍 Carregando despesas para categoria:', categoriaId);
+    
+    // Limpar opções
+    selectDespesa.innerHTML = '<option value="">Carregando...</option>';
+    
+    if (!categoriaId) {
+        selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        return;
+    }
+    
+    // Fazer requisição para buscar despesas da categoria
+    fetch(`/api/despesas-por-categoria/${categoriaId}`)
+        .then(response => {
+            console.log('📡 Resposta da API:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('📋 Despesas recebidas:', data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            selectDespesa.innerHTML = '<option value="">Selecione uma despesa...</option>';
+            
+            if (data.length === 0) {
+                selectDespesa.innerHTML = '<option value="">Nenhuma despesa encontrada para esta categoria</option>';
+                return;
+            }
+            
+            data.forEach(despesa => {
+                const option = document.createElement('option');
+                option.value = despesa.id_despesa;
+                option.textContent = despesa.nome;
+                if (despesa.valor_medio) {
+                    option.setAttribute('data-valor-medio', despesa.valor_medio.toFixed(2).replace('.', ','));
+                }
+                selectDespesa.appendChild(option);
+            });
+            
+            // Remover listeners existentes e adicionar novo
+            selectDespesa.removeEventListener('change', preencherValorMedio);
+            selectDespesa.addEventListener('change', preencherValorMedio);
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar despesas:', error);
+            selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
+            mostrarNotificacao(`❌ Erro ao carregar despesas: ${error.message}`, 'danger');
+        });
+}
+
+// Função separada para preencher valor médio
+function preencherValorMedio() {
+    const selectedOption = this.selectedOptions[0];
+    const valorMedio = selectedOption.getAttribute('data-valor-medio');
+    const inputValor = this.closest('form').querySelector('[name="valor"]');
+    
+    // Não preencher automaticamente - deixar o campo limpo para o usuário inserir
+    // if (valorMedio && inputValor && !inputValor.value) {
+    //     inputValor.value = valorMedio;
+    // }
+    
+    // Apenas limpar o campo quando trocar de despesa
+    if (inputValor) {
+        inputValor.value = '';
+        inputValor.placeholder = valorMedio ? `Sugestão: R$ ${valorMedio}` : '0,00';
+    }
+}
+
+// Função para carregar receitas por categoria
+function carregarReceitasPorCategoria(selectCategoria, eventoId) {
+    const categoriaId = selectCategoria.value;
+    const selectReceita = selectCategoria.closest('form').querySelector('[name="receita_id"]');
+    
+    // Limpar opções
+    selectReceita.innerHTML = '<option value="">Carregando...</option>';
+    
+    if (!categoriaId) {
+        selectReceita.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        return;
+    }
+    
+    // Fazer requisição para buscar receitas da categoria
+    fetch(`/api/receitas-por-categoria/${categoriaId}`)
+        .then(response => response.json())
+        .then(data => {
+            selectReceita.innerHTML = '<option value="">Selecione uma receita...</option>';
+            
+            data.forEach(receita => {
+                const option = document.createElement('option');
+                option.value = receita.id_receita;
+                option.textContent = receita.nome;
+                selectReceita.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar receitas:', error);
+            selectReceita.innerHTML = '<option value="">Erro ao carregar receitas</option>';
+        });
+}
+
+// Função para adicionar despesa rápida
+function adicionarDespesaRapida(event, eventoId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Converter eventoId para número se for string
+    const eventoIdNum = parseInt(eventoId);
+    
+    // Converter valor formatado para número
+    const valorFormatado = formData.get('valor');
+    const valorNumerico = converterMoedaParaNumero(valorFormatado);
+    
+    // Criar objeto JSON com os dados
+    const dados = {
+        despesa_id: parseInt(formData.get('despesa_id')),
+        data: formData.get('data'),
+        valor: valorNumerico.toString(),
+        id_fornecedor: formData.get('id_fornecedor') || null,
+        status_pagamento: formData.get('status_pagamento') || 'pendente',
+        forma_pagamento: formData.get('forma_pagamento') || 'débito',
+        pago_por: formData.get('pago_por') || '',
+        observacoes: formData.get('observacoes') || '',
+        is_fixa: false  // Despesas do popup são sempre variáveis
+    };
+    
+    // Desabilitar botão durante envio
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
+    
+    // Enviar dados como JSON
+    fetch(`/eventos/${eventoIdNum}/salvar-despesa`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Mostrar sucesso
+            mostrarNotificacao('✅ Despesa adicionada com sucesso!', 'success');
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+            modal.hide();
+            
+            // Limpar formulário
+            form.reset();
+            
+            // Resetar dropdowns
+            const selectDespesa = form.querySelector('[name="despesa_id"]');
+            selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        } else {
+            mostrarNotificacao('❌ Erro: ' + result.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('❌ Erro ao adicionar despesa: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        // Reabilitar botão
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+// Função para adicionar receita rápida
+function adicionarReceitaRapida(event, eventoId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Converter eventoId para número se for string
+    const eventoIdNum = parseInt(eventoId);
+    
+    // Converter valor formatado para número
+    const valorFormatado = formData.get('valor');
+    const valorNumerico = converterMoedaParaNumero(valorFormatado);
+    
+    // Criar objeto JSON com os dados
+    const dados = {
+        receita_id: parseInt(formData.get('receita_id')),
+        data: formData.get('data'),
+        valor: valorNumerico.toString(),
+        observacoes: formData.get('observacoes') || ''
+    };
+    
+    // Desabilitar botão durante envio
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
+    
+    // Enviar dados como JSON
+    fetch(`/eventos/${eventoIdNum}/salvar-receita`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Mostrar sucesso
+            mostrarNotificacao('✅ Receita adicionada com sucesso!', 'success');
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+            modal.hide();
+            
+            // Limpar formulário
+            form.reset();
+            
+            // Resetar dropdowns
+            const selectReceita = form.querySelector('[name="receita_id"]');
+            selectReceita.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        } else {
+            mostrarNotificacao('❌ Erro: ' + result.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('❌ Erro ao adicionar receita: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        // Reabilitar botão
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+// Função para mostrar notificações
+function mostrarNotificacao(mensagem, tipo) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '300px';
+    
+    alertDiv.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Função simples para garantir que os dropdowns funcionem
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Inicializando dropdowns...');
+    
+    // Aguardar carregamento completo
+    setTimeout(function() {
+        // Forçar inicialização de todos os dropdowns
+        const dropdownElements = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+        console.log('📋 Dropdowns encontrados:', dropdownElements.length);
+        
+        dropdownElements.forEach(function(element, index) {
+            try {
+                // Verificar se o Bootstrap está disponível
+                if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                    // Destruir instância existente
+                    const existingInstance = bootstrap.Dropdown.getInstance(element);
+                    if (existingInstance) {
+                        existingInstance.dispose();
+                    }
+                    
+                    // Criar nova instância
+                    const dropdown = new bootstrap.Dropdown(element);
+                    console.log(`✅ Dropdown ${index + 1} inicializado`);
+                    
+                    // Adicionar eventos para debug
+                    element.addEventListener('show.bs.dropdown', function() {
+                        console.log('🔓 Dropdown abrindo:', element.id);
+                    });
+                    
+                    element.addEventListener('hide.bs.dropdown', function() {
+                        console.log('🔒 Dropdown fechando:', element.id);
+                    });
+                    
+                } else {
+                    console.error('❌ Bootstrap não disponível');
+                }
+            } catch (error) {
+                console.error(`❌ Erro no dropdown ${index + 1}:`, error);
+            }
+        });
+        
+        // Teste adicional: verificar se podemos abrir manualmente
+        dropdownElements.forEach(function(element) {
+            element.addEventListener('click', function(e) {
+                console.log('🖱️ Clique detectado no dropdown:', element.id);
+                
+                // Fallback manual se necessário
+                const dropdown = bootstrap.Dropdown.getInstance(element);
+                if (!dropdown) {
+                    console.log('⚠️ Criando instância no clique');
+                    try {
+                        new bootstrap.Dropdown(element);
+                    } catch (error) {
+                        console.error('❌ Erro ao criar instância:', error);
+                    }
+                }
+            });
+        });
+        
+    }, 200);
+});
+
+// Debug: monitorar mudanças no DOM
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            const target = mutation.target;
+            if (target.classList.contains('dropdown-menu')) {
+                console.log('📋 Mudança no menu dropdown:', target.classList.contains('show') ? 'ABERTO' : 'FECHADO');
+            }
+        }
+    });
+});
+
+// Observar todos os menus dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        const menus = document.querySelectorAll('.dropdown-menu');
+        menus.forEach(function(menu) {
+            observer.observe(menu, { attributes: true });
+        });
+    }, 300);
+    
+    // Limpar formulários quando modais forem abertos
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(function(modal) {
+        modal.addEventListener('show.bs.modal', function() {
+            const form = modal.querySelector('form');
+            if (form) {
+                // Resetar formulário
+                form.reset();
+                
+                // Resetar dropdowns para estado inicial
+                const selectDespesa = form.querySelector('[name="despesa_id"]');
+                const selectReceita = form.querySelector('[name="receita_id"]');
+                
+                if (selectDespesa) {
+                    selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+                }
+                
+                if (selectReceita) {
+                    selectReceita.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+                }
+                
+                // Limpar placeholder do valor
+                const inputValor = form.querySelector('[name="valor"]');
+                if (inputValor) {
+                    inputValor.placeholder = '0,00';
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -1,5 +1,17 @@
 {% extends 'base.html' %}
 {% block content %}
+
+{% if not form.categorias.choices or form.categorias.choices|length == 0 %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>
+        <strong>Atenção!</strong> É necessário cadastrar pelo menos uma categoria de colaborador antes de poder cadastrar colaboradores.
+        <a href="{{ url_for('cadastrar_categoria_colaborador') }}" class="btn btn-sm btn-outline-warning ms-2">
+            <i class="bi bi-plus me-1"></i>Cadastrar Categoria
+        </a>
+    </div>
+</div>
+{% else %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Cadastro de Colaborador</h5>
@@ -19,13 +31,17 @@
                     </div>
                 </div>
                 <div class="col-md-6 mb-3">
-                    {{ form.id_categoria_colaborador.label(class="form-label") }}
-                    <div class="input-group">
-                        {{ form.id_categoria_colaborador(class="form-select", required=true) }}
-                        <span class="input-group-text"><i class="bi bi-tag"></i></span>
-                        <div class="invalid-feedback">
-                            Por favor, selecione uma categoria.
+                    {{ form.categorias.label(class="form-label") }}
+                    <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                        {% for subfield in form.categorias %}
+                        <div class="form-check">
+                            {{ subfield(class="form-check-input") }}
+                            {{ subfield.label(class="form-check-label") }}
                         </div>
+                        {% endfor %}
+                    </div>
+                    <div class="invalid-feedback">
+                        Por favor, selecione pelo menos uma categoria.
                     </div>
                 </div>
             </div>
@@ -37,6 +53,7 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -49,27 +66,76 @@
     </div>
     <div class="card-body">
         {% if colaboradores %}
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar colaboradores..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
         <div class="table-responsive">
-            <table class="table table-hover table-striped">
+            <table class="table table-hover table-striped sortable-table" id="colaboradoresTable">
                 <thead>
                     <tr>
                         <th>Nome</th>
-                        <th>Categoria</th>
-                        <th class="text-center" style="width: 150px;">Ações</th>
+                        <th>Categorias</th>
+                        <th class="text-center">Usuário</th>
+                        <th class="text-center no-sort" style="width: 200px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for col in colaboradores %}
                     <tr>
                         <td>{{ col.nome }}</td>
-                        <td>{{ col.categoria.nome if col.categoria else '—' }}</td>
+                        <td>
+                            {% if col.categoria_nomes %}
+                                {% for categoria in col.categoria_nomes %}
+                                    <span class="badge bg-primary me-1">{{ categoria }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if col.usuario %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-person-check me-1"></i>Ativo
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-person-dash me-1"></i>Sem usuário
+                                </span>
+                            {% endif %}
+                        </td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
-                                <a href="{{ url_for('editar_colaborador', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <a href="{{ url_for('editar_colaborador', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-primary" title="Editar Colaborador">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                
+                                {% if session.categoria == 'administrativo' %}
+                                    {% if col.usuario %}
+                                        <!-- Botões para colaborador COM usuário -->
+                                        <a href="{{ url_for('editar_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-info" title="Editar Usuário">
+                                            <i class="bi bi-person-gear"></i>
+                                        </a>
+                                        <a href="{{ url_for('excluir_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-warning" 
+                                           onclick="return confirm('Tem certeza que deseja excluir o usuário de {{ col.nome }}?')" title="Excluir Usuário">
+                                            <i class="bi bi-person-x"></i>
+                                        </a>
+                                    {% else %}
+                                        <!-- Botão para colaborador SEM usuário -->
+                                        <a href="{{ url_for('criar_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-success" title="Criar Usuário">
+                                            <i class="bi bi-person-plus"></i>
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                                
                                 <a href="{{ url_for('excluir_colaborador', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-danger" 
-                                   onclick="return confirm('Tem certeza que deseja excluir este colaborador?')" title="Excluir">
+                                   onclick="return confirm('Tem certeza que deseja excluir este colaborador?')" title="Excluir Colaborador">
                                     <i class="bi bi-trash"></i>
                                 </a>
                             </div>
@@ -96,13 +162,88 @@
         
         Array.from(forms).forEach(form => {
             form.addEventListener('submit', event => {
-                if (!form.checkValidity()) {
+                // Primeiro verificar nossa validação customizada para categorias
+                const categoriaCheckboxes = form.querySelectorAll('input[name="categorias"]:checked');
+                const categoriaContainer = form.querySelector('div[class*="border rounded"]');
+                
+                if (categoriaCheckboxes.length === 0) {
                     event.preventDefault();
                     event.stopPropagation();
+                    
+                    // Mostrar erro visual
+                    if (categoriaContainer) {
+                        categoriaContainer.classList.add('is-invalid');
+                        categoriaContainer.style.borderColor = '#dc3545';
+                    }
+                    
+                    // Mostrar mensagem de erro
+                    let errorMsg = form.querySelector('.categoria-error');
+                    if (!errorMsg) {
+                        errorMsg = document.createElement('div');
+                        errorMsg.className = 'categoria-error text-danger mt-1';
+                        errorMsg.textContent = 'Por favor, selecione pelo menos uma categoria.';
+                        categoriaContainer.parentNode.appendChild(errorMsg);
+                    }
+                    
+                    form.classList.add('was-validated');
+                    return false;
+                } else {
+                    // Remover erro visual se existir
+                    if (categoriaContainer) {
+                        categoriaContainer.classList.remove('is-invalid');
+                        categoriaContainer.style.borderColor = '';
+                    }
+                    
+                    // Remover mensagem de erro
+                    const errorMsg = form.querySelector('.categoria-error');
+                    if (errorMsg) {
+                        errorMsg.remove();
+                    }
                 }
+                
+                // Agora verificar validação HTML5, mas só para outros campos
+                const formIsValid = form.checkValidity();
+                if (!formIsValid) {
+                    // Verificar especificamente o campo nome
+                    const nomeField = form.querySelector('input[name="nome"]');
+                    if (nomeField && !nomeField.value.trim()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        form.classList.add('was-validated');
+                        return false;
+                    }
+                }
+                
+                // Se chegou até aqui, o formulário é válido
                 form.classList.add('was-validated');
             }, false);
         });
     });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('colaboradoresTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
 </script>
 {% endblock %}

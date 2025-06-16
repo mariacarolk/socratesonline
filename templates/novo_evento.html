@@ -1,253 +1,1791 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card p-4">
-    <h4 class="mb-4">Cadastrar Evento</h4>
-    <form method="POST">
-        {{ form.hidden_tag() }}
-        <input type="hidden" id="excluir_receita_ids" name="excluir_receita_ids">
-        <input type="hidden" id="excluir_despesa_ids" name="excluir_despesa_ids">
-        <div class="row g-3">
-            <div class="col-md-6">{{ form.nome.label(class="form-label") }}{{ form.nome(class="form-control") }}</div>
-            <div class="col-md-3">{{ form.data_inicio.label(class="form-label") }}{{ form.data_inicio(class="form-control") }}</div>
-            <div class="col-md-3">{{ form.data_fim.label(class="form-label") }}{{ form.data_fim(class="form-control") }}</div>
+{% extends "base.html" %}
 
-            <div class="col-md-6">{{ form.cidade.label(class="form-label") }}{{ form.cidade(class="form-control") }}</div>
-            <div class="col-md-6">{{ form.estado.label(class="form-label") }}{{ form.estado(class="form-control") }}</div>
-
-            <div class="col-md-12">{{ form.endereco.label(class="form-label") }}{{ form.endereco(class="form-control") }}</div>
-
-            <div class="col-md-6">{{ form.id_circo.label(class="form-label") }}{{ form.id_circo(class="form-select") }}</div>
-            <div class="col-md-6">{{ form.id_produtor.label(class="form-label") }}{{ form.id_produtor(class="form-select") }}</div>
-
-            <div class="col-md-6">{{ form.status.label(class="form-label") }}{{ form.status(class="form-select") }}</div>
-
-            <div class="col-md-12">{{ form.observacoes.label(class="form-label") }}{{ form.observacoes(class="form-control", rows=3) }}</div>
-        </div>
-
-
-        <hr>
-        <h4 class="text-white bg-dark py-2 px-3 rounded">RECEITAS</h4>
-
-        {% for categoria in categorias_receita %}
-        <div class="card my-3 shadow-sm">
-            <div class="card-header bg-primary text-white text-center fw-semibold">
-                {{ categoria.nome }}
-            </div>
-            <div class="card-body p-2">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>Receita</th>
-                            <th>Valor</th>
-                            <th>Obs</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="categoria-{{ categoria.id_categoria_receita }}">
-                        {% for r in receitas_salvas if r.receita.id_categoria_receita == categoria.id_categoria_receita %}
-                        <tr class="table-success">
-                            <td>{{ r.receita.nome }}</td>
-                            <td>R$ {{ r.valor }}</td>
-                            <td>{{ r.observacoes }}</td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="marcarParaExcluirReceita(this, {{ r.id_receita_evento }})">×</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-
-                        {% for receita in categorias_receita_dict[categoria.id_categoria_receita] %}
-                        <tr>
-                            <td>
-                                <input type="hidden" name="receita_id[]" value="{{ receita.id_receita }}">
-                                {{ receita.nome }}
-                            </td>
-                            <td><input type="text" name="valor[]" class="form-control" placeholder="0,00"></td>
-                            <td><input type="text" name="obs[]" class="form-control"></td>
-                            <td></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <div class="text-end">
-                    <button type="button" class="btn btn-outline-primary btn-sm"
-                            data-categoria="{{ categoria.id_categoria_receita }}"
-                            data-receitas='{{ categorias_receita_dict[categoria.id_categoria_receita] | tojson | safe }}'
-                            onclick="handleAdicionarReceita(this)">
-                        + Receita
-                    </button>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-        <hr class="mt-5">
-        <h4 class="text-white bg-dark py-2 px-3 rounded">DESPESAS</h4>
-
-        {% for categoria in categorias_despesa %}
-        <div class="card my-3 shadow-sm">
-            <div class="card-header bg-primary text-white text-center fw-semibold">
-                {{ categoria.nome }}
-            </div>
-            <div class="card-body p-2">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>Despesa</th>
-                            <th>Data</th>
-                            <th>Valor</th>
-                            <th>Status</th>
-                            <th>Forma</th>
-                            <th>Pago por</th>
-                            <th>Obs</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="despesa-categoria-{{ categoria.id_categoria_despesa }}">
-                        {% for d in despesas_salvas if d.despesa.id_categoria_despesa == categoria.id_categoria_despesa %}
-                        <tr class="table-success">
-                            <td>{{ d.despesa.nome }}</td>
-                            <td>{{ d.data }}</td>
-                            <td>R$ {{ d.valor }}</td>
-                            <td>{{ d.status_pagamento }}</td>
-                            <td>{{ d.forma_pagamento }}</td>
-                            <td>{{ d.pago_por }}</td>
-                            <td>{{ d.observacoes }}</td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="marcarParaExcluirDespesa(this, {{ d.id_despesa_evento }})">×</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-
-                        {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa] %}
-                        <tr>
-                            <td>
-                                <input type="hidden" name="despesa_id[]" value="{{ despesa.id_despesa }}">
-                                {{ despesa.nome }}
-                            </td>
-                            <td><input type="date" name="despesa_data[]" class="form-control" value="{{ current_date }}"></td>
-                            <td><input type="text" name="despesa_valor[]" class="form-control" placeholder="0,00"></td>
-                            <td>
-                                <select name="despesa_status_pagamento[]" class="form-select">
-                                    <option value="pendente">Pendente</option>
-                                    <option value="pago">Pago</option>
-                                </select>
-                            </td>
-                            <td>
-                                <select name="despesa_forma_pagamento[]" class="form-select">
-                                    <option value="débito">Débito</option>
-                                    <option value="crédito">Crédito</option>
-                                    <option value="espécie">Espécie</option>
-                                    <option value="pix">Pix</option>
-                                </select>
-                            </td>
-                            <td><input type="text" name="despesa_pago_por[]" class="form-control"></td>
-                            <td><input type="text" name="despesa_obs[]" class="form-control"></td>
-                            <td></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <div class="text-end">
-                    <button type="button"
-                            class="btn btn-outline-primary btn-sm"
-                            data-categoria="{{ categoria.id_categoria_despesa }}"
-                            data-despesas='{{ categorias_despesa_dict[categoria.id_categoria_despesa] | tojson | safe }}'
-                            onclick="handleAdicionarDespesa(this)">
-                        + Despesa
-                    </button>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-        <button type="submit" class="btn btn-primary mt-3">Salvar</button>
-    </form>
-</div>
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('listar_eventos') }}">Eventos</a></li>
+    {% if is_editing %}
+      <li class="breadcrumb-item active" aria-current="page">Editar Evento</li>
+    {% else %}
+      <li class="breadcrumb-item active" aria-current="page">Novo Evento</li>
+    {% endif %}
+  </ol>
+</nav>
 {% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            {% if is_editing %}
+                Editar Evento
+            {% else %}
+              Novo Evento
+            {% endif %}
+          </h2>
+        </div>
+        <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <!-- Dados Básicos do Evento -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    {{ form.nome.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.nome(class="form-control", placeholder="Nome do evento") }}
+                        <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                </div>
+                {% if form.nome.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.nome.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              
+                <div class="col-md-3 mb-3">
+                    {{ form.data_inicio.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.data_inicio(class="form-control", type="date") }}
+                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                </div>
+                {% if form.data_inicio.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.data_inicio.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              
+                <div class="col-md-3 mb-3">
+                    {{ form.data_fim.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.data_fim(class="form-control", type="date") }}
+                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                </div>
+                {% if form.data_fim.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.data_fim.errors %}
+                      {{ error }}
+                    {% endfor %}
+                        </div>
+                {% endif %}
+                    </div>
+              
+              <div class="col-md-4 mb-3">
+                {{ form.cidade.label(class="form-label") }}
+                <div class="input-group">
+                  {{ form.cidade(class="form-control", placeholder="Cidade") }}
+                  <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                </div>
+                {% if form.cidade.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.cidade.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                </div>
+
+              <div class="col-md-2 mb-3">
+                    {{ form.estado.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.estado(class="form-control", placeholder="UF") }}
+                  <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                </div>
+                {% if form.estado.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.estado.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              
+                <div class="col-md-6 mb-3">
+                {{ form.endereco.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.endereco(class="form-control", placeholder="Endereço completo") }}
+                        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                </div>
+                {% if form.endereco.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.endereco.errors %}
+                      {{ error }}
+                    {% endfor %}
+                        </div>
+                {% endif %}
+                    </div>
+
+                <div class="col-md-6 mb-3">
+                {{ form.id_circo.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.id_circo(class="form-select") }}
+                        <span class="input-group-text"><i class="bi bi-building"></i></span>
+                </div>
+                {% if form.id_circo.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.id_circo.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              
+                <div class="col-md-6 mb-3">
+                {{ form.id_produtor.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.id_produtor(class="form-select") }}
+                  <span class="input-group-text"><i class="bi bi-person"></i></span>
+                </div>
+                {% if form.id_produtor.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.id_produtor.errors %}
+                      {{ error }}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.status.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.status(class="form-select") }}
+                        <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                    </div>
+                {% if form.status.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.status.errors %}
+                      {{ error }}
+            {% endfor %}
+                </div>
+                                        {% endif %}
+                                    </div>
+              
+              <div class="col-12 mb-3">
+                {{ form.observacoes.label(class="form-label") }}
+                {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre o evento") }}
+                {% if form.observacoes.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.observacoes.errors %}
+                      {{ error }}
+                            {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Seção de Receitas -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <h5 class="text-success mb-2">
+                  <i class="bi bi-cash-coin me-1"></i>Receitas do Evento
+                </h5>
+                
+                {% for categoria in categorias_receita %}
+                <div class="card mb-2">
+                  <div class="card-header bg-success text-white py-1">
+                    <h6 class="mb-0" style="font-size: 12px;">{{ categoria.nome }}</h6>
+                  </div>
+                  <div class="card-body py-2">
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered table-compact">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width: 35%;">Receita</th>
+                            <th style="width: 20%;">Data</th>
+                            <th style="width: 20%;">Valor</th>
+                            <th style="width: 25%;">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- Receitas já cadastradas dessa categoria -->
+                          {% for receita in receitas_salvas %}
+                            {% if receita.receita.categoria.id_categoria_receita == categoria.id_categoria_receita %}
+                            <tr class="table-success" id="receita_salva_row_{{ receita.id_receita_evento }}">
+                              <td><strong>{{ receita.receita.nome }}</strong></td>
+                              <td>
+                                <span class="receita-display">{{ receita.data.strftime('%d/%m/%Y') }}</span>
+                                <input type="date" class="form-control form-control-sm receita-edit d-none" 
+                                       id="receita_salva_data_{{ receita.id_receita_evento }}" 
+                                       value="{{ receita.data.strftime('%Y-%m-%d') }}">
+                              </td>
+                              <td>
+                                <span class="receita-display text-end"><strong>R$ {{ "%.2f"|format(receita.valor) }}</strong></span>
+                                <input type="text" class="form-control form-control-sm receita-edit d-none" 
+                                       id="receita_salva_valor_{{ receita.id_receita_evento }}" 
+                                       value="{{ ("%.2f"|format(receita.valor)|replace('.', ',')) }}"
+                                       oninput="formatarMoeda(this)">
+                              </td>
+                              <td>
+                                <div class="d-flex gap-1">
+                                  <button type="button" class="btn btn-sm btn-outline-info" 
+                                          onclick="verDetalhesReceita({{ receita.id_receita_evento }}, '{{ receita.receita.nome }}', '{{ receita.data.strftime('%d/%m/%Y') }}', '{{ "%.2f"|format(receita.valor) }}', '{{ receita.observacoes or '' }}')" 
+                                          title="Ver Detalhes">
+                                    <i class="bi bi-eye"></i>
+                                  </button>
+                                  <button type="button" class="btn btn-sm btn-outline-primary receita-btn-editar" 
+                                          onclick="editarReceitaSalva({{ receita.id_receita_evento }})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                  </button>
+                                  <button type="button" class="btn btn-sm btn-success receita-btn-salvar d-none" 
+                                          onclick="salvarReceitaSalva({{ receita.id_receita_evento }})" title="Salvar">
+                                    <i class="bi bi-check"></i>
+                                  </button>
+                                  <button type="button" class="btn btn-sm btn-outline-danger" 
+                                          onclick="excluirReceita({{ receita.id_receita_evento }})" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                  </button>
+                                </div>
+                                <!-- Campos ocultos para edição -->
+                                <input type="text" class="form-control form-control-sm receita-edit d-none" 
+                                       id="receita_salva_obs_{{ receita.id_receita_evento }}" 
+                                       value="{{ receita.observacoes or '' }}"
+                                       placeholder="Observações" style="margin-top: 5px;">
+                              </td>
+                            </tr>
+                            {% endif %}
+                          {% endfor %}
+                          
+                          <!-- Receitas não cadastradas dessa categoria -->
+                          {% for receita in categorias_receita_dict[categoria.id_categoria_receita] %}
+                          {% if receita.id_receita not in receitas_salvas|map(attribute='receita.id_receita')|list %}
+                          <tr class="table-light">
+                            <td><strong>{{ receita.nome }}</strong></td>
+                            <td colspan="2" class="text-muted">Clique no botão + para cadastrar esta receita</td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-success" 
+                                      onclick="abrirModalReceita('{{ receita.id_receita }}', '{{ categoria.id_categoria_receita }}', '{{ receita.nome }}', '{{ categoria.nome }}')" 
+                                      title="Cadastrar Receita">
+                                <i class="bi bi-plus"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+                          
+                          <!-- Linha para adicionar nova receita na categoria -->
+                          <tr class="table-light">
+                            <td colspan="3"><em class="text-muted">+ Incluir nova receita</em></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-outline-success" 
+                                      onclick="abrirModalReceita('', '{{ categoria.id_categoria_receita }}', '', '{{ categoria.nome }}')" 
+                                      title="Incluir Nova Receita">
+                                <i class="bi bi-plus"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Seção de Despesas -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <h5 class="text-danger mb-2">
+                  <i class="bi bi-credit-card me-1"></i>Despesas do Evento
+                </h5>
+
+                {% for categoria in categorias_despesa %}
+                <div class="card mb-2">
+                  <div class="card-header bg-danger text-white py-1">
+                    <h6 class="mb-0" style="font-size: 12px;">{{ categoria.nome }}</h6>
+                  </div>
+                  <div class="card-body py-2">
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered table-compact">
+                        <thead class="table-light">
+                          <tr>
+                            <th style="width: 30%;">Despesa</th>
+                            <th style="width: 15%;">Data</th>
+                            <th style="width: 15%;">Valor</th>
+                            <th style="width: 15%;">Status</th>
+                            <th style="width: 25%;">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- Despesas já cadastradas dessa categoria -->
+                          {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
+                          {% if despesa.ja_cadastrada %}
+                          <tr class="table-primary" id="despesa_row_{{ despesa.id_despesa }}">
+                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small></td>
+                            <td>
+                              <span class="despesa-display">{{ despesa.data_atual }}</span>
+                              <input type="date" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_data_{{ despesa.id_despesa }}" 
+                                     value="{{ despesa.data_atual }}">
+                            </td>
+                            <td>
+                              <span class="despesa-display"><strong>R$ {{ "%.2f"|format(despesa.valor_atual) }}</strong></span>
+                              <input type="text" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_valor_{{ despesa.id_despesa }}" 
+                                     value="{{ (despesa.valor_atual|string).replace('.', ',') }}"
+                                     oninput="formatarMoeda(this)">
+                            </td>
+                            <td>
+                              <span class="despesa-display">
+                                <span class="badge bg-{{ 'success' if despesa.status_atual == 'pago' else 'warning' }}" style="font-size: 10px;">
+                                  {{ despesa.status_atual|title }}
+                                </span>
+                              </span>
+                              <select class="form-select form-select-sm despesa-edit d-none" id="despesa_status_{{ despesa.id_despesa }}">
+                                <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
+                              </select>
+                            </td>
+                            <td>
+                              <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                        onclick="verDetalhesDespesa({{ despesa.id_despesa }}, '{{ despesa.nome }}', '{{ despesa.data_atual }}', '{{ "%.2f"|format(despesa.valor_atual) }}', '{{ despesa.fornecedor_atual or "" }}', '{{ despesa.status_atual }}', '{{ despesa.forma_atual }}', '{{ despesa.pago_por_atual or "" }}', '{{ despesa.obs_atual or "" }}', 'Fixa')" 
+                                        title="Ver Detalhes">
+                                  <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary despesa-btn-editar" 
+                                        onclick="editarDespesaFixa({{ despesa.id_despesa }})" title="Editar">
+                                  <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success despesa-btn-salvar d-none" 
+                                        onclick="salvarDespesa({{ despesa.id_despesa }}, true)" title="Salvar">
+                                  <i class="bi bi-check"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="excluirDespesa({{ despesa.id_despesa_evento }})" title="Excluir">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              </div>
+                              <!-- Campos ocultos para edição -->
+                              <div class="despesa-edit d-none" style="margin-top: 5px;">
+                                <select class="form-select form-select-sm mb-1" id="despesa_fornecedor_{{ despesa.id_despesa }}">
+                                  <option value="">Selecione...</option>
+                                  {% for fornecedor in fornecedores %}
+                                  <option value="{{ fornecedor.id_fornecedor }}" {% if fornecedor.id_fornecedor == despesa.fornecedor_atual %}selected{% endif %}>{{ fornecedor.nome }}</option>
+                                  {% endfor %}
+                                </select>
+                                <select class="form-select form-select-sm mb-1" id="despesa_status_{{ despesa.id_despesa }}">
+                                  <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
+                                  <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
+                                </select>
+                                <select class="form-select form-select-sm mb-1" id="despesa_forma_{{ despesa.id_despesa }}">
+                                  <option value="débito" {{ 'selected' if despesa.forma_atual == 'débito' else '' }}>Débito</option>
+                                  <option value="crédito" {{ 'selected' if despesa.forma_atual == 'crédito' else '' }}>Crédito</option>
+                                  <option value="espécie" {{ 'selected' if despesa.forma_atual == 'espécie' else '' }}>Espécie</option>
+                                  <option value="pix" {{ 'selected' if despesa.forma_atual == 'pix' else '' }}>Pix</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm mb-1" 
+                                       id="despesa_pago_por_{{ despesa.id_despesa }}" 
+                                       value="{{ despesa.pago_por_atual or '' }}"
+                                       placeholder="Pago por">
+                                <input type="text" class="form-control form-control-sm" 
+                                       id="despesa_obs_{{ despesa.id_despesa }}" 
+                                       value="{{ despesa.obs_atual or '' }}"
+                                       placeholder="Observações">
+                              </div>
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+
+                          {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['variaveis'] %}
+                          {% if despesa.ja_cadastrada %}
+                          <tr class="table-success" id="despesa_row_{{ despesa.id_despesa }}">
+                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small></td>
+                            <td>
+                              <span class="despesa-display">{{ despesa.data_atual }}</span>
+                              <input type="date" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_data_{{ despesa.id_despesa }}" 
+                                     value="{{ despesa.data_atual }}">
+                            </td>
+                            <td>
+                              <span class="despesa-display"><strong>R$ {{ "%.2f"|format(despesa.valor_atual)|replace('.', ',') }}</strong></span>
+                              <input type="text" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_valor_{{ despesa.id_despesa }}" 
+                                     value="{{ ("%.2f"|format(despesa.valor_atual)|replace('.', ',')) if despesa.valor_atual else '' }}"
+                                     oninput="formatarMoeda(this)">
+                            </td>
+                            <td>
+                              <span class="despesa-display">
+                                <span class="badge bg-{{ 'success' if despesa.status_atual == 'pago' else 'warning' }}" style="font-size: 10px;">
+                                  {{ despesa.status_atual|title }}
+                                </span>
+                              </span>
+                              <select class="form-select form-select-sm despesa-edit d-none" id="despesa_status_{{ despesa.id_despesa }}">
+                                <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
+                              </select>
+                            </td>
+                            <td>
+                              <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                        onclick="verDetalhesDespesa({{ despesa.id_despesa }}, '{{ despesa.nome }}', '{{ despesa.data_atual }}', '{{ "%.2f"|format(despesa.valor_atual) }}', '{{ despesa.fornecedor_atual or "" }}', '{{ despesa.status_atual }}', '{{ despesa.forma_atual }}', '{{ despesa.pago_por_atual or "" }}', '{{ despesa.obs_atual or "" }}', 'Variável')" 
+                                        title="Ver Detalhes">
+                                  <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary despesa-btn-editar" 
+                                        onclick="editarDespesaVariavel({{ despesa.id_despesa }})" title="Editar">
+                                  <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success despesa-btn-salvar d-none" 
+                                        onclick="salvarDespesa({{ despesa.id_despesa }}, false)" title="Salvar">
+                                  <i class="bi bi-check"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="excluirDespesa({{ despesa.id_despesa_evento }})" title="Excluir">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              </div>
+                              <!-- Campos ocultos para edição -->
+                              <div class="despesa-edit d-none" style="margin-top: 5px;">
+                                <select class="form-select form-select-sm mb-1" id="despesa_fornecedor_{{ despesa.id_despesa }}">
+                                  <option value="">Selecione...</option>
+                                  {% for fornecedor in fornecedores %}
+                                  <option value="{{ fornecedor.id_fornecedor }}" {% if fornecedor.id_fornecedor == despesa.fornecedor_atual %}selected{% endif %}>{{ fornecedor.nome }}</option>
+                                  {% endfor %}
+                                </select>
+                                <select class="form-select form-select-sm mb-1" id="despesa_status_{{ despesa.id_despesa }}">
+                                  <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
+                                  <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
+                                </select>
+                                <select class="form-select form-select-sm mb-1" id="despesa_forma_{{ despesa.id_despesa }}">
+                                  <option value="débito" {% if despesa.forma_atual == 'débito' %}selected{% endif %}>Débito</option>
+                                  <option value="crédito" {% if despesa.forma_atual == 'crédito' %}selected{% endif %}>Crédito</option>
+                                  <option value="espécie" {% if despesa.forma_atual == 'espécie' %}selected{% endif %}>Espécie</option>
+                                  <option value="pix" {% if despesa.forma_atual == 'pix' %}selected{% endif %}>Pix</option>
+                                </select>
+                                <input type="text" class="form-control form-control-sm mb-1" 
+                                       id="despesa_pago_por_{{ despesa.id_despesa }}" 
+                                       value="{{ despesa.pago_por_atual or '' }}"
+                                       placeholder="Pago por">
+                                <input type="text" class="form-control form-control-sm" 
+                                       id="despesa_obs_{{ despesa.id_despesa }}" 
+                                       value="{{ despesa.obs_atual or '' }}"
+                                       placeholder="Observações">
+                              </div>
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+
+                          <!-- Despesas não cadastradas dessa categoria -->
+                          {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
+                          {% if not despesa.ja_cadastrada %}
+                          <tr class="table-light">
+                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small></td>
+                            <td colspan="3" class="text-muted">
+                              Clique no botão + para cadastrar esta despesa 
+                              {% if despesa.valor_medio %}
+                                <em>(valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }})</em>
+                              {% endif %}
+                            </td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-success" 
+                                      onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'true', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
+                                      title="Cadastrar Despesa">
+                                <i class="bi bi-plus"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+
+                          {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['variaveis'] %}
+                          {% if not despesa.ja_cadastrada %}
+                          <tr class="table-light">
+                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small></td>
+                            <td colspan="3" class="text-muted">
+                              Clique no botão + para cadastrar esta despesa
+                              {% if despesa.valor_medio %}
+                                <em>(valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }})</em>
+                              {% endif %}
+                            </td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-success" 
+                                      onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'false', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
+                                      title="Cadastrar Despesa">
+                                <i class="bi bi-plus"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+                          
+                          <!-- Linha para adicionar nova despesa na categoria -->
+                          <tr class="table-light">
+                            <td colspan="4"><em class="text-muted">+ Incluir nova despesa</em></td>
+                            <td>
+                              <button type="button" class="btn btn-sm btn-outline-danger" 
+                                      onclick="abrirModalDespesa('', '{{ categoria.id_categoria_despesa }}', '', '{{ categoria.nome }}', 'false', '')" 
+                                      title="Incluir Nova Despesa">
+                                <i class="bi bi-plus"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{{ url_for('listar_eventos') }}" class="btn btn-secondary">
+                <i class="bi bi-x-circle me-2"></i>Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-2"></i>Salvar Evento
+              </button>
+            </div>
+        </form>
+        </div>
+      </div>
+    </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar Receita -->
+<div class="modal fade" id="modalAdicionarReceita" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-cash-coin me-2"></i>Adicionar Receita
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form onsubmit="adicionarReceitaEvento(event)">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Categoria da Receita</label>
+              <select name="categoria_receita" class="form-select" id="modal_receita_categoria" required>
+                <option value="">Selecione uma categoria...</option>
+                {% for categoria in categorias_receita %}
+                <option value="{{ categoria.id_categoria_receita }}">{{ categoria.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label">Receita</label>
+              <select name="receita_id" class="form-select" id="modal_receita_item" required>
+                <option value="">Primeiro selecione a categoria...</option>
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Data</label>
+              <input type="date" name="data" class="form-control" id="modal_receita_data" required value="{{ current_date }}">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Valor (R$)</label>
+              <input type="text" name="valor" class="form-control" id="modal_receita_valor" required placeholder="0,00"
+                     oninput="formatarMoeda(this)">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label">Observações</label>
+              <textarea name="observacoes" class="form-control" id="modal_receita_obs" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-plus-circle me-2"></i>Adicionar Receita
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Adicionar Despesa -->
+<div class="modal fade" id="modalAdicionarDespesa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-credit-card me-2"></i>Adicionar Despesa
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form onsubmit="adicionarDespesaEvento(event)">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Categoria da Despesa</label>
+              <select name="categoria_despesa" class="form-select" id="modal_despesa_categoria" required>
+                <option value="">Selecione uma categoria...</option>
+                {% for categoria in categorias_despesa %}
+                <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label">Despesa</label>
+              <select name="despesa_id" class="form-select" id="modal_despesa_item" required>
+                <option value="">Primeiro selecione a categoria...</option>
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Data</label>
+              <input type="date" name="data" class="form-control" id="modal_despesa_data" required value="{{ current_date }}">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Valor (R$)</label>
+              <input type="text" name="valor" class="form-control" id="modal_despesa_valor" required placeholder="0,00"
+                     oninput="formatarMoeda(this)">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label">Fornecedor</label>
+              <select name="id_fornecedor" class="form-select" id="modal_despesa_fornecedor">
+                <option value="">Selecione um fornecedor...</option>
+                {% for fornecedor in fornecedores %}
+                <option value="{{ fornecedor.id_fornecedor }}">{{ fornecedor.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select name="status_pagamento" class="form-select" id="modal_despesa_status" required>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Forma de Pagamento</label>
+              <select name="forma_pagamento" class="form-select" id="modal_despesa_forma" required>
+                <option value="débito">Débito</option>
+                <option value="crédito">Crédito</option>
+                <option value="espécie">Espécie</option>
+                <option value="pix">Pix</option>
+              </select>
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label">Pago Por</label>
+              <input type="text" name="pago_por" class="form-control" id="modal_despesa_pago_por" placeholder="Nome da pessoa que pagou">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label">Observações</label>
+              <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhes Receita -->
+<div class="modal fade" id="modalDetalhesReceita" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-cash-coin me-2"></i>Detalhes da Receita
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label"><strong>Receita:</strong></label>
+            <p id="detalhe_receita_nome" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Data:</strong></label>
+            <p id="detalhe_receita_data" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Valor:</strong></label>
+            <p id="detalhe_receita_valor" class="form-control-plaintext text-success"></p>
+          </div>
+          
+          <div class="col-12">
+            <label class="form-label"><strong>Observações:</strong></label>
+            <p id="detalhe_receita_obs" class="form-control-plaintext"></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhes Despesa -->
+<div class="modal fade" id="modalDetalhesDespesa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-credit-card me-2"></i>Detalhes da Despesa
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label"><strong>Despesa:</strong></label>
+            <p id="detalhe_despesa_nome" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Data:</strong></label>
+            <p id="detalhe_despesa_data" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Valor:</strong></label>
+            <p id="detalhe_despesa_valor" class="form-control-plaintext text-danger"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Fornecedor:</strong></label>
+            <p id="detalhe_despesa_fornecedor" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Status:</strong></label>
+            <p id="detalhe_despesa_status" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Forma de Pagamento:</strong></label>
+            <p id="detalhe_despesa_forma" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label"><strong>Pago Por:</strong></label>
+            <p id="detalhe_despesa_pago_por" class="form-control-plaintext"></p>
+          </div>
+          
+          <div class="col-12">
+            <label class="form-label"><strong>Observações:</strong></label>
+            <p id="detalhe_despesa_obs" class="form-control-plaintext"></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.form-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.input-group-text {
+  background-color: #f8f9fa;
+  border-color: #ced4da;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+  background-color: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.text-primary {
+  color: #0d6efd !important;
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+  background-color: #5c636a;
+  border-color: #565e64;
+}
+
+.invalid-feedback {
+  font-size: 0.875em;
+  color: #dc3545;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.input-group:focus-within {
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.input-group:focus-within .input-group-text {
+  border-color: #86b7fe;
+}
+
+.input-group:focus-within .form-control {
+  border-color: #86b7fe;
+}
+
+.input-group:focus-within .form-select {
+  border-color: #86b7fe;
+}
+
+/* Estilos para tabelas compactas */
+.table-compact {
+  font-size: 15px; /* Aumentado de 13px para 15px */
+}
+
+.table-compact th,
+.table-compact td {
+  padding: 0.4rem 0.5rem; /* Aumentado ainda mais o padding */
+  vertical-align: middle;
+  line-height: 1.4; /* Aumentado line-height */
+}
+
+.table-compact .form-control,
+.table-compact .form-select {
+  font-size: 14px; /* Aumentado de 12px para 14px */
+  padding: 0.25rem 0.35rem; /* Aumentado padding */
+  height: auto;
+  min-height: 32px; /* Aumentado de 28px para 32px */
+}
+
+.table-compact .btn {
+  font-size: 12px; /* Aumentado de 11px para 12px */
+  padding: 0.25rem 0.35rem; /* Aumentado padding */
+  line-height: 1.3;
+}
+
+.table-compact .badge {
+  font-size: 11px !important; /* Aumentado de 9px para 11px */
+  padding: 0.25rem 0.35rem; /* Aumentado padding */
+}
+
+.table-compact strong {
+  font-size: 15px; /* Aumentado de 13px para 15px */
+}
+
+.table-compact small {
+  font-size: 12px; /* Aumentado de 10px para 12px */
+}
+
+.table-compact .text-muted {
+  font-size: 13px; /* Aumentado de 11px para 13px */
+}
+</style>
 
 {% block scripts %}
 <script>
-function marcarParaExcluirReceita(button, id) {
-  const input = document.getElementById("excluir_receita_ids");
-  const atuais = input.value ? input.value.split(",") : [];
-  if (!atuais.includes(String(id))) {
-    atuais.push(id);
-    input.value = atuais.join(",");
-  }
-  button.closest("tr").remove();
+// Função para formatar valor como moeda
+function formatarMoeda(input) {
+    var valor = input.value.replace(/\D/g, '');
+    if (!valor) {
+        input.value = '';
+        return;
+    }
+    valor = parseInt(valor);
+    var valorFormatado = (valor / 100).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    input.value = valorFormatado;
 }
 
-function marcarParaExcluirDespesa(button, id) {
-  const input = document.getElementById("excluir_despesa_ids");
-  const atuais = input.value ? input.value.split(",") : [];
-  if (!atuais.includes(String(id))) {
-    atuais.push(id);
-    input.value = atuais.join(",");
-  }
-  button.closest("tr").remove();
+// Função para obter ID do evento
+function obterEventoId() {
+    // Tentar obter da URL (para edição)
+    var url = window.location.pathname;
+    var match = url.match(/\/eventos\/editar\/(\d+)/);
+    if (match) {
+        return match[1];
+    }
+    
+    // Para novo evento, retornar null
+    return null;
 }
 
-function handleAdicionarDespesa(button) {
-  const categoriaId = button.getAttribute("data-categoria");
-  const despesasJson = button.getAttribute("data-despesas");
-  try {
-    const despesas = JSON.parse(despesasJson);
-    adicionarLinhaDespesa(categoriaId, despesas);
-  } catch (e) {
-    console.error("Erro ao processar JSON de despesas:", e);
-  }
+// Função para salvar evento automaticamente se necessário
+function salvarEventoSeNecessario() {
+    return new Promise((resolve, reject) => {
+        var eventoId = obterEventoId();
+        if (eventoId) {
+            // Evento já existe, retornar o ID
+            resolve(eventoId);
+            return;
+        }
+        
+        // Evento novo - precisa salvar primeiro
+        var form = document.querySelector('form');
+        var formData = new FormData(form);
+        
+        // Verificar se os campos obrigatórios estão preenchidos
+        var nome = formData.get('nome');
+        var dataInicio = formData.get('data_inicio');
+        var dataFim = formData.get('data_fim');
+        
+        if (!nome || !dataInicio || !dataFim) {
+            reject('Preencha pelo menos o nome e as datas do evento antes de adicionar receitas/despesas.');
+            return;
+        }
+        
+        // Salvar o evento via AJAX
+        fetch('/eventos/novo', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.redirected) {
+                // Se houve redirecionamento, extrair o ID da nova URL
+                var newUrl = response.url;
+                var match = newUrl.match(/\/eventos\/editar\/(\d+)/);
+                if (match) {
+                    // Redirecionar para a página de edição
+                    window.location.href = newUrl;
+                    resolve(match[1]);
+                } else {
+                    reject('Erro ao salvar evento');
+                }
+            } else {
+                reject('Erro ao salvar evento');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao salvar evento:', error);
+            reject('Erro ao salvar evento');
+        });
+    });
 }
 
-function adicionarLinhaDespesa(categoriaId, despesas) {
-  const tbody = document.getElementById("despesa-categoria-" + categoriaId);
-  if (!tbody) return;
+// Função para converter moeda formatada para número
+function converterMoedaParaNumero(valorFormatado) {
+    if (!valorFormatado) return 0;
+    return parseFloat(valorFormatado.toString().replace(/\./g, '').replace(',', '.'));
+}
 
-  const tr = document.createElement("tr");
+// Função para abrir modal de receita
+function abrirModalReceita(receitaId, categoriaId, nomeReceita, nomeCategoria) {
+    // Limpar formulário
+    var form = document.querySelector('#modalAdicionarReceita form');
+    form.reset();
+    
+    // Pré-preencher categoria se fornecida
+    if (categoriaId) {
+        document.getElementById('modal_receita_categoria').value = categoriaId;
+        // Carregar receitas da categoria
+        carregarReceitasPorCategoriaModal(categoriaId, receitaId);
+    }
+    
+    // Pré-preencher data
+    document.getElementById('modal_receita_data').value = '{{ current_date }}';
+    
+    // Atualizar título do modal
+    var titulo = document.querySelector('#modalAdicionarReceita .modal-title');
+    if (nomeReceita) {
+        titulo.innerHTML = '<i class="bi bi-cash-coin me-2"></i>Cadastrar: ' + nomeReceita;
+    } else {
+        titulo.innerHTML = '<i class="bi bi-cash-coin me-2"></i>Nova Receita - ' + (nomeCategoria || 'Selecione categoria');
+    }
+    
+    // Abrir modal
+    var modal = new bootstrap.Modal(document.getElementById('modalAdicionarReceita'));
+    modal.show();
+}
 
-  const tdDespesa = document.createElement("td");
-  const select = document.createElement("select");
-  select.name = "despesa_id[]";
-  select.className = "form-select";
-  despesas.forEach(d => {
-    const opt = document.createElement("option");
-    opt.value = d.id_despesa;
-    opt.textContent = d.nome;
-    select.appendChild(opt);
-  });
-  tdDespesa.appendChild(select);
-  tr.appendChild(tdDespesa);
+// Função para abrir modal de despesa
+function abrirModalDespesa(despesaId, categoriaId, nomeDespesa, nomeCategoria, isFixa, valorMedio) {
+    // Limpar formulário
+    var form = document.querySelector('#modalAdicionarDespesa form');
+    form.reset();
+    
+    // Pré-preencher categoria se fornecida
+    if (categoriaId) {
+        document.getElementById('modal_despesa_categoria').value = categoriaId;
+        // Carregar despesas da categoria
+        carregarDespesasPorCategoriaModal(categoriaId, despesaId);
+    }
+    
+    // Pré-preencher data
+    document.getElementById('modal_despesa_data').value = '{{ current_date }}';
+    
+    // Pré-preencher valor médio se disponível
+    if (valorMedio) {
+        document.getElementById('modal_despesa_valor').value = valorMedio.replace('.', ',');
+    }
+    
+    // Atualizar título do modal
+    var titulo = document.querySelector('#modalAdicionarDespesa .modal-title');
+    if (nomeDespesa) {
+        titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Cadastrar: ' + nomeDespesa + ' (' + (isFixa === 'true' ? 'Fixa' : 'Variável') + ')';
+    } else {
+        titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Nova Despesa - ' + (nomeCategoria || 'Selecione categoria');
+    }
+    
+    // Abrir modal
+    var modal = new bootstrap.Modal(document.getElementById('modalAdicionarDespesa'));
+    modal.show();
+}
 
-  const tdData = document.createElement("td");
-  const inputData = document.createElement("input");
-  inputData.type = "date";
-  inputData.name = "despesa_data[]";
-  inputData.className = "form-control";
-  inputData.valueAsDate = new Date();
-  tdData.appendChild(inputData);
-  tr.appendChild(tdData);
+// Função para carregar receitas por categoria no modal
+function carregarReceitasPorCategoriaModal(categoriaId, receitaIdSelecionada) {
+    var selectReceita = document.getElementById('modal_receita_item');
+    
+    // Limpar opções
+    selectReceita.innerHTML = '<option value="">Carregando...</option>';
+    
+    if (!categoriaId) {
+        selectReceita.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        return;
+    }
+    
+    // Fazer requisição para buscar receitas da categoria
+    fetch(`/api/receitas-por-categoria/${categoriaId}`)
+        .then(response => response.json())
+        .then(data => {
+            selectReceita.innerHTML = '<option value="">Selecione uma receita...</option>';
+            
+            data.forEach(receita => {
+                const option = document.createElement('option');
+                option.value = receita.id_receita;
+                option.textContent = receita.nome;
+                if (receitaIdSelecionada && receita.id_receita == receitaIdSelecionada) {
+                    option.selected = true;
+                }
+                selectReceita.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar receitas:', error);
+            selectReceita.innerHTML = '<option value="">Erro ao carregar receitas</option>';
+        });
+}
 
-  tr.innerHTML += `
-    <td><input type="text" name="despesa_valor[]" class="form-control" placeholder="0,00"></td>
-    <td>
-      <select name="despesa_status_pagamento[]" class="form-select">
-        <option value="pendente">Pendente</option>
-        <option value="pago">Pago</option>
-      </select>
-    </td>
-    <td>
-      <select name="despesa_forma_pagamento[]" class="form-select">
-        <option value="débito">Débito</option>
-        <option value="crédito">Crédito</option>
-        <option value="espécie">Espécie</option>
-        <option value="pix">Pix</option>
-      </select>
-    </td>
-    <td><input type="text" name="despesa_pago_por[]" class="form-control"></td>
-    <td><input type="text" name="despesa_obs[]" class="form-control"></td>
-    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">×</button></td>
-  `;
+// Função para carregar despesas por categoria no modal
+function carregarDespesasPorCategoriaModal(categoriaId, despesaIdSelecionada) {
+    var selectDespesa = document.getElementById('modal_despesa_item');
+    
+    // Limpar opções
+    selectDespesa.innerHTML = '<option value="">Carregando...</option>';
+    
+    if (!categoriaId) {
+        selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        return;
+    }
+    
+    // Fazer requisição para buscar despesas da categoria
+    fetch(`/api/despesas-por-categoria/${categoriaId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            selectDespesa.innerHTML = '<option value="">Selecione uma despesa...</option>';
+            
+            if (data.length === 0) {
+                selectDespesa.innerHTML = '<option value="">Nenhuma despesa encontrada para esta categoria</option>';
+                return;
+            }
+            
+            data.forEach(despesa => {
+                const option = document.createElement('option');
+                option.value = despesa.id_despesa;
+                option.textContent = despesa.nome;
+                if (despesaIdSelecionada && despesa.id_despesa == despesaIdSelecionada) {
+                    option.selected = true;
+                }
+                if (despesa.valor_medio) {
+                    option.setAttribute('data-valor-medio', despesa.valor_medio.toFixed(2).replace('.', ','));
+                }
+                selectDespesa.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar despesas:', error);
+            selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
+        });
+}
 
-  tbody.appendChild(tr);
+// Função para adicionar receita do evento
+function adicionarReceitaEvento(event) {
+    event.preventDefault();
+    
+    var form = event.target;
+    var formData = new FormData(form);
+    
+    // Converter valor formatado para número
+    var valorFormatado = formData.get('valor');
+    var valorNumerico = converterMoedaParaNumero(valorFormatado);
+    
+    // Preparar dados para envio
+    var dados = {
+        receita_id: parseInt(formData.get('receita_id')),
+        data: formData.get('data'),
+        valor: valorNumerico.toString(),
+        observacoes: formData.get('observacoes') || ''
+    };
+    
+    // Desabilitar botão durante envio
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
+    
+    // Salvar evento primeiro se necessário
+    salvarEventoSeNecessario()
+        .then(eventoId => {
+            return fetch(`/eventos/${eventoId}/salvar-receita`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dados)
+            });
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Fechar modal
+                var modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                modal.hide();
+                
+                // Recarregar a página
+                window.location.reload();
+            } else {
+                alert('Erro: ' + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao adicionar receita: ' + error);
+        })
+        .finally(() => {
+            // Reabilitar botão
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+}
+
+// Função para adicionar despesa do evento
+function adicionarDespesaEvento(event) {
+    event.preventDefault();
+    
+    var form = event.target;
+    var formData = new FormData(form);
+    
+    // Converter valor formatado para número
+    var valorFormatado = formData.get('valor');
+    var valorNumerico = converterMoedaParaNumero(valorFormatado);
+    
+    // Preparar dados para envio
+    var dados = {
+        despesa_id: parseInt(formData.get('despesa_id')),
+        data: formData.get('data'),
+        valor: valorNumerico.toString(),
+        id_fornecedor: formData.get('id_fornecedor') || null,
+        status_pagamento: formData.get('status_pagamento'),
+        forma_pagamento: formData.get('forma_pagamento'),
+        pago_por: formData.get('pago_por'),
+        observacoes: formData.get('observacoes') || '',
+        is_fixa: false
+    };
+    
+    // Desabilitar botão durante envio
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
+    
+    // Salvar evento primeiro se necessário
+    salvarEventoSeNecessario()
+        .then(eventoId => {
+            return fetch(`/eventos/${eventoId}/salvar-despesa`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dados)
+            });
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Fechar modal
+                var modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                modal.hide();
+                
+                // Recarregar a página
+                window.location.reload();
+            } else {
+                alert('Erro: ' + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao adicionar despesa: ' + error);
+        })
+        .finally(() => {
+            // Reabilitar botão
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+}
+
+// Função para salvar receita individual
+function salvarReceita(receitaId) {
+    var data = document.getElementById('receita_data_' + receitaId).value;
+    var valor = document.getElementById('receita_valor_' + receitaId).value;
+    var observacoes = document.getElementById('receita_obs_' + receitaId).value;
+    
+    if (!data || !valor) {
+        alert('Data e valor são obrigatórios!');
+        return;
+    }
+    
+    // Salvar evento primeiro se necessário
+    salvarEventoSeNecessario()
+        .then(eventoId => {
+            var dados = {
+                receita_id: receitaId,
+                data: data,
+                valor: valor,
+                observacoes: observacoes
+            };
+            
+            return fetch('/eventos/' + eventoId + '/salvar-receita', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dados)
+            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mudar a cor da linha para verde
+                var linha = document.getElementById('receita_row_' + receitaId);
+                linha.className = 'table-success';
+                
+                // Criar objeto com os dados da receita para passar para a função
+                var dadosReceita = {
+                    data: document.getElementById('receita_data_' + receitaId).value,
+                    valor: document.getElementById('receita_valor_' + receitaId).value,
+                    observacoes: document.getElementById('receita_obs_' + receitaId).value
+                };
+                
+                // Esconder campos de entrada e mostrar valores
+                esconderCamposReceita(receitaId, data.receita_nome, dadosReceita.data, dadosReceita.valor, dadosReceita.observacoes);
+                
+                // Trocar botões: esconder salvar, mostrar editar
+                var btnSalvar = linha.querySelector('.btn-success');
+                var btnEditar = linha.querySelector('.btn-outline-primary');
+                btnSalvar.style.display = 'none';
+                btnEditar.style.display = 'inline-block';
+            } else {
+                alert('Erro ao salvar receita: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro: ' + error);
+        });
+}
+
+// Função para esconder campos da receita e mostrar valores
+function esconderCamposReceita(receitaId, nome, data, valor, obs) {
+    var linha = document.getElementById('receita_row_' + receitaId);
+    var cells = linha.querySelectorAll('td');
+    
+    // Data
+    cells[1].innerHTML = '<small>' + formatarDataBR(data) + '</small>';
+    
+    // Valor
+    cells[2].innerHTML = '<small>R$ ' + valor + '</small>';
+    
+    // Observações
+    cells[3].innerHTML = '<small>' + (obs || '-') + '</small>';
+}
+
+// Função para editar receita
+function editarReceita(receitaId) {
+    var linha = document.getElementById('receita_row_' + receitaId);
+    var cells = linha.querySelectorAll('td');
+    
+    // Restaurar campos de entrada
+    cells[1].innerHTML = '<input type="date" class="form-control form-control-sm" id="receita_data_' + receitaId + '" style="font-size: 11px;">';
+    cells[2].innerHTML = '<input type="text" class="form-control form-control-sm" id="receita_valor_' + receitaId + '" placeholder="0,00" oninput="formatarMoeda(this)" style="font-size: 11px;">';
+    cells[3].innerHTML = '<input type="text" class="form-control form-control-sm" id="receita_obs_' + receitaId + '" placeholder="Observações" style="font-size: 11px;">';
+    
+    // Trocar botões: esconder editar, mostrar salvar
+    var btnSalvar = linha.querySelector('.btn-success');
+    var btnEditar = linha.querySelector('.btn-outline-primary');
+    btnSalvar.style.display = 'inline-block';
+    btnEditar.style.display = 'none';
+    
+    // Voltar cor para cinza
+    linha.className = 'table-light';
+}
+
+// Função para salvar despesa individual
+function salvarDespesa(despesaId, isFixa) {
+    var data = document.getElementById('despesa_data_' + despesaId).value;
+    var valor = document.getElementById('despesa_valor_' + despesaId).value;
+    var fornecedor = document.getElementById('despesa_fornecedor_' + despesaId).value;
+    var status = document.getElementById('despesa_status_' + despesaId).value;
+    var forma = document.getElementById('despesa_forma_' + despesaId).value;
+    var pagoPor = document.getElementById('despesa_pago_por_' + despesaId).value;
+    var observacoes = document.getElementById('despesa_obs_' + despesaId).value;
+    
+    if (!data || !valor) {
+        alert('Data e valor são obrigatórios!');
+        return;
+    }
+    
+    // Salvar evento primeiro se necessário
+    salvarEventoSeNecessario()
+        .then(eventoId => {
+            var dados = {
+                despesa_id: despesaId,
+                data: data,
+                valor: valor,
+                id_fornecedor: fornecedor || null,
+                status_pagamento: status,
+                forma_pagamento: forma,
+                pago_por: pagoPor,
+                observacoes: observacoes,
+                is_fixa: isFixa
+            };
+            
+            return fetch('/eventos/' + eventoId + '/salvar-despesa', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dados)
+            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mudar a cor da linha
+                var linha = document.getElementById('despesa_row_' + despesaId);
+                if (isFixa) {
+                    linha.className = 'table-primary'; // Azul para fixas já cadastradas
+                } else {
+                    linha.className = 'table-success'; // Verde para variáveis cadastradas
+                }
+                
+                // Criar objeto com os dados da despesa para passar para a função
+                var dadosDespesa = {
+                    data: document.getElementById('despesa_data_' + despesaId).value,
+                    valor: document.getElementById('despesa_valor_' + despesaId).value,
+                    status_pagamento: document.getElementById('despesa_status_' + despesaId).value,
+                    forma_pagamento: document.getElementById('despesa_forma_' + despesaId).value,
+                    pago_por: document.getElementById('despesa_pago_por_' + despesaId).value,
+                    observacoes: document.getElementById('despesa_obs_' + despesaId).value
+                };
+                
+                // Esconder campos e mostrar valores
+                esconderCamposDespesa(despesaId, dadosDespesa, data.fornecedor_nome);
+                
+                // Trocar botões: esconder salvar, mostrar editar
+                var btnSalvar = linha.querySelector('.despesa-btn-salvar');
+                var btnEditar = linha.querySelector('.despesa-btn-editar');
+                btnSalvar.classList.add('d-none');
+                btnEditar.classList.remove('d-none');
+            } else {
+                alert('Erro ao salvar despesa: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro: ' + error);
+        });
+}
+
+// Função para esconder campos da despesa e mostrar valores
+function esconderCamposDespesa(despesaId, dadosDespesa, fornecedorNome) {
+    var linha = document.getElementById('despesa_row_' + despesaId);
+    var displays = linha.querySelectorAll('.despesa-display');
+    var edits = linha.querySelectorAll('.despesa-edit');
+    
+    // Esconder campos de edição
+    edits.forEach(function(edit) {
+        edit.classList.add('d-none');
+    });
+    
+    // Mostrar e atualizar displays
+    displays.forEach(function(display) {
+        display.classList.remove('d-none');
+    });
+    
+    // Atualizar conteúdo dos displays
+    var cells = linha.querySelectorAll('td');
+    
+    // Data (índice 1)
+    cells[1].querySelector('.despesa-display').innerHTML = formatarDataBR(dadosDespesa.data);
+    
+    // Valor (índice 2)
+    cells[2].querySelector('.despesa-display').innerHTML = 'R$ ' + dadosDespesa.valor;
+    
+    // Fornecedor (índice 3)
+    cells[3].querySelector('.despesa-display').innerHTML = fornecedorNome || '-';
+    
+    // Status (índice 4)
+    var statusBadge = dadosDespesa.status_pagamento === 'pago' ? 'success' : 'warning';
+    cells[4].querySelector('.despesa-display').innerHTML = 
+        '<span class="badge bg-' + statusBadge + '" style="font-size: 10px;">' + 
+        dadosDespesa.status_pagamento.charAt(0).toUpperCase() + dadosDespesa.status_pagamento.slice(1) + '</span>';
+    
+    // Forma (índice 5)
+    cells[5].querySelector('.despesa-display').innerHTML = 
+        dadosDespesa.forma_pagamento.charAt(0).toUpperCase() + dadosDespesa.forma_pagamento.slice(1);
+    
+    // Pago Por (índice 6)
+    cells[6].querySelector('.despesa-display').innerHTML = dadosDespesa.pago_por || '-';
+    
+    // Observações (índice 7)
+    cells[7].querySelector('.despesa-display').innerHTML = dadosDespesa.observacoes || '-';
+}
+
+// Função para formatar data para formato brasileiro
+function formatarDataBR(dataISO) {
+    if (!dataISO) return '-';
+    var parts = dataISO.split('-');
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+// Função para editar despesa fixa
+function editarDespesaFixa(despesaId) {
+    var linha = document.getElementById('despesa_row_' + despesaId);
+    
+    // Esconder elementos de display e mostrar campos de edição
+    var displays = linha.querySelectorAll('.despesa-display');
+    var edits = linha.querySelectorAll('.despesa-edit');
+    
+    displays.forEach(function(display) {
+        display.classList.add('d-none');
+    });
+    
+    edits.forEach(function(edit) {
+        edit.classList.remove('d-none');
+    });
+    
+    // Trocar botões: esconder editar, mostrar salvar
+    var btnEditar = linha.querySelector('.despesa-btn-editar');
+    var btnSalvar = linha.querySelector('.despesa-btn-salvar');
+    btnEditar.classList.add('d-none');
+    btnSalvar.classList.remove('d-none');
+}
+
+// Função para editar despesa variável
+function editarDespesaVariavel(despesaId) {
+    var linha = document.getElementById('despesa_row_' + despesaId);
+    
+    // Mostrar campos de edição e esconder displays
+    var displays = linha.querySelectorAll('.despesa-display');
+    var edits = linha.querySelectorAll('.despesa-edit');
+    
+    displays.forEach(function(display) {
+        display.classList.add('d-none');
+    });
+    
+    edits.forEach(function(edit) {
+        edit.classList.remove('d-none');
+    });
+    
+    // Trocar botões: esconder editar, mostrar salvar
+    var btnEditar = linha.querySelector('.despesa-btn-editar');
+    var btnSalvar = linha.querySelector('.despesa-btn-salvar');
+    btnEditar.classList.add('d-none');
+    btnSalvar.classList.remove('d-none');
+    
+    // Voltar cor para cinza
+    linha.className = 'table-light';
+}
+
+// Função para excluir receita
+function excluirReceita(receitaEventoId) {
+    if (confirm('Tem certeza que deseja excluir esta receita?')) {
+        var eventoId = obterEventoId();
+        if (!eventoId) {
+            alert('Erro: Não foi possível identificar o evento');
+            return;
+        }
+        
+        fetch('/eventos/' + eventoId + '/excluir-receita/' + receitaEventoId, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Receita excluída com sucesso!');
+                // Recarregar a página para atualizar a lista
+                window.location.reload();
+            } else {
+                alert('Erro ao excluir receita: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao excluir receita: ' + error);
+        });
+    }
+}
+
+// Função para excluir despesa
+function excluirDespesa(despesaEventoId) {
+    if (confirm('Tem certeza que deseja excluir esta despesa?')) {
+        var eventoId = obterEventoId();
+        if (!eventoId) {
+            alert('Erro: Não foi possível identificar o evento');
+            return;
+        }
+        
+        fetch('/eventos/' + eventoId + '/excluir-despesa/' + despesaEventoId, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Despesa excluída com sucesso!');
+                // Recarregar a página para atualizar a lista
+                window.location.reload();
+            } else {
+                alert('Erro ao excluir despesa: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao excluir despesa: ' + error);
+        });
+    }
+}
+
+// Função para editar receita já salva
+function editarReceitaSalva(receitaEventoId) {
+    var linha = document.getElementById('receita_salva_row_' + receitaEventoId);
+    
+    // Esconder elementos de display e mostrar campos de edição
+    var displays = linha.querySelectorAll('.receita-display');
+    var edits = linha.querySelectorAll('.receita-edit');
+    
+    displays.forEach(function(display) {
+        display.classList.add('d-none');
+    });
+    
+    edits.forEach(function(edit) {
+        edit.classList.remove('d-none');
+    });
+    
+    // Trocar botões: esconder editar, mostrar salvar
+    var btnEditar = linha.querySelector('.receita-btn-editar');
+    var btnSalvar = linha.querySelector('.receita-btn-salvar');
+    btnSalvar.classList.add('d-none');
+    btnEditar.classList.remove('d-none');
+}
+
+// Função para salvar receita já cadastrada (edição)
+function salvarReceitaSalva(receitaEventoId) {
+    var eventoId = obterEventoId();
+    if (!eventoId) {
+        alert('Erro: Não foi possível identificar o evento');
+        return;
+    }
+    
+    // Coletar dados dos campos de edição
+    var data = document.getElementById('receita_salva_data_' + receitaEventoId).value;
+    var valor = document.getElementById('receita_salva_valor_' + receitaEventoId).value;
+    var observacoes = document.getElementById('receita_salva_obs_' + receitaEventoId).value;
+    
+    if (!data || !valor) {
+        alert('Data e valor são obrigatórios');
+        return;
+    }
+    
+    // Preparar dados para envio
+    var dadosReceita = {
+        data: data,
+        valor: valor,
+        observacoes: observacoes
+    };
+    
+    // Enviar para o backend (usando endpoint de atualização)
+    fetch('/eventos/' + eventoId + '/atualizar-receita/' + receitaEventoId, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dadosReceita)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Receita atualizada com sucesso!');
+            
+            // Esconder campos e mostrar valores atualizados
+            esconderCamposReceita(receitaEventoId, dadosReceita);
+            
+            // Trocar botões: esconder salvar, mostrar editar
+            var linha = document.getElementById('receita_salva_row_' + receitaEventoId);
+            var btnSalvar = linha.querySelector('.receita-btn-salvar');
+            var btnEditar = linha.querySelector('.receita-btn-editar');
+            btnSalvar.classList.add('d-none');
+            btnEditar.classList.remove('d-none');
+        } else {
+            alert('Erro ao atualizar receita: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro: ' + error);
+    });
+}
+
+// Função para esconder campos da receita e mostrar valores
+function esconderCamposReceita(receitaEventoId, dadosReceita) {
+    var linha = document.getElementById('receita_salva_row_' + receitaEventoId);
+    var displays = linha.querySelectorAll('.receita-display');
+    var edits = linha.querySelectorAll('.receita-edit');
+    
+    // Esconder campos de edição
+    edits.forEach(function(edit) {
+        edit.classList.add('d-none');
+    });
+    
+    // Mostrar e atualizar displays
+    displays.forEach(function(display) {
+        display.classList.remove('d-none');
+    });
+    
+    // Atualizar conteúdo dos displays
+    var cells = linha.querySelectorAll('td');
+    
+    // Data (índice 0)
+    cells[0].querySelector('.receita-display').innerHTML = formatarDataBR(dadosReceita.data);
+    
+    // Valor (índice 3)
+    cells[3].querySelector('.receita-display').innerHTML = 'R$ ' + dadosReceita.valor;
+    
+    // Observações (índice 4)
+    cells[4].querySelector('.receita-display').innerHTML = dadosReceita.observacoes || '-';
+}
+
+// Validação de formulário
+document.addEventListener('DOMContentLoaded', function() {
+    // Event listeners para mudanças nas categorias dos modais
+    var modalReceitaCategoria = document.getElementById('modal_receita_categoria');
+    var modalDespesaCategoria = document.getElementById('modal_despesa_categoria');
+    
+    if (modalReceitaCategoria) {
+        modalReceitaCategoria.addEventListener('change', function() {
+            carregarReceitasPorCategoriaModal(this.value);
+        });
+    }
+    
+    if (modalDespesaCategoria) {
+        modalDespesaCategoria.addEventListener('change', function() {
+            carregarDespesasPorCategoriaModal(this.value);
+        });
+    }
+    
+    var forms = document.querySelectorAll('.needs-validation');
+    
+    Array.from(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+
+// Função para ver detalhes da receita
+function verDetalhesReceita(receitaEventoId, nome, data, valor, observacoes) {
+    document.getElementById('detalhe_receita_nome').textContent = nome;
+    document.getElementById('detalhe_receita_data').textContent = data;
+    document.getElementById('detalhe_receita_valor').textContent = 'R$ ' + valor;
+    document.getElementById('detalhe_receita_obs').textContent = observacoes || 'Sem observações';
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalDetalhesReceita'));
+    modal.show();
+}
+
+// Função para ver detalhes da despesa
+function verDetalhesDespesa(despesaId, nome, data, valor, fornecedor, status, forma, pagoPor, observacoes, tipo) {
+    document.getElementById('detalhe_despesa_nome').textContent = nome + ' (' + tipo + ')';
+    document.getElementById('detalhe_despesa_data').textContent = data;
+    document.getElementById('detalhe_despesa_valor').textContent = 'R$ ' + valor;
+    document.getElementById('detalhe_despesa_fornecedor').textContent = fornecedor || 'Não informado';
+    
+    // Status com badge
+    var statusBadge = status === 'pago' ? 
+        '<span class="badge bg-success">Pago</span>' : 
+        '<span class="badge bg-warning">Pendente</span>';
+    document.getElementById('detalhe_despesa_status').innerHTML = statusBadge;
+    
+    document.getElementById('detalhe_despesa_forma').textContent = forma ? forma.charAt(0).toUpperCase() + forma.slice(1) : 'Não informado';
+    document.getElementById('detalhe_despesa_pago_por').textContent = pagoPor || 'Não informado';
+    document.getElementById('detalhe_despesa_obs').textContent = observacoes || 'Sem observações';
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalDetalhesDespesa'));
+    modal.show();
 }
 </script>
 {% endblock %}
+
+{% endblock %} 

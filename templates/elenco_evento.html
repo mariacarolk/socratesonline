@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+  <div class="card shadow-sm">
+    <div class="card-header bg-gradient-warning text-dark">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h4 class="mb-0">
+            <i class="bi bi-person-video me-2"></i>Elenco do Evento
+          </h4>
+          <p class="mb-0 mt-1 opacity-75">{{ evento.nome }}</p>
+        </div>
+        <a href="{{ url_for('listar_eventos') }}" class="btn btn-dark btn-sm">
+          <i class="bi bi-arrow-left me-1"></i>Voltar aos Eventos
+        </a>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <!-- Formulário de Cadastro -->
+      <div class="row">
+        <div class="col-md-8">
+          <form method="POST" class="needs-validation mb-4" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="row g-3">
+              <div class="col-md-5">
+                {{ form.id_elenco.label(class="form-label") }}
+                {{ form.id_elenco(class="form-select", required=true) }}
+                <div class="invalid-feedback">
+                  Por favor, selecione um membro do elenco.
+                </div>
+              </div>
+              <div class="col-md-6">
+                {{ form.observacoes.label(class="form-label") }}
+                {{ form.observacoes(class="form-control", rows=1, placeholder="Observações sobre a participação no evento") }}
+              </div>
+              <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-warning">
+                  <i class="bi bi-plus-circle me-1"></i>Adicionar
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Listagem do Elenco -->
+      {% if elenco_evento %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-warning">
+              <tr>
+                <th><i class="bi bi-person me-1"></i>Nome</th>
+                <th><i class="bi bi-phone me-1"></i>Contato</th>
+                <th><i class="bi bi-geo-alt me-1"></i>Localização</th>
+                <th><i class="bi bi-chat-text me-1"></i>Observações</th>
+                <th class="text-center" width="120">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for elenco_evt in elenco_evento %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-initial bg-warning text-dark rounded-circle me-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        {{ elenco_evt.elenco.nome[0].upper() }}
+                      </div>
+                      <div>
+                        <div class="fw-semibold">{{ elenco_evt.elenco.nome }}</div>
+                        {% if elenco_evt.elenco.cpf %}
+                          <small class="text-muted">CPF: {{ elenco_evt.elenco.cpf }}</small>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      {% if elenco_evt.elenco.telefone %}
+                        <div><i class="bi bi-phone me-1"></i>{{ elenco_evt.elenco.telefone }}</div>
+                      {% endif %}
+                      {% if elenco_evt.elenco.email %}
+                        <div><i class="bi bi-envelope me-1"></i>{{ elenco_evt.elenco.email }}</div>
+                      {% endif %}
+                      {% if not elenco_evt.elenco.telefone and not elenco_evt.elenco.email %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td>
+                    {% if elenco_evt.elenco.cidade and elenco_evt.elenco.estado %}
+                      <div>{{ elenco_evt.elenco.cidade }}/{{ elenco_evt.elenco.estado }}</div>
+                    {% endif %}
+                    {% if elenco_evt.elenco.endereco %}
+                      <small class="text-muted">{{ elenco_evt.elenco.endereco }}</small>
+                    {% endif %}
+                    {% if not elenco_evt.elenco.cidade and not elenco_evt.elenco.endereco %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <small>{{ elenco_evt.observacoes or '—' }}</small>
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <a href="{{ url_for('editar_elenco_evento', id_evento=evento.id_evento, id=elenco_evt.id_elenco_evento) }}" 
+                         class="btn btn-sm btn-outline-warning" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                      <a href="{{ url_for('excluir_elenco_evento', id_evento=evento.id_evento, id=elenco_evt.id_elenco_evento) }}" 
+                         class="btn btn-sm btn-outline-danger" title="Remover"
+                         onclick="return confirm('Tem certeza que deseja remover este membro do elenco do evento?')">
+                        <i class="bi bi-trash"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="mt-3">
+          <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Total de {{ elenco_evento|length }} membro{{ 's' if elenco_evento|length != 1 else '' }} do elenco
+          </small>
+        </div>
+      {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-person-video text-muted" style="font-size: 3rem;"></i>
+          <h5 class="mt-3 text-muted">Nenhum membro do elenco</h5>
+          <p class="text-muted">Adicione membros do elenco a este evento usando o formulário acima.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+// Bootstrap form validation
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    var forms = document.getElementsByClassName('needs-validation');
+    var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+</script>
+
+{% endblock %} 

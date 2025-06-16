@@ -8,6 +8,15 @@
                     <div>
                         <h2 class="mb-1">Bem-vindo ao Sócrates Online</h2>
                         <p class="mb-0">Sistema de Gestão de Eventos para Circos</p>
+                        {% if usuario %}
+                            <small class="text-light">Logado como: {{ usuario.nome }}
+                                {% if is_admin %}
+                                    <span class="badge bg-warning text-dark ms-2">Administrador</span>
+                                {% elif is_produtor %}
+                                    <span class="badge bg-info ms-2">Produtor</span>
+                                {% endif %}
+                            </small>
+                        {% endif %}
                     </div>
                     <div>
                         <i class="bi bi-graph-up-arrow" style="font-size: 3rem;"></i>
@@ -18,57 +27,69 @@
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-3 col-sm-6 mb-4">
-        <div class="dashboard-card border-left-primary bg-white">
-            <div class="icon text-primary">
-                <i class="bi bi-calendar-event"></i>
-            </div>
-            <div class="title">Eventos</div>
-            <div class="value">0</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6 mb-4">
-        <div class="dashboard-card border-left-success bg-white">
-            <div class="icon text-success">
-                <i class="bi bi-cash-coin"></i>
-            </div>
-            <div class="title">Receitas</div>
-            <div class="value">R$ 0,00</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6 mb-4">
-        <div class="dashboard-card border-left-danger bg-white">
-            <div class="icon text-danger">
-                <i class="bi bi-credit-card"></i>
-            </div>
-            <div class="title">Despesas</div>
-            <div class="value">R$ 0,00</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6 mb-4">
-        <div class="dashboard-card border-left-primary bg-white">
-            <div class="icon text-primary">
-                <i class="bi bi-people"></i>
-            </div>
-            <div class="title">Colaboradores</div>
-            <div class="value">0</div>
-        </div>
-    </div>
-</div>
-
 <div class="row">
     <div class="col-md-8 mb-4">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Próximos Eventos</h5>
+                <h5 class="mb-0">
+                    {% if is_admin %}
+                        Todos os Eventos
+                    {% else %}
+                        Meus Eventos
+                    {% endif %}
+                </h5>
                 <a href="{{ url_for('listar_eventos') }}" class="btn btn-sm btn-outline-primary">Ver Todos</a>
             </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>Em breve, você verá aqui seus próximos eventos agendados.
+                <div class="text-end mb-2" style="font-size: 0.95em;">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="?eventos_period=hoje" class="btn btn-filter-dark btn-group-sm {% if eventos_period == 'hoje' %}active{% endif %}">Hoje</a>
+                        <a href="?eventos_period=ontem" class="btn btn-filter-dark btn-group-sm {% if eventos_period == 'ontem' %}active{% endif %}">Ontem</a>
+                        <a href="?eventos_period=7dias" class="btn btn-filter-dark btn-group-sm {% if eventos_period == '7dias' %}active{% endif %}">7 Dias</a>
+                        <a href="?eventos_period=mes" class="btn btn-filter-dark btn-group-sm {% if eventos_period == 'mes' %}active{% endif %}">Este Mês</a>
+                        <a href="?eventos_period=custom" class="btn btn-filter-dark btn-group-sm {% if eventos_period == 'custom' %}active{% endif %}">Custom</a>
+                    </div>
+                    {% if eventos_period == 'custom' %}
+                        <form method="get" class="d-inline ms-2">
+                            <input type="hidden" name="eventos_period" value="custom">
+                            <input type="date" name="eventos_data_inicio" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ eventos_data_inicio or '' }}">
+                            <input type="date" name="eventos_data_fim" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ eventos_data_fim or '' }}">
+                            <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+                        </form>
+                    {% endif %}
                 </div>
-                <p class="text-muted">O dashboard completo está em desenvolvimento e em breve estará disponível com gráficos e indicadores detalhados sobre seus eventos.</p>
+                {% if eventos %}
+                    <ul class="list-group list-group-flush">
+                        {% for evento in eventos %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ evento.nome }}</strong>
+                                    <div class="text-muted small">
+                                        {{ evento.data_inicio.strftime('%d/%m/%Y') }} - {{ evento.cidade }}/{{ evento.estado }}
+                                        {% if evento.produtor %}
+                                            • Produtor: {{ evento.produtor.nome }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <span class="badge
+                                    {% if evento.status == 'a realizar' %}bg-warning text-dark
+                                    {% elif evento.status == 'em andamento' %}bg-info text-white
+                                    {% elif evento.status == 'realizado' %}bg-success
+                                    {% else %}bg-secondary{% endif %} px-3 py-2">
+                                    {{ evento.status.capitalize() }}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        {% if is_admin %}
+                            Nenhum evento encontrado no período.
+                        {% else %}
+                            Você não possui eventos no período selecionado.
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -79,14 +100,16 @@
             </div>
             <div class="card-body p-0">
                 <div class="list-group list-group-flush">
-                    <a href="{{ url_for('listar_eventos') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                    <a href="{{ url_for('novo_evento') }}" class="list-group-item list-group-item-action d-flex align-items-center">
                         <i class="bi bi-calendar-plus me-3 text-primary"></i>
                         <span>Novo Evento</span>
                     </a>
-                    <a href="{{ url_for('cadastrar_colaborador') }}" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <i class="bi bi-person-plus me-3 text-primary"></i>
-                        <span>Cadastrar Colaborador</span>
-                    </a>
+                    {% if is_admin %}
+                        <a href="{{ url_for('cadastrar_colaborador') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                            <i class="bi bi-person-plus me-3 text-primary"></i>
+                            <span>Cadastrar Colaborador</span>
+                        </a>
+                    {% endif %}
                     <a href="{{ url_for('cadastrar_receita') }}" class="list-group-item list-group-item-action d-flex align-items-center">
                         <i class="bi bi-cash-coin me-3 text-success"></i>
                         <span>Registrar Receita</span>
@@ -95,9 +118,90 @@
                         <i class="bi bi-credit-card me-3 text-danger"></i>
                         <span>Registrar Despesa</span>
                     </a>
+                    {% if is_admin or is_produtor %}
+                        <a href="{{ url_for('relatorios_faturamento_evento') }}" class="list-group-item list-group-item-action d-flex align-items-center">
+                            <i class="bi bi-graph-up me-3 text-info"></i>
+                            <span>Relatórios</span>
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<div class="card mb-4 bg-dark text-white">
+    <div class="card-header bg-transparent">
+        <h5 class="mb-0 text-white">
+            {% if is_admin %}
+                Análise de Lucratividade - Todos os Eventos
+            {% else %}
+                Análise de Lucratividade - Meus Eventos
+            {% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="text-end mb-2" style="font-size: 0.95em;">
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="?period=hoje" class="btn btn-filter-dark btn-group-sm {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+                <a href="?period=ontem" class="btn btn-filter-dark btn-group-sm {% if period == 'ontem' %}active{% endif %}">Ontem</a>
+                <a href="?period=7dias" class="btn btn-filter-dark btn-group-sm {% if period == '7dias' %}active{% endif %}">7 Dias</a>
+                <a href="?period=mes" class="btn btn-filter-dark btn-group-sm {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+                <a href="?period=custom" class="btn btn-filter-dark btn-group-sm {% if period == 'custom' %}active{% endif %}">Custom</a>
+            </div>
+            {% if period == 'custom' %}
+                <form method="get" class="d-inline ms-2">
+                    <input type="hidden" name="period" value="custom">
+                    <input type="date" name="data_inicio" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ data_inicio }}">
+                    <input type="date" name="data_fim" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ data_fim }}">
+                    <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+                </form>
+            {% endif %}
+        </div>
+        <canvas id="lucroChart" height="80"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('lucroChart').getContext('2d');
+const lucroChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ dias|tojson|safe }},
+        datasets: [{
+            label: 'Lucro do Dia (R$)',
+            data: {{ lucro_por_dia|tojson|safe }},
+            borderColor: '#4f8cff',
+            backgroundColor: 'rgba(79,140,255,0.1)',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { labels: { color: '#fff' } }
+        },
+        scales: {
+            x: { ticks: { color: '#fff' } },
+            y: { ticks: { color: '#fff' } }
+        }
+    }
+});
+</script>
+
+<style>
+.btn-filter-dark {
+  background-color: #22336b !important;
+  color: #fff !important;
+  border: 1px solid #22336b !important;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-filter-dark.active, .btn-filter-dark:active, .btn-filter-dark:hover, .btn-filter-dark:focus {
+  background-color: #556cb1 !important;
+  color: #fff !important;
+  border-color: #556cb1 !important;
+  box-shadow: none !important;
+}
+</style>
 {% endblock %}

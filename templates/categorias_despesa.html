@@ -37,12 +37,22 @@
     </div>
     <div class="card-body">
         {% if categorias %}
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar categorias..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
         <div class="table-responsive">
-            <table class="table table-hover table-striped">
+            <table class="table table-hover table-striped sortable-table" id="categoriasDespesaTable">
                 <thead>
                     <tr>
                         <th>Nome</th>
-                        <th class="text-center" style="width: 150px;">Ações</th>
+                        <th class="text-center no-sort" style="width: 150px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -90,5 +100,31 @@
             }, false);
         });
     });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('dataTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
 </script>
 {% endblock %}

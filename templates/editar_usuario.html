@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Editar Usuário</h2>
+    <a href="{{ url_for('cadastrar_colaborador') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Voltar
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-person-gear me-2"></i>Editar usuário de: {{ colaborador.nome }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.nome.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.nome(class="form-control", placeholder="Nome do usuário", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe o nome do usuário.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    {{ form.email.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.email(class="form-control", placeholder="email@exemplo.com", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe um email válido.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.password.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.password(class="form-control", placeholder="Deixe em branco para manter a senha atual") }}
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <div class="invalid-feedback">
+                            A senha deve ter pelo menos 6 caracteres.
+                        </div>
+                    </div>
+                    <small class="text-muted">Deixe em branco para manter a senha atual.</small>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Informações do usuário atual:</strong><br>
+                Email: {{ usuario.email }}<br>
+                Colaborador: {{ colaborador.nome }}<br>
+                <small class="text-muted">As permissões são baseadas automaticamente nas categorias do colaborador.</small>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('cadastrar_colaborador') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-person-gear me-2"></i>Atualizar Usuário
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Validação de formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                // Para edição, a senha é opcional
+                const passwordField = form.querySelector('input[name="password"]');
+                if (passwordField && passwordField.value && passwordField.value.length < 6) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    passwordField.setCustomValidity('A senha deve ter pelo menos 6 caracteres');
+                } else {
+                    passwordField.setCustomValidity('');
+                }
+                
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    });
+</script>
+{% endblock %} 
