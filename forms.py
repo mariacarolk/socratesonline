@@ -47,11 +47,43 @@ class ColaboradorForm(FlaskForm):
     categorias = MultiCheckboxField('Categorias', coerce=int, validators=[InputRequired(message="Selecione pelo menos uma categoria")])
 
 class ElencoForm(FlaskForm):
+    # Estados brasileiros
+    ESTADOS_BRASILEIROS = [
+        ('', 'Selecione o estado'),
+        ('AC', 'Acre'),
+        ('AL', 'Alagoas'),
+        ('AP', 'Amapá'),
+        ('AM', 'Amazonas'),
+        ('BA', 'Bahia'),
+        ('CE', 'Ceará'),
+        ('DF', 'Distrito Federal'),
+        ('ES', 'Espírito Santo'),
+        ('GO', 'Goiás'),
+        ('MA', 'Maranhão'),
+        ('MT', 'Mato Grosso'),
+        ('MS', 'Mato Grosso do Sul'),
+        ('MG', 'Minas Gerais'),
+        ('PA', 'Pará'),
+        ('PB', 'Paraíba'),
+        ('PR', 'Paraná'),
+        ('PE', 'Pernambuco'),
+        ('PI', 'Piauí'),
+        ('RJ', 'Rio de Janeiro'),
+        ('RN', 'Rio Grande do Norte'),
+        ('RS', 'Rio Grande do Sul'),
+        ('RO', 'Rondônia'),
+        ('RR', 'Roraima'),
+        ('SC', 'Santa Catarina'),
+        ('SP', 'São Paulo'),
+        ('SE', 'Sergipe'),
+        ('TO', 'Tocantins')
+    ]
+    
     nome = StringField('Nome', validators=[InputRequired()])
     cpf = StringField('CPF')
     endereco = StringField('Endereço')
     cidade = StringField('Cidade')
-    estado = StringField('Estado')
+    estado = SelectField('Estado', choices=ESTADOS_BRASILEIROS)
     telefone = StringField('Telefone')
     email = StringField('Email')
     observacoes = StringField('Observações')
@@ -60,8 +92,42 @@ class CategoriaFornecedorForm(FlaskForm):
     nome = StringField('Nome', validators=[InputRequired()])
 
 class FornecedorForm(FlaskForm):
+    # Estados brasileiros
+    ESTADOS_BRASILEIROS = [
+        ('', 'Selecione o estado'),
+        ('AC', 'Acre'),
+        ('AL', 'Alagoas'),
+        ('AP', 'Amapá'),
+        ('AM', 'Amazonas'),
+        ('BA', 'Bahia'),
+        ('CE', 'Ceará'),
+        ('DF', 'Distrito Federal'),
+        ('ES', 'Espírito Santo'),
+        ('GO', 'Goiás'),
+        ('MA', 'Maranhão'),
+        ('MT', 'Mato Grosso'),
+        ('MS', 'Mato Grosso do Sul'),
+        ('MG', 'Minas Gerais'),
+        ('PA', 'Pará'),
+        ('PB', 'Paraíba'),
+        ('PR', 'Paraná'),
+        ('PE', 'Pernambuco'),
+        ('PI', 'Piauí'),
+        ('RJ', 'Rio de Janeiro'),
+        ('RN', 'Rio Grande do Norte'),
+        ('RS', 'Rio Grande do Sul'),
+        ('RO', 'Rondônia'),
+        ('RR', 'Roraima'),
+        ('SC', 'Santa Catarina'),
+        ('SP', 'São Paulo'),
+        ('SE', 'Sergipe'),
+        ('TO', 'Tocantins')
+    ]
+    
     nome = StringField('Nome', validators=[InputRequired()])
     telefone = StringField('Telefone')
+    cidade = StringField('Cidade')
+    estado = SelectField('Estado', choices=ESTADOS_BRASILEIROS)
     id_categoria_fornecedor = SelectField('Categoria', coerce=int)
 
 class CategoriaReceitaForm(FlaskForm):

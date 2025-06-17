@@ -39,120 +39,121 @@
                     <div class="input-group">
                   {{ form.nome(class="form-control", placeholder="Nome do evento") }}
                         <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-                </div>
+                        </div>
                 {% if form.nome.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.nome.errors %}
                       {{ error }}
                     {% endfor %}
-                  </div>
+                    </div>
                 {% endif %}
-              </div>
+                </div>
               
                 <div class="col-md-3 mb-3">
                     {{ form.data_inicio.label(class="form-label") }}
                     <div class="input-group">
                   {{ form.data_inicio(class="form-control", type="date") }}
                         <span class="input-group-text"><i class="bi bi-calendar"></i></span>
-                </div>
+                        </div>
                 {% if form.data_inicio.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.data_inicio.errors %}
                       {{ error }}
                     {% endfor %}
-                  </div>
+                    </div>
                 {% endif %}
-              </div>
+                </div>
               
                 <div class="col-md-3 mb-3">
                     {{ form.data_fim.label(class="form-label") }}
                     <div class="input-group">
                   {{ form.data_fim(class="form-control", type="date") }}
                         <span class="input-group-text"><i class="bi bi-calendar"></i></span>
-                </div>
+                        </div>
                 {% if form.data_fim.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.data_fim.errors %}
                       {{ error }}
                     {% endfor %}
-                        </div>
-                {% endif %}
                     </div>
-              
-              <div class="col-md-4 mb-3">
-                {{ form.cidade.label(class="form-label") }}
-                <div class="input-group">
-                  {{ form.cidade(class="form-control", placeholder="Cidade") }}
-                  <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                </div>
-                {% if form.cidade.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.cidade.errors %}
-                      {{ error }}
-                    {% endfor %}
-                  </div>
                 {% endif %}
                 </div>
 
-              <div class="col-md-2 mb-3">
+              <div class="col-md-3 mb-3">
                     {{ form.estado.label(class="form-label") }}
                     <div class="input-group">
-                  {{ form.estado(class="form-control", placeholder="UF") }}
-                  <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                </div>
+                  {{ form.estado(class="form-select", id="estado") }}
+                        <span class="input-group-text"><i class="bi bi-map"></i></span>
+                        </div>
+                    <div class="form-text">Selecione primeiro o estado</div>
                 {% if form.estado.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.estado.errors %}
                       {{ error }}
                     {% endfor %}
-                  </div>
+                    </div>
                 {% endif %}
-              </div>
-              
+                </div>
+
+              <div class="col-md-3 mb-3">
+                {{ form.cidade.label(class="form-label") }}
+                    <div class="input-group">
+                  {{ form.cidade(class="form-control", placeholder="Selecione primeiro um estado", id="cidade", disabled=true) }}
+                  <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                        </div>
+                {% if form.cidade.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.cidade.errors %}
+                      {{ error }}
+                    {% endfor %}
+                    </div>
+                {% endif %}
+                </div>
+
                 <div class="col-md-6 mb-3">
-                {{ form.endereco.label(class="form-label") }}
+                    {{ form.endereco.label(class="form-label") }}
                     <div class="input-group">
                   {{ form.endereco(class="form-control", placeholder="Endereço completo") }}
                         <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                </div>
+                        </div>
                 {% if form.endereco.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.endereco.errors %}
                       {{ error }}
                     {% endfor %}
-                        </div>
-                {% endif %}
                     </div>
+                {% endif %}
+                </div>
 
                 <div class="col-md-6 mb-3">
-                {{ form.id_circo.label(class="form-label") }}
+                    {{ form.id_circo.label(class="form-label") }}
                     <div class="input-group">
-                  {{ form.id_circo(class="form-select") }}
+                        {{ form.id_circo(class="form-select") }}
                         <span class="input-group-text"><i class="bi bi-building"></i></span>
-                </div>
+                    </div>
                 {% if form.id_circo.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.id_circo.errors %}
                       {{ error }}
                     {% endfor %}
-                  </div>
+                </div>
                 {% endif %}
               </div>
               
                 <div class="col-md-6 mb-3">
-                {{ form.id_produtor.label(class="form-label") }}
+                    {{ form.id_produtor.label(class="form-label") }}
                     <div class="input-group">
                   {{ form.id_produtor(class="form-select") }}
                   <span class="input-group-text"><i class="bi bi-person"></i></span>
-                </div>
+                        </div>
                 {% if form.id_produtor.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in form.id_produtor.errors %}
                       {{ error }}
                     {% endfor %}
-                  </div>
+                    </div>
                 {% endif %}
-              </div>
+                </div>
 
                 <div class="col-md-6 mb-3">
                     {{ form.status.label(class="form-label") }}
@@ -167,10 +168,10 @@
             {% endfor %}
                 </div>
                                         {% endif %}
-                                    </div>
-              
+                </div>
+
               <div class="col-12 mb-3">
-                {{ form.observacoes.label(class="form-label") }}
+                    {{ form.observacoes.label(class="form-label") }}
                 {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre o evento") }}
                 {% if form.observacoes.errors %}
                   <div class="invalid-feedback d-block">
@@ -188,12 +189,12 @@
                 <h5 class="text-success mb-2">
                   <i class="bi bi-cash-coin me-1"></i>Receitas do Evento
                 </h5>
-                
-                {% for categoria in categorias_receita %}
+
+            {% for categoria in categorias_receita %}
                 <div class="card mb-2">
                   <div class="card-header bg-success text-white py-1">
                     <h6 class="mb-0" style="font-size: 12px;">{{ categoria.nome }}</h6>
-                  </div>
+                </div>
                   <div class="card-body py-2">
                     <div class="table-responsive">
                       <table class="table table-sm table-bordered table-compact">
@@ -203,7 +204,7 @@
                             <th style="width: 20%;">Data</th>
                             <th style="width: 20%;">Valor</th>
                             <th style="width: 25%;">Ações</th>
-                          </tr>
+                            </tr>
                         </thead>
                         <tbody>
                           <!-- Receitas já cadastradas dessa categoria -->
@@ -249,13 +250,13 @@
                                        id="receita_salva_obs_{{ receita.id_receita_evento }}" 
                                        value="{{ receita.observacoes or '' }}"
                                        placeholder="Observações" style="margin-top: 5px;">
-                              </td>
+                                </td>
                             </tr>
                             {% endif %}
-                          {% endfor %}
-                          
+                            {% endfor %}
+
                           <!-- Receitas não cadastradas dessa categoria -->
-                          {% for receita in categorias_receita_dict[categoria.id_categoria_receita] %}
+                            {% for receita in categorias_receita_dict[categoria.id_categoria_receita] %}
                           {% if receita.id_receita not in receitas_salvas|map(attribute='receita.id_receita')|list %}
                           <tr class="table-light">
                             <td><strong>{{ receita.nome }}</strong></td>
@@ -266,10 +267,10 @@
                                       title="Cadastrar Receita">
                                 <i class="bi bi-plus"></i>
                               </button>
-                            </td>
-                          </tr>
+                                </td>
+                            </tr>
                           {% endif %}
-                          {% endfor %}
+                            {% endfor %}
                           
                           <!-- Linha para adicionar nova receita na categoria -->
                           <tr class="table-light">
@@ -283,11 +284,11 @@
                             </td>
                           </tr>
                         </tbody>
-                      </table>
+                    </table>
                     </div>
-                  </div>
                 </div>
-                {% endfor %}
+            </div>
+            {% endfor %}
               </div>
             </div>
 
@@ -298,11 +299,11 @@
                   <i class="bi bi-credit-card me-1"></i>Despesas do Evento
                 </h5>
 
-                {% for categoria in categorias_despesa %}
+            {% for categoria in categorias_despesa %}
                 <div class="card mb-2">
                   <div class="card-header bg-danger text-white py-1">
                     <h6 class="mb-0" style="font-size: 12px;">{{ categoria.nome }}</h6>
-                  </div>
+                </div>
                   <div class="card-body py-2">
                     <div class="table-responsive">
                       <table class="table table-sm table-bordered table-compact">
@@ -313,11 +314,11 @@
                             <th style="width: 15%;">Valor</th>
                             <th style="width: 15%;">Status</th>
                             <th style="width: 25%;">Ações</th>
-                          </tr>
+                            </tr>
                         </thead>
                         <tbody>
                           <!-- Despesas já cadastradas dessa categoria -->
-                          {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
+                            {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
                           {% if despesa.ja_cadastrada %}
                           <tr class="table-primary" id="despesa_row_{{ despesa.id_despesa }}">
                             <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small></td>
@@ -326,26 +327,26 @@
                               <input type="date" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_data_{{ despesa.id_despesa }}" 
                                      value="{{ despesa.data_atual }}">
-                            </td>
-                            <td>
+                                </td>
+                                <td>
                               <span class="despesa-display"><strong>R$ {{ "%.2f"|format(despesa.valor_atual) }}</strong></span>
                               <input type="text" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_valor_{{ despesa.id_despesa }}" 
                                      value="{{ (despesa.valor_atual|string).replace('.', ',') }}"
                                      oninput="formatarMoeda(this)">
-                            </td>
-                            <td>
+                                </td>
+                                <td>
                               <span class="despesa-display">
                                 <span class="badge bg-{{ 'success' if despesa.status_atual == 'pago' else 'warning' }}" style="font-size: 10px;">
                                   {{ despesa.status_atual|title }}
-                                </span>
-                              </span>
+                                    </span>
+                                    </span>
                               <select class="form-select form-select-sm despesa-edit d-none" id="despesa_status_{{ despesa.id_despesa }}">
                                 <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
                                 <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
                               </select>
-                            </td>
-                            <td>
+                                </td>
+                                <td>
                               <div class="d-flex gap-1">
                                 <button type="button" class="btn btn-sm btn-outline-info" 
                                         onclick="verDetalhesDespesa({{ despesa.id_despesa }}, '{{ despesa.nome }}', '{{ despesa.data_atual }}', '{{ "%.2f"|format(despesa.valor_atual) }}', '{{ despesa.fornecedor_atual or "" }}', '{{ despesa.status_atual }}', '{{ despesa.forma_atual }}', '{{ despesa.pago_por_atual or "" }}', '{{ despesa.obs_atual or "" }}', 'Fixa')" 
@@ -353,17 +354,17 @@
                                   <i class="bi bi-eye"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary despesa-btn-editar" 
-                                        onclick="editarDespesaFixa({{ despesa.id_despesa }})" title="Editar">
-                                  <i class="bi bi-pencil"></i>
-                                </button>
+                                                onclick="editarDespesaFixa({{ despesa.id_despesa }})" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
                                 <button type="button" class="btn btn-sm btn-success despesa-btn-salvar d-none" 
                                         onclick="salvarDespesa({{ despesa.id_despesa }}, true)" title="Salvar">
                                   <i class="bi bi-check"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
                                         onclick="excluirDespesa({{ despesa.id_despesa_evento }})" title="Excluir">
-                                  <i class="bi bi-trash"></i>
-                                </button>
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                               </div>
                               <!-- Campos ocultos para edição -->
                               <div class="despesa-edit d-none" style="margin-top: 5px;">
@@ -391,13 +392,13 @@
                                        id="despesa_obs_{{ despesa.id_despesa }}" 
                                        value="{{ despesa.obs_atual or '' }}"
                                        placeholder="Observações">
-                              </div>
-                            </td>
-                          </tr>
+                                    </div>
+                                </td>
+                            </tr>
                           {% endif %}
-                          {% endfor %}
+                            {% endfor %}
 
-                          {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['variaveis'] %}
+                            {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['variaveis'] %}
                           {% if despesa.ja_cadastrada %}
                           <tr class="table-success" id="despesa_row_{{ despesa.id_despesa }}">
                             <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small></td>
@@ -406,15 +407,15 @@
                               <input type="date" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_data_{{ despesa.id_despesa }}" 
                                      value="{{ despesa.data_atual }}">
-                            </td>
+                                </td>
                             <td>
                               <span class="despesa-display"><strong>R$ {{ "%.2f"|format(despesa.valor_atual)|replace('.', ',') }}</strong></span>
                               <input type="text" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_valor_{{ despesa.id_despesa }}" 
                                      value="{{ ("%.2f"|format(despesa.valor_atual)|replace('.', ',')) if despesa.valor_atual else '' }}"
                                      oninput="formatarMoeda(this)">
-                            </td>
-                            <td>
+                                </td>
+                                <td>
                               <span class="despesa-display">
                                 <span class="badge bg-{{ 'success' if despesa.status_atual == 'pago' else 'warning' }}" style="font-size: 10px;">
                                   {{ despesa.status_atual|title }}
@@ -423,9 +424,9 @@
                               <select class="form-select form-select-sm despesa-edit d-none" id="despesa_status_{{ despesa.id_despesa }}">
                                 <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
                                 <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
-                              </select>
-                            </td>
-                            <td>
+                                    </select>
+                                </td>
+                                <td>
                               <div class="d-flex gap-1">
                                 <button type="button" class="btn btn-sm btn-outline-info" 
                                         onclick="verDetalhesDespesa({{ despesa.id_despesa }}, '{{ despesa.nome }}', '{{ despesa.data_atual }}', '{{ "%.2f"|format(despesa.valor_atual) }}', '{{ despesa.fornecedor_atual or "" }}', '{{ despesa.status_atual }}', '{{ despesa.forma_atual }}', '{{ despesa.pago_por_atual or "" }}', '{{ despesa.obs_atual or "" }}', 'Variável')" 
@@ -438,13 +439,13 @@
                                 </button>
                                 <button type="button" class="btn btn-sm btn-success despesa-btn-salvar d-none" 
                                         onclick="salvarDespesa({{ despesa.id_despesa }}, false)" title="Salvar">
-                                  <i class="bi bi-check"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
                                         onclick="excluirDespesa({{ despesa.id_despesa_evento }})" title="Excluir">
                                   <i class="bi bi-trash"></i>
-                                </button>
-                              </div>
+                                        </button>
+                                    </div>
                               <!-- Campos ocultos para edição -->
                               <div class="despesa-edit d-none" style="margin-top: 5px;">
                                 <select class="form-select form-select-sm mb-1" id="despesa_fornecedor_{{ despesa.id_despesa }}">
@@ -493,7 +494,7 @@
                                       onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'true', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
                                 <i class="bi bi-plus"></i>
-                              </button>
+                                    </button>
                             </td>
                           </tr>
                           {% endif %}
@@ -507,8 +508,8 @@
                               Clique no botão + para cadastrar esta despesa
                               {% if despesa.valor_medio %}
                                 <em>(valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }})</em>
-                              {% endif %}
-                            </td>
+                                    {% endif %}
+                                </td>
                             <td>
                               <button type="button" class="btn btn-sm btn-success" 
                                       onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'false', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
@@ -516,9 +517,9 @@
                                 <i class="bi bi-plus"></i>
                               </button>
                             </td>
-                          </tr>
+                            </tr>
                           {% endif %}
-                          {% endfor %}
+                            {% endfor %}
                           
                           <!-- Linha para adicionar nova despesa na categoria -->
                           <tr class="table-light">
@@ -532,7 +533,7 @@
                             </td>
                           </tr>
                         </tbody>
-                      </table>
+                    </table>
                     </div>
                   </div>
                 </div>
@@ -546,11 +547,11 @@
               </a>
               <button type="submit" class="btn btn-primary">
                 <i class="bi bi-save me-2"></i>Salvar Evento
-              </button>
-            </div>
+                        </button>
+                    </div>
         </form>
-        </div>
-      </div>
+                </div>
+            </div>
     </div>
     </div>
 </div>
@@ -574,7 +575,7 @@
                 <option value="">Selecione uma categoria...</option>
                 {% for categoria in categorias_receita %}
                 <option value="{{ categoria.id_categoria_receita }}">{{ categoria.nome }}</option>
-                {% endfor %}
+            {% endfor %}
               </select>
             </div>
             
@@ -608,9 +609,9 @@
             <i class="bi bi-plus-circle me-2"></i>Adicionar Receita
           </button>
         </div>
-      </form>
+        </form>
     </div>
-  </div>
+</div>
 </div>
 
 <!-- Modal Adicionar Despesa -->
@@ -656,12 +657,17 @@
             
             <div class="col-12">
               <label class="form-label">Fornecedor</label>
-              <select name="id_fornecedor" class="form-select" id="modal_despesa_fornecedor">
-                <option value="">Selecione um fornecedor...</option>
-                {% for fornecedor in fornecedores %}
-                <option value="{{ fornecedor.id_fornecedor }}">{{ fornecedor.nome }}</option>
-                {% endfor %}
-              </select>
+              <div class="input-group">
+                <input type="text" class="form-control" id="modal_despesa_fornecedor_nome" 
+                       placeholder="Clique para buscar fornecedor..." readonly>
+                <input type="hidden" name="id_fornecedor" id="modal_despesa_fornecedor">
+                <button type="button" class="btn btn-outline-secondary" onclick="abrirBuscaFornecedor()">
+                  <i class="bi bi-search"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="limparFornecedor()" title="Limpar seleção">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
             </div>
             
             <div class="col-md-6">
@@ -799,6 +805,59 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Busca Fornecedor -->
+<div class="modal fade" id="modalBuscaFornecedor" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-search me-2"></i>Buscar Fornecedor
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" id="busca_fornecedor_input" 
+                     placeholder="Digite o nome do fornecedor..." onkeyup="buscarFornecedores()">
+            </div>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-12">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Fornecedores da cidade <strong id="cidade_evento_info"></strong> aparecem primeiro
+            </small>
+          </div>
+        </div>
+        
+        <div id="lista_fornecedores" class="list-group" style="max-height: 400px; overflow-y: auto;">
+          <!-- Lista será preenchida via JavaScript -->
+        </div>
+        
+        <div id="loading_fornecedores" class="text-center py-3 d-none">
+          <div class="spinner-border spinner-border-sm" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <span class="ms-2">Buscando fornecedores...</span>
+        </div>
+        
+        <div id="no_fornecedores" class="text-center py-3 d-none">
+          <i class="bi bi-exclamation-circle text-muted"></i>
+          <p class="text-muted mb-0">Nenhum fornecedor encontrado</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
       </div>
     </div>
   </div>
@@ -1062,7 +1121,7 @@ function abrirModalDespesa(despesaId, categoriaId, nomeDespesa, nomeCategoria, i
     var titulo = document.querySelector('#modalAdicionarDespesa .modal-title');
     if (nomeDespesa) {
         titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Cadastrar: ' + nomeDespesa + ' (' + (isFixa === 'true' ? 'Fixa' : 'Variável') + ')';
-    } else {
+  } else {
         titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Nova Despesa - ' + (nomeCategoria || 'Selecione categoria');
     }
     
@@ -1080,9 +1139,9 @@ function carregarReceitasPorCategoriaModal(categoriaId, receitaIdSelecionada) {
     
     if (!categoriaId) {
         selectReceita.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
-        return;
-    }
-    
+    return;
+  }
+  
     // Fazer requisição para buscar receitas da categoria
     fetch(`/api/receitas-por-categoria/${categoriaId}`)
         .then(response => response.json())
@@ -1114,9 +1173,9 @@ function carregarDespesasPorCategoriaModal(categoriaId, despesaIdSelecionada) {
     
     if (!categoriaId) {
         selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
-        return;
-    }
-    
+    return;
+  }
+  
     // Fazer requisição para buscar despesas da categoria
     fetch(`/api/despesas-por-categoria/${categoriaId}`)
         .then(response => response.json())
@@ -1129,9 +1188,9 @@ function carregarDespesasPorCategoriaModal(categoriaId, despesaIdSelecionada) {
             
             if (data.length === 0) {
                 selectDespesa.innerHTML = '<option value="">Nenhuma despesa encontrada para esta categoria</option>';
-                return;
-            }
-            
+    return;
+  }
+  
             data.forEach(despesa => {
                 const option = document.createElement('option');
                 option.value = despesa.id_despesa;
@@ -1180,28 +1239,28 @@ function adicionarReceitaEvento(event) {
     salvarEventoSeNecessario()
         .then(eventoId => {
             return fetch(`/eventos/${eventoId}/salvar-receita`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
                 body: JSON.stringify(dados)
             });
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
                 // Fechar modal
                 var modal = bootstrap.Modal.getInstance(form.closest('.modal'));
                 modal.hide();
                 
                 // Recarregar a página
                 window.location.reload();
-            } else {
-                alert('Erro: ' + result.message);
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
+    } else {
+      alert('Erro: ' + result.message);
+    }
+  })
+  .catch(error => {
+    console.error('Erro:', error);
             alert('Erro ao adicionar receita: ' + error);
         })
         .finally(() => {
@@ -1261,7 +1320,7 @@ function adicionarDespesaEvento(event) {
                 
                 // Recarregar a página
                 window.location.reload();
-            } else {
+  } else {
                 alert('Erro: ' + result.message);
             }
         })
@@ -1384,14 +1443,14 @@ function salvarDespesa(despesaId, isFixa) {
     
     if (!data || !valor) {
         alert('Data e valor são obrigatórios!');
-        return;
-    }
-    
+    return;
+  }
+  
     // Salvar evento primeiro se necessário
     salvarEventoSeNecessario()
         .then(eventoId => {
             var dados = {
-                despesa_id: despesaId,
+    despesa_id: despesaId,
                 data: data,
                 valor: valor,
                 id_fornecedor: fornecedor || null,
@@ -1403,14 +1462,14 @@ function salvarDespesa(despesaId, isFixa) {
             };
             
             return fetch('/eventos/' + eventoId + '/salvar-despesa', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
                 body: JSON.stringify(dados)
             });
-        })
-        .then(response => response.json())
+  })
+  .then(response => response.json())
         .then(data => {
             if (data.success) {
                 // Mudar a cor da linha
@@ -1573,9 +1632,9 @@ function excluirReceita(receitaEventoId) {
                 window.location.reload();
             } else {
                 alert('Erro ao excluir receita: ' + data.message);
-            }
-        })
-        .catch(error => {
+    }
+  })
+  .catch(error => {
             console.error('Erro:', error);
             alert('Erro ao excluir receita: ' + error);
         });
@@ -1640,11 +1699,11 @@ function editarReceitaSalva(receitaEventoId) {
 // Função para salvar receita já cadastrada (edição)
 function salvarReceitaSalva(receitaEventoId) {
     var eventoId = obterEventoId();
-    if (!eventoId) {
+  if (!eventoId) {
         alert('Erro: Não foi possível identificar o evento');
-        return;
-    }
-    
+    return;
+  }
+  
     // Coletar dados dos campos de edição
     var data = document.getElementById('receita_salva_data_' + receitaEventoId).value;
     var valor = document.getElementById('receita_salva_valor_' + receitaEventoId).value;
@@ -1652,25 +1711,25 @@ function salvarReceitaSalva(receitaEventoId) {
     
     if (!data || !valor) {
         alert('Data e valor são obrigatórios');
-        return;
-    }
-    
+    return;
+  }
+  
     // Preparar dados para envio
     var dadosReceita = {
-        data: data,
-        valor: valor,
+    data: data,
+    valor: valor,
         observacoes: observacoes
     };
     
     // Enviar para o backend (usando endpoint de atualização)
     fetch('/eventos/' + eventoId + '/atualizar-receita/' + receitaEventoId, {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+    headers: {
+      'Content-Type': 'application/json',
+    },
         body: JSON.stringify(dadosReceita)
-    })
-    .then(response => response.json())
+  })
+  .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert('Receita atualizada com sucesso!');
@@ -1684,12 +1743,12 @@ function salvarReceitaSalva(receitaEventoId) {
             var btnEditar = linha.querySelector('.receita-btn-editar');
             btnSalvar.classList.add('d-none');
             btnEditar.classList.remove('d-none');
-        } else {
+    } else {
             alert('Erro ao atualizar receita: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Erro:', error);
+    }
+  })
+  .catch(error => {
+    console.error('Erro:', error);
         alert('Erro: ' + error);
     });
 }
@@ -1745,10 +1804,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     Array.from(forms).forEach(function(form) {
         form.addEventListener('submit', function(event) {
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
             form.classList.add('was-validated');
         }, false);
     });
@@ -1785,7 +1844,134 @@ function verDetalhesDespesa(despesaId, nome, data, valor, fornecedor, status, fo
     var modal = new bootstrap.Modal(document.getElementById('modalDetalhesDespesa'));
     modal.show();
 }
+
+// Funções para busca de fornecedores
+function abrirBuscaFornecedor() {
+    // Obter cidade e estado do evento
+    const cidade = document.getElementById('cidade').value;
+    const estado = document.getElementById('estado').value;
+    
+    // Atualizar informação da cidade no modal
+    document.getElementById('cidade_evento_info').textContent = cidade && estado ? `${cidade}/${estado}` : 'do evento';
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalBuscaFornecedor'));
+    modal.show();
+    
+    // Carregar fornecedores iniciais
+    buscarFornecedores();
+    
+    // Focar no campo de busca
+    setTimeout(() => {
+        document.getElementById('busca_fornecedor_input').focus();
+    }, 500);
+}
+
+function buscarFornecedores() {
+    const termoBusca = document.getElementById('busca_fornecedor_input').value;
+    const cidade = document.getElementById('cidade').value;
+    const estado = document.getElementById('estado').value;
+    
+    // Mostrar loading
+    document.getElementById('loading_fornecedores').classList.remove('d-none');
+    document.getElementById('lista_fornecedores').classList.add('d-none');
+    document.getElementById('no_fornecedores').classList.add('d-none');
+    
+    // Construir URL da API
+    const params = new URLSearchParams();
+    if (termoBusca) params.append('q', termoBusca);
+    if (cidade) params.append('cidade', cidade);
+    if (estado) params.append('estado', estado);
+    
+    fetch(`/api/fornecedores-busca?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            // Esconder loading
+            document.getElementById('loading_fornecedores').classList.add('d-none');
+            
+            if (data.success && data.fornecedores.length > 0) {
+                exibirListaFornecedores(data.fornecedores);
+        } else {
+                document.getElementById('no_fornecedores').classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar fornecedores:', error);
+            document.getElementById('loading_fornecedores').classList.add('d-none');
+            document.getElementById('no_fornecedores').classList.remove('d-none');
+        });
+}
+
+function exibirListaFornecedores(fornecedores) {
+    const lista = document.getElementById('lista_fornecedores');
+    lista.innerHTML = '';
+    
+    fornecedores.forEach(fornecedor => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item list-group-item-action';
+        item.style.cursor = 'pointer';
+        
+        // Destacar fornecedores locais
+        if (fornecedor.is_local) {
+            item.classList.add('list-group-item-success');
+        }
+        
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">
+                        ${fornecedor.nome}
+                        ${fornecedor.is_local ? '<span class="badge bg-success ms-2">Local</span>' : ''}
+                    </h6>
+                    <p class="mb-1 text-muted small">
+                        ${fornecedor.categoria ? `Categoria: ${fornecedor.categoria}` : ''}
+                    </p>
+                    <small class="text-muted">
+                        ${fornecedor.cidade && fornecedor.estado ? `${fornecedor.cidade}/${fornecedor.estado}` : 'Localização não informada'}
+                        ${fornecedor.telefone ? ` • Tel: ${fornecedor.telefone}` : ''}
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        item.onclick = () => selecionarFornecedor(fornecedor);
+        lista.appendChild(item);
+    });
+    
+    lista.classList.remove('d-none');
+}
+
+function selecionarFornecedor(fornecedor) {
+    // Preencher campos
+    document.getElementById('modal_despesa_fornecedor').value = fornecedor.id;
+    document.getElementById('modal_despesa_fornecedor_nome').value = fornecedor.nome;
+    
+    // Fechar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalBuscaFornecedor'));
+    modal.hide();
+    
+    // Limpar busca
+    document.getElementById('busca_fornecedor_input').value = '';
+}
+
+function limparFornecedor() {
+    document.getElementById('modal_despesa_fornecedor').value = '';
+    document.getElementById('modal_despesa_fornecedor_nome').value = '';
+}
+
+// Adicionar evento de clique no campo de fornecedor
+document.addEventListener('DOMContentLoaded', function() {
+    const campoFornecedor = document.getElementById('modal_despesa_fornecedor_nome');
+    if (campoFornecedor) {
+        campoFornecedor.addEventListener('click', abrirBuscaFornecedor);
+    }
+});
+
 </script>
+
+<!-- Script de cidades dinâmicas -->
+<script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
+
 {% endblock %}
 
 {% endblock %} 

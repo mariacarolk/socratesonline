@@ -38,6 +38,24 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.estado.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.estado(class="form-select", id="estado") }}
+                        <span class="input-group-text"><i class="bi bi-map"></i></span>
+                    </div>
+                    <div class="form-text">Selecione primeiro o estado para carregar as cidades</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.cidade.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.cidade(class="form-control", placeholder="Selecione primeiro um estado", id="cidade", disabled=true) }}
+                        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                    </div>
+                </div>
+            </div>
             <div class="mb-3">
                 {{ form.id_categoria_fornecedor.label(class="form-label") }}
                 <div class="input-group">
@@ -85,6 +103,8 @@
                     <tr>
                         <th>Nome</th>
                         <th>Telefone</th>
+                        <th>Cidade</th>
+                        <th>Estado</th>
                         <th>Categoria</th>
                         <th class="text-center no-sort" style="width: 150px;">Ações</th>
                     </tr>
@@ -93,7 +113,9 @@
                     {% for f in fornecedores %}
                     <tr>
                         <td>{{ f.nome }}</td>
-                        <td>{{ f.telefone }}</td>
+                        <td>{{ f.telefone or '—' }}</td>
+                        <td>{{ f.cidade or '—' }}</td>
+                        <td>{{ f.estado or '—' }}</td>
                         <td>{{ f.categoria.nome if f.categoria else '—' }}</td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
@@ -121,6 +143,9 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Script de cidades dinâmicas -->
+<script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
+
 <script>
     // Validação de formulário
     document.addEventListener('DOMContentLoaded', function() {

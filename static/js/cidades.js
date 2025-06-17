@@ -29,39 +29,133 @@ const cidadesPorEstado = {
   'TO': ['Palmas', 'Araguaína', 'Gurupi', 'Porto Nacional', 'Paraíso do Tocantins', 'Colinas do Tocantins', 'Guaraí', 'Tocantinópolis', 'Miracema do Tocantins', 'Dianópolis']
 };
 
+// Script para carregar cidades dinamicamente baseado no estado selecionado
+
 // Inicializar autocompletar de cidades quando o documento carregar
 document.addEventListener('DOMContentLoaded', function() {
-  const estadoSelect = document.getElementById('estado');
-  const cidadeInput = document.getElementById('cidade');
+  initCidadeEstadoForms();
+});
 
-  if (estadoSelect && cidadeInput) {
-    // Criar datalist para autocompletar
-    const datalist = document.createElement('datalist');
-    datalist.id = 'cidades-list';
-    cidadeInput.setAttribute('list', 'cidades-list');
-    document.body.appendChild(datalist);
+// Função para inicializar todos os formulários com campos cidade/estado
+function initCidadeEstadoForms() {
+  // Buscar todos os selects de estado
+  const estadoSelects = document.querySelectorAll('select[name="estado"], #estado');
+  
+  estadoSelects.forEach(estadoSelect => {
+    // Encontrar o campo cidade correspondente
+    const formContainer = estadoSelect.closest('form') || estadoSelect.closest('.form-container') || document;
+    const cidadeInput = formContainer.querySelector('input[name="cidade"], #cidade');
     
-    estadoSelect.addEventListener('change', function() {
-      const estadoSelecionado = this.value;
-      
-      // Limpar o campo cidade
-      cidadeInput.value = '';
-      
-      // Limpar e popular o datalist
-      datalist.innerHTML = '';
-      
-      if (estadoSelecionado && cidadesPorEstado[estadoSelecionado]) {
-        const cidades = cidadesPorEstado[estadoSelecionado];
-        cidadeInput.placeholder = `Digite ou selecione uma cidade de ${this.options[this.selectedIndex].text}`;
+    if (cidadeInput) {
+      setupCidadeEstado(estadoSelect, cidadeInput);
+    }
+  });
+}
+
+// Função para configurar um par estado/cidade específico
+function setupCidadeEstado(estadoSelect, cidadeInput) {
+  // Criar datalist para autocompletar se não existir
+  let datalist = document.getElementById(`cidades-list-${estadoSelect.id || 'default'}`);
+  if (!datalist) {
+    datalist = document.createElement('datalist');
+    datalist.id = `cidades-list-${estadoSelect.id || 'default'}`;
+    cidadeInput.setAttribute('list', datalist.id);
+    document.body.appendChild(datalist);
+  }
+  
+  // Event listener para mudança de estado
+  estadoSelect.addEventListener('change', function() {
+    const estadoSelecionado = this.value;
+    
+    // Limpar o campo cidade
+    cidadeInput.value = '';
+    
+    // Limpar o datalist
+    datalist.innerHTML = '';
+    
+    if (estadoSelecionado) {
+      // Buscar cidades via API
+      carregarCidades(estadoSelecionado, datalist, cidadeInput, estadoSelect);
+    } else {
+      cidadeInput.placeholder = 'Cidade';
+      cidadeInput.disabled = true;
+    }
+  });
+  
+  // Se já há um estado selecionado, carregar as cidades
+  if (estadoSelect.value) {
+    carregarCidades(estadoSelect.value, datalist, cidadeInput, estadoSelect);
+  } else {
+    cidadeInput.disabled = true;
+  }
+}
+
+// Função para carregar cidades via API
+function carregarCidades(estado, datalist, cidadeInput, estadoSelect) {
+  // Mostrar loading
+  cidadeInput.placeholder = 'Carregando cidades...';
+  cidadeInput.disabled = true;
+  
+  // Fazer requisição para a API
+  fetch(`/api/cidades/${estado}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Limpar e popular o datalist
+        datalist.innerHTML = '';
         
-        cidades.forEach(cidade => {
+        data.cidades.forEach(cidade => {
           const option = document.createElement('option');
           option.value = cidade;
           datalist.appendChild(option);
         });
+        
+        // Atualizar placeholder e habilitar campo
+        const nomeEstado = estadoSelect.options[estadoSelect.selectedIndex].text;
+        cidadeInput.placeholder = `Digite ou selecione uma cidade de ${nomeEstado}`;
+        cidadeInput.disabled = false;
+        
+        console.log(`Carregadas ${data.cidades.length} cidades para ${estado}`);
       } else {
-        cidadeInput.placeholder = 'Cidade';
+        console.error('Erro ao carregar cidades:', data.message);
+        cidadeInput.placeholder = 'Erro ao carregar cidades';
+        cidadeInput.disabled = false;
       }
+    })
+    .catch(error => {
+      console.error('Erro na requisição:', error);
+      cidadeInput.placeholder = 'Erro ao carregar cidades';
+      cidadeInput.disabled = false;
     });
+}
+
+// Função para validar se a cidade está na lista (opcional)
+function validarCidade(cidadeInput, estado) {
+  if (!estado || !cidadeInput.value) {
+    return true; // Validação passa se não há valores para validar
   }
-}); 
+  
+  return fetch(`/api/cidades/${estado}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const cidadeDigitada = cidadeInput.value.trim().toLowerCase();
+        const cidadeEncontrada = data.cidades.some(cidade => 
+          cidade.toLowerCase() === cidadeDigitada
+        );
+        
+        if (!cidadeEncontrada) {
+          console.warn(`Cidade "${cidadeInput.value}" não encontrada na lista de ${estado}`);
+          // Opcionalmente, você pode mostrar um aviso ao usuário
+          // ou forçar a seleção apenas de cidades válidas
+        }
+        
+        return cidadeEncontrada;
+      }
+      return true; // Em caso de erro na API, deixa passar a validação
+    })
+    .catch(error => {
+      console.error('Erro ao validar cidade:', error);
+      return true; // Em caso de erro, deixa passar a validação
+    });
+} 
