@@ -1,19 +1,50 @@
-# Inicialização do Login Manager
-login_manager = LoginManager()
+from datetime import date, timedelta, datetime
+import os
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, send_from_directory
+from models import (
+    Usuario, Circo, CategoriaColaborador, Colaborador, ColaboradorCategoria,
+    Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
+    CategoriaDespesa, Despesa, Evento, DespesaEvento, ReceitaEvento,
+    CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, TIPOS_DESPESA
+)
+from forms import (
+    UsuarioForm, RegisterForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
+    ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
+    CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
+    EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm
+)
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+from extensions import db, login_manager
+from sqlalchemy import func
+from flask_migrate import Migrate
+from werkzeug.utils import secure_filename
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin, login_user, login_required, logout_user, current_user
+
+load_dotenv()  # Carrega variáveis do .env
+
+app = Flask(__name__)
+env = os.getenv("FLASK_ENV", "development")
+if env == "production":
+    app.config.from_object("config.ProductionConfig")
+else:
+    app.config.from_object("config.DevelopmentConfig")
+
+# Configurações
+app.config['SECRET_KEY'] = 'sua-chave-secreta-aqui'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Inicialização das extensões
+db.init_app(app)
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+migrate = Migrate(app, db)
 
-from models import Usuario, CategoriaColaborador
-
-# Configuração para upload de arquivos
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'pdf'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
-
-# Criar pasta de uploads se não existir
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# User loader para Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))
 
 @app.route('/')
 def dashboard():
@@ -551,6 +582,8 @@ def cadastrar_fornecedor():
         novo = Fornecedor(
             nome=form.nome.data,
             telefone=form.telefone.data,
+            cidade=form.cidade.data,
+            estado=form.estado.data,
             id_categoria_fornecedor=form.id_categoria_fornecedor.data
         )
         db.session.add(novo)
@@ -601,6 +634,8 @@ def editar_fornecedor(id):
     if form.validate_on_submit():
         fornecedor.nome = form.nome.data
         fornecedor.telefone = form.telefone.data
+        fornecedor.cidade = form.cidade.data
+        fornecedor.estado = form.estado.data
         fornecedor.id_categoria_fornecedor = form.id_categoria_fornecedor.data
         db.session.commit()
         flash('Fornecedor atualizado com sucesso!', 'success')
@@ -1095,7 +1130,7 @@ def novo_evento():
                 print(f"ID Despesa: {desp.id_despesa}, Valor SALVO: {desp.valor}, Tipo: {desp.despesa.id_tipo_despesa}")
             
             flash('Evento e despesas/receitas cadastrados com sucesso!', 'success')
-            return redirect(url_for('listar_eventos'))
+            return redirect(url_for('editar_evento', id=novo.id_evento))
             
         except Exception as e:
             print(f"❌ ERRO no commit: {e}")
@@ -1144,7 +1179,7 @@ def novo_evento():
         categorias_receita_dict=categorias_receita_dict,
         categorias_despesa=categorias_despesa,
         categorias_despesa_dict=categorias_despesa_dict,
-        fornecedores=Fornecedor.query.all(),
+        fornecedores=[{'id_fornecedor': f.id_fornecedor, 'nome': f.nome} for f in Fornecedor.query.all()],
         receitas_salvas=[],
         despesas_salvas=[],
         current_date=date.today().isoformat(),
@@ -1400,6 +1435,7 @@ def editar_evento(id):
                 'data_atual': despesas_evento_dict[d.id_despesa].data.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
                 'status_atual': despesas_evento_dict[d.id_despesa].status_pagamento if d.id_despesa in despesas_ja_cadastradas else 'pendente',
                 'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'débito',
+                'fornecedor_atual': despesas_evento_dict[d.id_despesa].id_fornecedor if d.id_despesa in despesas_ja_cadastradas else None,
                 'pago_por_atual': despesas_evento_dict[d.id_despesa].pago_por if d.id_despesa in despesas_ja_cadastradas else '',
                 'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else 'Despesa fixa automática',
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None
@@ -1409,8 +1445,17 @@ def editar_evento(id):
                 'nome': d.nome,
                 'valor_medio': float(d.valor_medio_despesa) if d.valor_medio_despesa else None,
                 'tipo': 2,
-                'ja_cadastrada': False  # Estas são para adicionar
-            } for d in despesas_variaveis if d.id_despesa not in despesas_ja_cadastradas]  # Apenas as NÃO cadastradas
+                'ja_cadastrada': d.id_despesa in despesas_ja_cadastradas,
+                # Se já foi cadastrada, usar valores reais do evento
+                'valor_atual': float(despesas_evento_dict[d.id_despesa].valor) if d.id_despesa in despesas_ja_cadastradas else (float(d.valor_medio_despesa) if d.valor_medio_despesa else None),
+                'data_atual': despesas_evento_dict[d.id_despesa].data.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
+                'status_atual': despesas_evento_dict[d.id_despesa].status_pagamento if d.id_despesa in despesas_ja_cadastradas else 'pendente',
+                'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'débito',
+                'fornecedor_atual': despesas_evento_dict[d.id_despesa].id_fornecedor if d.id_despesa in despesas_ja_cadastradas else None,
+                'pago_por_atual': despesas_evento_dict[d.id_despesa].pago_por if d.id_despesa in despesas_ja_cadastradas else '',
+                'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else '',
+                'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None
+            } for d in despesas_variaveis]  # TODAS as despesas variáveis (cadastradas e não cadastradas)
         }
 
     return render_template(
@@ -1420,7 +1465,7 @@ def editar_evento(id):
         categorias_receita_dict=categorias_receita_dict,
         categorias_despesa=categorias_despesa,
         categorias_despesa_dict=categorias_despesa_dict,
-        fornecedores=Fornecedor.query.all(),
+        fornecedores=[{'id_fornecedor': f.id_fornecedor, 'nome': f.nome} for f in Fornecedor.query.all()],
         receitas_salvas=receitas_salvas,
         despesas_salvas=despesas_salvas,
         current_date=date.today().isoformat(),
@@ -2291,10 +2336,257 @@ def excluir_fornecedor_evento(id_evento, id):
     flash('Fornecedor removido do evento com sucesso!', 'success')
     return redirect(url_for('fornecedor_evento', id_evento=id_evento))
 
-# Rota para servir os arquivos
-@app.route('/uploads/<path:filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+@app.route('/eventos/<int:id_evento>/excluir-receita/<int:receita_evento_id>', methods=['DELETE'])
+def excluir_receita_evento(id_evento, receita_evento_id):
+    try:
+        # Verificar se o evento existe
+        evento = Evento.query.get(id_evento)
+        if not evento:
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
+        
+        # Buscar a receita do evento
+        receita_evento = ReceitaEvento.query.filter_by(
+            id_receita_evento=receita_evento_id,
+            id_evento=id_evento
+        ).first()
+        
+        if not receita_evento:
+            return jsonify({'success': False, 'message': 'Receita não encontrada neste evento'})
+        
+        # Excluir a receita do evento
+        db.session.delete(receita_evento)
+        db.session.commit()
+        
+        print(f"✅ Receita excluída do evento: ID {receita_evento_id}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Receita excluída com sucesso'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao excluir receita: {e}")
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'})
 
+@app.route('/eventos/<int:id_evento>/atualizar-receita/<int:receita_evento_id>', methods=['PUT'])
+def atualizar_receita_evento(id_evento, receita_evento_id):
+    try:
+        # Verificar se o evento existe
+        evento = Evento.query.get(id_evento)
+        if not evento:
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
+        
+        # Buscar a receita do evento
+        receita_evento = ReceitaEvento.query.filter_by(
+            id_receita_evento=receita_evento_id,
+            id_evento=id_evento
+        ).first()
+        
+        if not receita_evento:
+            return jsonify({'success': False, 'message': 'Receita não encontrada neste evento'})
+        
+        data = request.get_json()
+        
+        # Validar dados obrigatórios
+        if not data.get('valor') or not data.get('data'):
+            return jsonify({'success': False, 'message': 'Data e valor são obrigatórios'})
+        
+        # Converter valor - tratar tanto formato brasileiro quanto americano
+        try:
+            valor_str = str(data['valor']).strip()
+            
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
+            if '.' in valor_str and ',' in valor_str:
+                # Remover pontos de milhares e trocar vírgula por ponto
+                valor_str = valor_str.replace('.', '').replace(',', '.')
+            # Se contém apenas vírgula, trocar por ponto
+            elif ',' in valor_str and '.' not in valor_str:
+                valor_str = valor_str.replace(',', '.')
+            
+            valor = float(valor_str)
+            
+            if valor <= 0:
+                return jsonify({'success': False, 'message': 'Valor deve ser maior que zero'})
+                
+        except (ValueError, TypeError) as e:
+            print(f"Erro ao converter valor '{data['valor']}': {e}")
+            return jsonify({'success': False, 'message': 'Valor inválido'})
+        
+        # Converter data
+        try:
+            data_receita = datetime.strptime(data['data'], '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Data inválida'})
+        
+        # Atualizar receita do evento
+        receita_evento.valor = valor
+        receita_evento.data = data_receita
+        receita_evento.observacoes = data.get('observacoes', '')
+        
+        db.session.commit()
+        
+        print(f"✅ Receita atualizada no evento: ID {receita_evento_id}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Receita atualizada com sucesso'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao atualizar receita: {e}")
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'})
+
+@app.route('/eventos/<int:id_evento>/excluir-despesa/<int:despesa_evento_id>', methods=['DELETE'])
+def excluir_despesa_evento(id_evento, despesa_evento_id):
+    try:
+        # Verificar se o evento existe
+        evento = Evento.query.get(id_evento)
+        if not evento:
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
+        
+        # Buscar a despesa do evento
+        despesa_evento = DespesaEvento.query.filter_by(
+            id_despesa_evento=despesa_evento_id,
+            id_evento=id_evento
+        ).first()
+        
+        if not despesa_evento:
+            return jsonify({'success': False, 'message': 'Despesa não encontrada neste evento'})
+        
+        # Excluir a despesa do evento
+        db.session.delete(despesa_evento)
+        db.session.commit()
+        
+        print(f"✅ Despesa excluída do evento: ID {despesa_evento_id}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Despesa excluída com sucesso'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao excluir despesa: {e}")
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'})
+
+@app.route('/api/fornecedores-busca')
+def api_fornecedores_busca():
+    """API para buscar fornecedores com priorização por localização"""
+    try:
+        # Parâmetros de busca
+        termo_busca = request.args.get('q', '').strip()
+        cidade_evento = request.args.get('cidade', '').strip()
+        estado_evento = request.args.get('estado', '').strip()
+        
+        # Query base
+        query = Fornecedor.query
+        
+        # Se há termo de busca, filtrar por nome
+        if termo_busca:
+            query = query.filter(Fornecedor.nome.ilike(f'%{termo_busca}%'))
+        
+        # Buscar todos os fornecedores que atendem ao critério
+        fornecedores = query.all()
+        
+        # Separar fornecedores por prioridade
+        fornecedores_locais = []
+        fornecedores_outros = []
+        
+        for fornecedor in fornecedores:
+            # Priorizar fornecedores da mesma cidade/estado
+            if (fornecedor.cidade and fornecedor.estado and 
+                cidade_evento and estado_evento and
+                fornecedor.cidade.lower() == cidade_evento.lower() and 
+                fornecedor.estado.lower() == estado_evento.lower()):
+                fornecedores_locais.append(fornecedor)
+            else:
+                fornecedores_outros.append(fornecedor)
+        
+        # Ordenar alfabeticamente dentro de cada grupo
+        fornecedores_locais.sort(key=lambda x: x.nome.lower())
+        fornecedores_outros.sort(key=lambda x: x.nome.lower())
+        
+        # Combinar listas (locais primeiro)
+        fornecedores_ordenados = fornecedores_locais + fornecedores_outros
+        
+        # Preparar resposta JSON
+        resultado = []
+        for fornecedor in fornecedores_ordenados:
+            resultado.append({
+                'id': fornecedor.id_fornecedor,
+                'nome': fornecedor.nome,
+                'telefone': fornecedor.telefone or '',
+                'cidade': fornecedor.cidade or '',
+                'estado': fornecedor.estado or '',
+                'categoria': fornecedor.categoria.nome if fornecedor.categoria else '',
+                'is_local': fornecedor in fornecedores_locais
+            })
+        
+        return jsonify({
+            'success': True,
+            'fornecedores': resultado,
+            'total': len(resultado),
+            'locais': len(fornecedores_locais),
+            'outros': len(fornecedores_outros)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao buscar fornecedores: {str(e)}'
+        }), 500
+
+@app.route('/api/despesas-por-categoria/<int:categoria_id>')
+def api_despesas_por_categoria(categoria_id):
+    try:
+        # Filtrar apenas despesas de evento (tipos 1 e 2)
+        despesas = Despesa.query.filter_by(id_categoria_despesa=categoria_id).filter(
+            Despesa.id_tipo_despesa.in_([1, 2])
+        ).all()
+        despesas_data = []
+        
+        for despesa in despesas:
+            # Usar o valor médio já cadastrado na despesa ou calcular dinamicamente
+            valor_medio = despesa.valor_medio_despesa
+            
+            # Se não tem valor médio cadastrado, calcular baseado nos eventos
+            if not valor_medio:
+                despesas_evento = DespesaEvento.query.filter_by(id_despesa=despesa.id_despesa).all()
+                if despesas_evento:
+                    valores = [de.valor for de in despesas_evento if de.valor]
+                    if valores:
+                        valor_medio = sum(valores) / len(valores)
+            
+            despesas_data.append({
+                'id_despesa': despesa.id_despesa,
+                'nome': despesa.nome,
+                'valor_medio': float(valor_medio) if valor_medio else None,
+                'tipo_despesa': despesa.id_tipo_despesa
+            })
+        
+        return jsonify(despesas_data)
+    except Exception as e:
+        print(f"Erro no endpoint despesas-por-categoria: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/receitas-por-categoria/<int:categoria_id>')
+def api_receitas_por_categoria(categoria_id):
+    try:
+        receitas = Receita.query.filter_by(id_categoria_receita=categoria_id).all()
+        receitas_data = []
+        
+        for receita in receitas:
+            receitas_data.append({
+                'id_receita': receita.id_receita,
+                'nome': receita.nome
+            })
+        
+        return jsonify(receitas_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Rota para servir os arquivos
 if __name__ == '__main__':
     app.run(debug=True)

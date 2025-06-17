@@ -99,6 +99,8 @@ class Fornecedor(db.Model):
     id_fornecedor = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     telefone = db.Column(db.String)
+    cidade = db.Column(db.String)
+    estado = db.Column(db.String)
     id_categoria_fornecedor = db.Column(db.Integer, db.ForeignKey('categoria_fornecedor.id_categoria_fornecedor'))
 
 class CategoriaReceita(db.Model):

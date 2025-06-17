@@ -18,12 +18,13 @@
                 {{ form.endereco(class="form-control") }}
             </div>
             <div class="col-md-6">
-                {{ form.cidade.label(class="form-label") }}
-                {{ form.cidade(class="form-control") }}
+                {{ form.estado.label(class="form-label") }}
+                {{ form.estado(class="form-select", id="estado") }}
+                <div class="form-text">Selecione primeiro o estado para carregar as cidades</div>
             </div>
             <div class="col-md-6">
-                {{ form.estado.label(class="form-label") }}
-                {{ form.estado(class="form-control") }}
+                {{ form.cidade.label(class="form-label") }}
+                {{ form.cidade(class="form-control", id="cidade", placeholder="Selecione primeiro um estado", disabled=true) }}
             </div>
             <div class="col-md-6">
                 {{ form.telefone.label(class="form-label") }}
@@ -89,6 +90,9 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Script de cidades dinâmicas -->
+<script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
+
 <script>
     // Função de busca em tempo real
     function searchTable() {
