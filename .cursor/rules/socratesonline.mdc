@@ -8,3 +8,4 @@ alwaysApply: true
 - Nas criações de tabelas sempre deverá haver um campo unico de id na tabela (verificar os moldes já criados e seguir o mesmo padrão);
 - Sempre que criar uma nova entidade ou elaborar uma exclusão, analisar as dependências - proteção de dependências: PROTEGER registros que estão sendo usados (não permitir exclusão) / PERMITIR exclusão em cascata apenas de pai para filho;
 - Sempre pensar em código reutilizável ao escrever qualquer lógica, evitando código repetido (DRY);
+- Não reverter funcionalidades que já foram aprovadas pelo usuário sem perguntar antes.

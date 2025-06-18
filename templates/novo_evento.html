@@ -317,10 +317,10 @@
                             </tr>
                         </thead>
                         <tbody>
-                          <!-- Despesas já cadastradas dessa categoria -->
-                            {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
-                          {% if despesa.ja_cadastrada %}
-                          <tr class="table-primary" id="despesa_row_{{ despesa.id_despesa }}">
+                          <!-- Despesas já cadastradas dessa categoria - MÚLTIPLAS INSTÂNCIAS -->
+                          {% if despesas_evento_por_categoria[categoria.id_categoria_despesa] %}
+                            {% for despesa in despesas_evento_por_categoria[categoria.id_categoria_despesa]['fixas'] %}
+                          <tr class="table-primary" id="despesa_row_{{ despesa.id_despesa_evento }}">
                             <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small></td>
                             <td>
                               <span class="despesa-display">{{ despesa.data_atual }}</span>
@@ -354,7 +354,22 @@
                                   <i class="bi bi-eye"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary despesa-btn-editar" 
-                                                onclick="editarDespesaFixa({{ despesa.id_despesa }})" title="Editar">
+                                        onclick="editarDespesaModal(this)" 
+                                        data-despesa-evento-id="{{ despesa.id_despesa_evento }}"
+                                        data-despesa-id="{{ despesa.id_despesa }}"
+                                        data-categoria-id="{{ despesa.categoria_id }}"
+                                        data-nome="{{ despesa.nome }}"
+                                        data-categoria-nome="{{ despesa.categoria_nome }}"
+                                        data-is-fixa="true"
+                                        data-data="{{ despesa.data_atual }}"
+                                        data-valor="{{ ("%.2f"|format(despesa.valor_atual)) if despesa.valor_atual else "" }}"
+                                        data-fornecedor="{{ despesa.fornecedor_nome_atual or "" }}"
+                                        data-fornecedor-id="{{ despesa.fornecedor_atual or "" }}"
+                                        data-status="{{ despesa.status_atual }}"
+                                        data-forma="{{ despesa.forma_atual }}"
+                                        data-pago-por="{{ despesa.pago_por_atual or "" }}"
+                                        data-obs="{{ despesa.obs_atual or "" }}"
+                                        title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </button>
                                 <button type="button" class="btn btn-sm btn-success despesa-btn-salvar d-none" 
@@ -395,12 +410,10 @@
                                     </div>
                                 </td>
                             </tr>
-                          {% endif %}
                             {% endfor %}
 
-                            {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['variaveis'] %}
-                          {% if despesa.ja_cadastrada %}
-                          <tr class="table-success" id="despesa_row_{{ despesa.id_despesa }}">
+                            {% for despesa in despesas_evento_por_categoria[categoria.id_categoria_despesa]['variaveis'] %}
+                          <tr class="table-success" id="despesa_row_{{ despesa.id_despesa_evento }}">
                             <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small></td>
                             <td>
                               <span class="despesa-display">{{ despesa.data_atual }}</span>
@@ -434,7 +447,22 @@
                                   <i class="bi bi-eye"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary despesa-btn-editar" 
-                                        onclick="editarDespesaVariavel({{ despesa.id_despesa }})" title="Editar">
+                                        onclick="editarDespesaModal(this)" 
+                                        data-despesa-evento-id="{{ despesa.id_despesa_evento }}"
+                                        data-despesa-id="{{ despesa.id_despesa }}"
+                                        data-categoria-id="{{ despesa.categoria_id }}"
+                                        data-nome="{{ despesa.nome }}"
+                                        data-categoria-nome="{{ despesa.categoria_nome }}"
+                                        data-is-fixa="false"
+                                        data-data="{{ despesa.data_atual }}"
+                                        data-valor="{{ ("%.2f"|format(despesa.valor_atual)) if despesa.valor_atual else "" }}"
+                                        data-fornecedor="{{ despesa.fornecedor_nome_atual or "" }}"
+                                        data-fornecedor-id="{{ despesa.fornecedor_atual or "" }}"
+                                        data-status="{{ despesa.status_atual }}"
+                                        data-forma="{{ despesa.forma_atual }}"
+                                        data-pago-por="{{ despesa.pago_por_atual or "" }}"
+                                        data-obs="{{ despesa.obs_atual or "" }}"
+                                        title="Editar">
                                   <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-success despesa-btn-salvar d-none" 
@@ -475,8 +503,8 @@
                               </div>
                             </td>
                           </tr>
-                          {% endif %}
                           {% endfor %}
+                          {% endif %}
 
                           <!-- Despesas não cadastradas dessa categoria -->
                           {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
@@ -1966,6 +1994,169 @@ document.addEventListener('DOMContentLoaded', function() {
         campoFornecedor.addEventListener('click', abrirBuscaFornecedor);
     }
 });
+
+// Função para editar despesa via modal
+function editarDespesaModal(button) {
+    // Obter dados do botão
+    const despesaEventoId = button.getAttribute('data-despesa-evento-id');
+    const despesaId = button.getAttribute('data-despesa-id');
+    const categoriaId = button.getAttribute('data-categoria-id');
+    const nome = button.getAttribute('data-nome');
+    const categoriaNome = button.getAttribute('data-categoria-nome');
+    const isFixa = button.getAttribute('data-is-fixa') === 'true';
+    const data = button.getAttribute('data-data');
+    const valor = button.getAttribute('data-valor');
+    const fornecedor = button.getAttribute('data-fornecedor');
+    const fornecedorId = button.getAttribute('data-fornecedor-id');
+    const status = button.getAttribute('data-status');
+    const forma = button.getAttribute('data-forma');
+    const pagoPor = button.getAttribute('data-pago-por');
+    const obs = button.getAttribute('data-obs');
+    
+    // Debug logs
+    console.log('=== DEBUG MODAL EDIÇÃO ===');
+    console.log('Despesa Evento ID:', despesaEventoId);
+    console.log('Despesa ID:', despesaId);
+    console.log('Categoria ID:', categoriaId);
+    console.log('Nome:', nome);
+    console.log('Categoria Nome:', categoriaNome);
+    console.log('É Fixa:', isFixa);
+    console.log('Data:', data);
+    console.log('Valor:', valor);
+    console.log('Fornecedor:', fornecedor);
+    console.log('Fornecedor ID:', fornecedorId);
+    console.log('Status:', status);
+    console.log('Forma:', forma);
+    console.log('Pago Por:', pagoPor);
+    console.log('Obs:', obs);
+    
+    // Limpar formulário
+    const form = document.querySelector('#modalAdicionarDespesa form');
+    form.reset();
+    
+    // Preencher dados no modal
+    document.getElementById('modal_despesa_categoria').value = categoriaId;
+    document.getElementById('modal_despesa_data').value = data;
+    document.getElementById('modal_despesa_valor').value = valor ? valor.replace('.', ',') : '';
+    document.getElementById('modal_despesa_fornecedor_nome').value = fornecedor || '';
+    document.getElementById('modal_despesa_fornecedor').value = fornecedorId || '';
+    document.getElementById('modal_despesa_status').value = status || 'pendente';
+    document.getElementById('modal_despesa_forma').value = forma || 'débito';
+    document.getElementById('modal_despesa_pago_por').value = pagoPor || '';
+    document.getElementById('modal_despesa_obs').value = obs || '';
+    
+    // Carregar despesas da categoria e selecionar a correta
+    if (categoriaId && despesaId) {
+        carregarDespesasPorCategoriaModal(categoriaId, despesaId);
+    }
+    
+    // Alterar título do modal
+    const titulo = document.querySelector('#modalAdicionarDespesa .modal-title');
+    titulo.innerHTML = '<i class="bi bi-pencil me-2"></i>Editar: ' + nome + ' (' + (isFixa ? 'Fixa' : 'Variável') + ')';
+    
+    // Alterar texto do botão
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Atualizar Despesa';
+    
+    // Adicionar atributo para identificar que é edição
+    form.setAttribute('data-editing', 'true');
+    form.setAttribute('data-despesa-evento-id', despesaEventoId);
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalAdicionarDespesa'));
+    modal.show();
+}
+
+// Modificar a função adicionarDespesaEvento para suportar edição
+const originalAdicionarDespesaEvento = adicionarDespesaEvento;
+adicionarDespesaEvento = function(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const isEditing = form.getAttribute('data-editing') === 'true';
+    const despesaEventoId = form.getAttribute('data-despesa-evento-id');
+    
+    if (isEditing) {
+        // Lógica de edição
+        editarDespesaEvento(form, despesaEventoId);
+    } else {
+        // Lógica original de adição
+        originalAdicionarDespesaEvento(event);
+    }
+};
+
+// Função para editar despesa do evento
+function editarDespesaEvento(form, despesaEventoId) {
+    const formData = new FormData(form);
+    
+    // Converter valor formatado para número
+    const valorFormatado = formData.get('valor');
+    const valorNumerico = converterMoedaParaNumero(valorFormatado);
+    
+    // Preparar dados para envio
+    const dados = {
+        despesa_id: parseInt(formData.get('despesa_id')),
+        data: formData.get('data'),
+        valor: valorNumerico.toString(),
+        id_fornecedor: formData.get('id_fornecedor') || null,
+        status_pagamento: formData.get('status_pagamento'),
+        forma_pagamento: formData.get('forma_pagamento'),
+        pago_por: formData.get('pago_por'),
+        observacoes: formData.get('observacoes') || ''
+    };
+    
+    // Desabilitar botão durante envio
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Atualizando...';
+    
+    // Obter ID do evento
+    const eventoId = obterEventoId();
+    if (!eventoId) {
+        alert('Erro: Não foi possível identificar o evento');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        return;
+    }
+    
+    // Enviar para o backend
+    fetch(`/eventos/${eventoId}/editar-despesa/${despesaEventoId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+            modal.hide();
+            
+            // Recarregar a página
+            window.location.reload();
+        } else {
+            alert('Erro: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao atualizar despesa: ' + error);
+    })
+    .finally(() => {
+        // Reabilitar botão e limpar atributos de edição
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-plus-circle me-2"></i>Adicionar Despesa';
+        form.removeAttribute('data-editing');
+        form.removeAttribute('data-despesa-evento-id');
+        
+        // Restaurar título do modal
+        const titulo = document.querySelector('#modalAdicionarDespesa .modal-title');
+        titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Adicionar Despesa';
+    });
+}
 
 </script>
 

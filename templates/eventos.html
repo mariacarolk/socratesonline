@@ -23,20 +23,21 @@
   </a>
 </div>
 
-{% set period = request.args.get('period', '7dias') %}
+{% set period = request.args.get('period', '90dias') %}
 <div class="text-end mb-2" style="font-size: 0.95em;">
   <div class="btn-group btn-group-sm" role="group">
     <a href="?period=hoje" class="btn btn-filter-dark btn-group-sm {% if period == 'hoje' %}active{% endif %}">Hoje</a>
     <a href="?period=ontem" class="btn btn-filter-dark btn-group-sm {% if period == 'ontem' %}active{% endif %}">Ontem</a>
     <a href="?period=7dias" class="btn btn-filter-dark btn-group-sm {% if period == '7dias' %}active{% endif %}">7 Dias</a>
     <a href="?period=mes" class="btn btn-filter-dark btn-group-sm {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+    <a href="?period=90dias" class="btn btn-filter-dark btn-group-sm {% if period == '90dias' %}active{% endif %}">90 Dias</a>
     <a href="?period=custom" class="btn btn-filter-dark btn-group-sm {% if period == 'custom' %}active{% endif %}">Custom</a>
   </div>
   {% if period == 'custom' %}
     <form method="get" class="d-inline ms-2">
       <input type="hidden" name="period" value="custom">
-      <input type="date" name="data_inicio" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ request.args.get('data_inicio', '') }}">
-      <input type="date" name="data_fim" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ request.args.get('data_fim', '') }}">
+      <input type="date" name="data_inicio" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ data_inicio or request.args.get('data_inicio', '') }}">
+      <input type="date" name="data_fim" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ data_fim or request.args.get('data_fim', '') }}">
       <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
     </form>
   {% endif %}
@@ -260,6 +261,15 @@
                   <div class="col-12">
                     <label class="form-label">Observações</label>
                     <textarea name="observacoes" class="form-control" rows="2"></textarea>
+                  </div>
+                  
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_{{ evento.id_evento }}" value="1">
+                      <label class="form-check-label" for="despesa_cabeca_{{ evento.id_evento }}">
+                        Despesa da cabeça
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -706,6 +716,7 @@ function adicionarDespesaRapida(event, eventoId) {
         forma_pagamento: formData.get('forma_pagamento') || 'débito',
         pago_por: formData.get('pago_por') || '',
         observacoes: formData.get('observacoes') || '',
+        despesa_cabeca: formData.get('despesa_cabeca') === '1',
         is_fixa: false  // Despesas do popup são sempre variáveis
     };
     
