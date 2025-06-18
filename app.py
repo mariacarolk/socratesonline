@@ -799,16 +799,54 @@ def listar_eventos():
     # Verificar se Ã© administrador
     is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
 
-    limite_passado = date.today() - timedelta(days=90)
-    print(f"Data limite (90 dias atrÃ¡s): {limite_passado}")
-    print(f"Data hoje: {date.today()}")
+    # Processar filtro de período
+    period = request.args.get('period', '90dias')  # Default para 90 dias
+    data_inicio = None
+    data_fim = None
     
-    # Filtrar eventos baseado no tipo de usuÃ¡rio
+    if period == 'hoje':
+        data_inicio = data_fim = date.today()
+    elif period == 'ontem':
+        data_inicio = data_fim = date.today() - timedelta(days=1)
+    elif period == '7dias':
+        data_fim = date.today()
+        data_inicio = data_fim - timedelta(days=6)
+    elif period == 'mes':
+        data_fim = date.today()
+        data_inicio = data_fim.replace(day=1)
+    elif period == 'custom':
+        data_inicio_str = request.args.get('data_inicio')
+        data_fim_str = request.args.get('data_fim')
+        if data_inicio_str and data_fim_str:
+            try:
+                data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+                data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Datas inválidas fornecidas.', 'warning')
+                # Fallback para 90 dias
+                data_fim = date.today()
+                data_inicio = data_fim - timedelta(days=90)
+        else:
+            # Se custom mas sem datas, usar 90 dias
+            data_fim = date.today()
+            data_inicio = data_fim - timedelta(days=90)
+    else:
+        # Default: últimos 90 dias (incluindo eventos futuros)
+        data_fim = date.today() + timedelta(days=365)  # Incluir eventos futuros
+        data_inicio = date.today() - timedelta(days=90)
+    
+    print(f"Filtro aplicado - Período: {period}, Data início: {data_inicio}, Data fim: {data_fim}")
+    
+    # Filtrar eventos baseado no tipo de usuário
     eventos_query = Evento.query.filter(
-        Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado']),
-        # Mostrar eventos dos Ãºltimos 90 dias em diante (inclui eventos futuros)
-        Evento.data_inicio >= limite_passado
+        Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado'])
     )
+    
+    # Aplicar filtro de data se definido
+    if data_inicio:
+        eventos_query = eventos_query.filter(Evento.data_inicio >= data_inicio)
+    if data_fim:
+        eventos_query = eventos_query.filter(Evento.data_inicio <= data_fim)
     
     if not is_admin:
         # Produtores veem apenas seus eventos
@@ -821,7 +859,7 @@ def listar_eventos():
     for evento in eventos:
         print(f"Evento filtrado: {evento.nome}, Data: {evento.data_inicio}, Status: {evento.status}")
     
-    # Buscar dados para os modais de adiÃ§Ã£o rÃ¡pida
+    # Buscar dados para os modais de adição rápida
     categorias_receita = CategoriaReceita.query.all()
     categorias_despesa = CategoriaDespesa.query.filter(
         CategoriaDespesa.id_categoria_despesa.in_(
@@ -840,7 +878,10 @@ def listar_eventos():
                          categorias_receita=categorias_receita,
                          categorias_despesa=categorias_despesa,
                          fornecedores=fornecedores,
-                         current_date=current_date)
+                         current_date=current_date,
+                         period=period,
+                         data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else '',
+                         data_fim=data_fim.strftime('%Y-%m-%d') if data_fim else '')
 
 # Endpoints de API para carregamento dinÃ¢mico nos modais
 @app.route('/api/despesas-por-categoria/<int:categoria_id>')
@@ -1029,7 +1070,7 @@ def novo_evento():
         
         print(f"Evento criado: {novo.nome}, ID antes do add: {novo.id_evento}")
         db.session.add(novo)
-        print(f"Evento adicionado Ã  sessÃ£o")
+        print(f"Evento adicionado Ã  sessÃ£o")
         
         try:
             db.session.flush()
@@ -1337,14 +1378,15 @@ def editar_evento(id):
                 continue
             
             # Verificar se jÃ¡ existe uma DespesaEvento para esta despesa neste evento
-            despesa_evento_existente = DespesaEvento.query.filter_by(
-                id_evento=evento.id_evento,
-                id_despesa=id_despesa
-            ).first()
+            # PERMITIR MÚLTIPLAS INSTÂNCIAS DA MESMA DESPESA - Comentado para sempre criar nova
+            # despesa_evento_existente = DespesaEvento.query.filter_by(
+            #     id_evento=evento.id_evento,
+            #     id_despesa=id_despesa
+            # ).first()
             
-            if despesa_evento_existente:
+            if False:  # Sempre criar nova despesa
                 # ATUALIZAR despesa existente
-                print(f"âœ… ENCONTROU despesa existente!")
+                print(f"✅ ENCONTROU despesa existente!")
                 print(f"   - Valor antigo: {despesa_evento_existente.valor}")
                 print(f"   - Valor novo: {valor}")
                 print(f"   - ID DespesaEvento: {despesa_evento_existente.id_despesa_evento}")
@@ -1352,26 +1394,44 @@ def editar_evento(id):
                 despesa_evento_existente.data = data
                 despesa_evento_existente.valor = valor
                 despesa_evento_existente.status_pagamento = status_pag[i] if i < len(status_pag) else 'pendente'
-                despesa_evento_existente.forma_pagamento = forma_pag[i] if i < len(forma_pag) else 'dÃ©bito'
+                despesa_evento_existente.forma_pagamento = forma_pag[i] if i < len(forma_pag) else 'débito'
                 despesa_evento_existente.pago_por = pago_por[i] if i < len(pago_por) else ''
                 despesa_evento_existente.observacoes = obs_desp[i] if i < len(obs_desp) else ''
                 
-                print(f"   - Despesa atualizada na sessÃ£o!")
+                print(f"   - Despesa atualizada na sessão!")
             else:
                 # CRIAR nova despesa no evento
-                print(f"ðŸ†• NÃƒO encontrou despesa existente, criando nova...")
+                print(f"🆕 NÃO encontrou despesa existente, criando nova...")
                 nova_despesa_evento = DespesaEvento(
                     id_evento=evento.id_evento,
                     id_despesa=id_despesa,
                     data=data,
                     valor=valor,
                     status_pagamento=status_pag[i] if i < len(status_pag) else 'pendente',
-                    forma_pagamento=forma_pag[i] if i < len(forma_pag) else 'dÃ©bito',
+                    forma_pagamento=forma_pag[i] if i < len(forma_pag) else 'débito',
                     pago_por=pago_por[i] if i < len(pago_por) else '',
                     observacoes=obs_desp[i] if i < len(obs_desp) else ''
                 )
                 db.session.add(nova_despesa_evento)
-                print(f"   - Nova despesa adicionada Ã  sessÃ£o!")
+                print(f"   - Nova despesa adicionada à sessão!")
+
+        # Processar checkboxes de despesa_cabeca
+        despesas_cabeca_ids = request.form.getlist('despesa_cabeca_evento[]')
+        print(f"=== DEBUG DESPESAS CABEÇA ===")
+        print(f"IDs das despesas marcadas como cabeça: {despesas_cabeca_ids}")
+        
+        # Primeiro, desmarcar todas as despesas do evento
+        todas_despesas_evento = DespesaEvento.query.filter_by(id_evento=evento.id_evento).all()
+        for despesa_evento in todas_despesas_evento:
+            despesa_evento.despesa_cabeca = False
+        
+        # Marcar apenas as selecionadas
+        for despesa_evento_id in despesas_cabeca_ids:
+            if despesa_evento_id:
+                despesa_evento = DespesaEvento.query.get(int(despesa_evento_id))
+                if despesa_evento and despesa_evento.id_evento == evento.id_evento:
+                    despesa_evento.despesa_cabeca = True
+                    print(f"✅ Despesa evento ID {despesa_evento_id} marcada como cabeça")
 
         try:
             db.session.commit()
@@ -1391,7 +1451,7 @@ def editar_evento(id):
                 print(f"ID Despesa: {desp.id_despesa}, Valor SALVO: {desp.valor}, Tipo: {desp.despesa.id_tipo_despesa}")
             
             flash('Evento atualizado com sucesso!', 'success')
-            return redirect(url_for('listar_eventos'))
+            return redirect(url_for('editar_evento', id=evento.id_evento))
             
         except Exception as e:
             print(f"âŒ ERRO no commit: {e}")
@@ -1430,14 +1490,18 @@ def editar_evento(id):
                 'valor_medio': float(d.valor_medio_despesa) if d.valor_medio_despesa else None,
                 'tipo': 1,
                 'ja_cadastrada': d.id_despesa in despesas_ja_cadastradas,
-                # Se jÃ¡ foi cadastrada, usar valores reais do evento
+                'categoria_id': categoria.id_categoria_despesa,
+                'categoria_nome': categoria.nome,
+                # Se já foi cadastrada, usar valores reais do evento
                 'valor_atual': float(despesas_evento_dict[d.id_despesa].valor) if d.id_despesa in despesas_ja_cadastradas else (float(d.valor_medio_despesa) if d.valor_medio_despesa else None),
                 'data_atual': despesas_evento_dict[d.id_despesa].data.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
                 'status_atual': despesas_evento_dict[d.id_despesa].status_pagamento if d.id_despesa in despesas_ja_cadastradas else 'pendente',
-                'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'dÃ©bito',
+                'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'débito',
                 'fornecedor_atual': despesas_evento_dict[d.id_despesa].id_fornecedor if d.id_despesa in despesas_ja_cadastradas else None,
+                'fornecedor_nome_atual': despesas_evento_dict[d.id_despesa].fornecedor.nome if d.id_despesa in despesas_ja_cadastradas and despesas_evento_dict[d.id_despesa].fornecedor else '',
                 'pago_por_atual': despesas_evento_dict[d.id_despesa].pago_por if d.id_despesa in despesas_ja_cadastradas else '',
-                'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else 'Despesa fixa automÃ¡tica',
+                'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else 'Despesa fixa automática',
+                'despesa_cabeca_atual': despesas_evento_dict[d.id_despesa].despesa_cabeca if d.id_despesa in despesas_ja_cadastradas else False,
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None
             } for d in despesas_fixas],  # TODAS as despesas fixas
             'variaveis': [{
@@ -1446,17 +1510,62 @@ def editar_evento(id):
                 'valor_medio': float(d.valor_medio_despesa) if d.valor_medio_despesa else None,
                 'tipo': 2,
                 'ja_cadastrada': d.id_despesa in despesas_ja_cadastradas,
-                # Se jÃ¡ foi cadastrada, usar valores reais do evento
+                'categoria_id': categoria.id_categoria_despesa,
+                'categoria_nome': categoria.nome,
+                # Se já foi cadastrada, usar valores reais do evento
                 'valor_atual': float(despesas_evento_dict[d.id_despesa].valor) if d.id_despesa in despesas_ja_cadastradas else (float(d.valor_medio_despesa) if d.valor_medio_despesa else None),
                 'data_atual': despesas_evento_dict[d.id_despesa].data.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
                 'status_atual': despesas_evento_dict[d.id_despesa].status_pagamento if d.id_despesa in despesas_ja_cadastradas else 'pendente',
-                'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'dÃ©bito',
+                'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'débito',
                 'fornecedor_atual': despesas_evento_dict[d.id_despesa].id_fornecedor if d.id_despesa in despesas_ja_cadastradas else None,
+                'fornecedor_nome_atual': despesas_evento_dict[d.id_despesa].fornecedor.nome if d.id_despesa in despesas_ja_cadastradas and despesas_evento_dict[d.id_despesa].fornecedor else '',
                 'pago_por_atual': despesas_evento_dict[d.id_despesa].pago_por if d.id_despesa in despesas_ja_cadastradas else '',
                 'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else '',
+                'despesa_cabeca_atual': despesas_evento_dict[d.id_despesa].despesa_cabeca if d.id_despesa in despesas_ja_cadastradas else False,
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None
-            } for d in despesas_variaveis]  # TODAS as despesas variÃ¡veis (cadastradas e nÃ£o cadastradas)
+            } for d in despesas_variaveis]  # TODAS as despesas variáveis (cadastradas e não cadastradas)
         }
+
+    # Nova estrutura: listar TODAS as instâncias das despesas do evento por categoria
+    despesas_evento_por_categoria = {}
+    for categoria in categorias_despesa:
+        # Filtrar despesas do evento por categoria
+        despesas_desta_categoria = [
+            de for de in despesas_salvas 
+            if de.despesa.id_categoria_despesa == categoria.id_categoria_despesa
+        ]
+        
+        despesas_evento_por_categoria[categoria.id_categoria_despesa] = {
+            'fixas': [],
+            'variaveis': [],
+            'categoria_nome': categoria.nome
+        }
+        
+        # Separar por tipo
+        for despesa_evento in despesas_desta_categoria:
+            despesa_data = {
+                'id_despesa': despesa_evento.id_despesa,
+                'id_despesa_evento': despesa_evento.id_despesa_evento,
+                'nome': despesa_evento.despesa.nome,
+                'categoria_id': categoria.id_categoria_despesa,
+                'categoria_nome': categoria.nome,
+                'ja_cadastrada': True,
+                'valor_atual': float(despesa_evento.valor),
+                'data_atual': despesa_evento.data.strftime('%Y-%m-%d'),
+                'status_atual': despesa_evento.status_pagamento,
+                'forma_atual': despesa_evento.forma_pagamento,
+                'fornecedor_atual': despesa_evento.id_fornecedor,
+                'fornecedor_nome_atual': despesa_evento.fornecedor.nome if despesa_evento.fornecedor else '',
+                'pago_por_atual': despesa_evento.pago_por or '',
+                'obs_atual': despesa_evento.observacoes or '',
+                'despesa_cabeca_atual': despesa_evento.despesa_cabeca,
+                'tipo': despesa_evento.despesa.id_tipo_despesa
+            }
+            
+            if despesa_evento.despesa.id_tipo_despesa == 1:  # Fixa
+                despesas_evento_por_categoria[categoria.id_categoria_despesa]['fixas'].append(despesa_data)
+            else:  # Variável
+                despesas_evento_por_categoria[categoria.id_categoria_despesa]['variaveis'].append(despesa_data)
 
     return render_template(
         'novo_evento.html',
@@ -1465,6 +1574,7 @@ def editar_evento(id):
         categorias_receita_dict=categorias_receita_dict,
         categorias_despesa=categorias_despesa,
         categorias_despesa_dict=categorias_despesa_dict,
+        despesas_evento_por_categoria=despesas_evento_por_categoria,  # Nova estrutura
         fornecedores=[{'id_fornecedor': f.id_fornecedor, 'nome': f.nome} for f in Fornecedor.query.all()],
         receitas_salvas=receitas_salvas,
         despesas_salvas=despesas_salvas,
@@ -1961,6 +2071,7 @@ def salvar_despesa_individual(id_evento):
         pago_por = data.get('pago_por', '')
         observacoes = data.get('observacoes', '')
         id_fornecedor = data.get('id_fornecedor', None)  # Novo campo
+        despesa_cabeca = data.get('despesa_cabeca', False)  # Flag despesa da cabeça
         is_fixa = data.get('is_fixa', False)  # Flag para identificar despesas fixas
         
         print(f"=== SALVAMENTO INDIVIDUAL VIA AJAX ===")
@@ -2015,6 +2126,7 @@ def salvar_despesa_individual(id_evento):
             despesa_existente.pago_por = pago_por
             despesa_existente.observacoes = observacoes
             despesa_existente.id_fornecedor = fornecedor_id  # Novo campo
+            despesa_existente.despesa_cabeca = despesa_cabeca  # Flag despesa da cabeça
             
             # Se foi informado um fornecedor, adicionar automaticamente na tabela fornecedor_evento
             if fornecedor_id:
@@ -2062,7 +2174,8 @@ def salvar_despesa_individual(id_evento):
                 forma_pagamento=forma_pagamento,
                 pago_por=pago_por,
                 observacoes=observacoes,
-                id_fornecedor=fornecedor_id  # Novo campo
+                id_fornecedor=fornecedor_id,  # Novo campo
+                despesa_cabeca=despesa_cabeca  # Flag despesa da cabeça
             )
             
             db.session.add(nova_despesa)
@@ -2147,7 +2260,7 @@ def equipe_evento(id_evento):
             )
             db.session.add(nova_equipe)
             db.session.commit()
-            flash('Colaborador adicionado Ã  equipe com sucesso!', 'success')
+            flash('Colaborador adicionado Ã  equipe com sucesso!', 'success')
         return redirect(url_for('equipe_evento', id_evento=id_evento))
     
     equipe_evento = EquipeEvento.query.filter_by(id_evento=id_evento).all()
@@ -2469,6 +2582,106 @@ def excluir_despesa_evento(id_evento, despesa_evento_id):
     except Exception as e:
         db.session.rollback()
         print(f"âŒ Erro ao excluir despesa: {e}")
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'})
+
+@app.route('/eventos/<int:id_evento>/editar-despesa/<int:despesa_evento_id>', methods=['PUT'])
+def editar_despesa_evento(id_evento, despesa_evento_id):
+    """Edita uma despesa específica do evento"""
+    try:
+        # Verificar se o evento existe
+        evento = Evento.query.get(id_evento)
+        if not evento:
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
+        
+        # Buscar a despesa do evento
+        despesa_evento = DespesaEvento.query.filter_by(
+            id_despesa_evento=despesa_evento_id,
+            id_evento=id_evento
+        ).first()
+        
+        if not despesa_evento:
+            return jsonify({'success': False, 'message': 'Despesa não encontrada neste evento'})
+        
+        # Obter dados do request
+        data = request.get_json()
+        
+        # Validar dados obrigatórios
+        despesa_id = data.get('despesa_id')
+        valor_str = data.get('valor', '')
+        data_despesa = data.get('data')
+        
+        if not despesa_id or not valor_str:
+            return jsonify({'success': False, 'message': 'Despesa e valor são obrigatórios'})
+        
+        # Converter valor
+        try:
+            valor_str = str(valor_str).strip()
+            
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
+            if '.' in valor_str and ',' in valor_str:
+                valor_str = valor_str.replace('.', '').replace(',', '.')
+            # Se contém apenas vírgula, trocar por ponto
+            elif ',' in valor_str and '.' not in valor_str:
+                valor_str = valor_str.replace(',', '.')
+            
+            valor = float(valor_str)
+            
+            if valor <= 0:
+                return jsonify({'success': False, 'message': 'Valor deve ser maior que zero'})
+                
+        except (ValueError, TypeError) as e:
+            print(f"Erro ao converter valor '{data.get('valor')}': {e}")
+            return jsonify({'success': False, 'message': 'Valor inválido'})
+        
+        # Converter data
+        try:
+            data_obj = datetime.strptime(data_despesa, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Data inválida'})
+        
+        # Atualizar campos da despesa do evento
+        despesa_evento.id_despesa = int(despesa_id)
+        despesa_evento.data = data_obj
+        despesa_evento.valor = valor
+        despesa_evento.status_pagamento = data.get('status_pagamento', 'pendente')
+        despesa_evento.forma_pagamento = data.get('forma_pagamento', 'débito')
+        despesa_evento.pago_por = data.get('pago_por', '')
+        despesa_evento.observacoes = data.get('observacoes', '')
+        despesa_evento.despesa_cabeca = data.get('despesa_cabeca', False)
+        
+        # Atualizar fornecedor se informado
+        id_fornecedor = data.get('id_fornecedor')
+        if id_fornecedor and id_fornecedor != '0':
+            despesa_evento.id_fornecedor = int(id_fornecedor)
+            
+            # Adicionar fornecedor ao evento se não existir
+            fornecedor_evento_existente = FornecedorEvento.query.filter_by(
+                id_evento=id_evento,
+                id_fornecedor=int(id_fornecedor)
+            ).first()
+            
+            if not fornecedor_evento_existente:
+                novo_fornecedor_evento = FornecedorEvento(
+                    id_evento=id_evento,
+                    id_fornecedor=int(id_fornecedor),
+                    observacoes=data.get('observacoes', '')
+                )
+                db.session.add(novo_fornecedor_evento)
+        else:
+            despesa_evento.id_fornecedor = None
+        
+        db.session.commit()
+        
+        print(f"✅ Despesa editada com sucesso: ID {despesa_evento_id}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Despesa atualizada com sucesso'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao editar despesa: {e}")
         return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'})
 
 @app.route('/api/cidades/<string:estado>')

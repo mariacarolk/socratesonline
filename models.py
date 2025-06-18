@@ -182,6 +182,7 @@ class DespesaEvento(db.Model):
     forma_pagamento = db.Column(db.String(20), nullable=False)
     pago_por = db.Column(db.String(100))
     observacoes = db.Column(db.Text)
+    despesa_cabeca = db.Column(db.Boolean, default=False, nullable=False)
     evento = db.relationship('Evento', back_populates='despesas_evento')
     despesa = db.relationship('Despesa', back_populates='despesa_eventos')
     fornecedor = db.relationship('Fornecedor', backref='despesas_evento')
