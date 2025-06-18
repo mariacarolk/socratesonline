@@ -2104,115 +2104,61 @@ def salvar_despesa_individual(id_evento):
             print(f"Erro ao converter valor '{data.get('valor')}': {e}")
             return jsonify({'success': False, 'message': 'Valor invÃ¡lido'})
         
-        # Verificar se a despesa jÃ¡ existe para este evento
-        despesa_existente = DespesaEvento.query.filter_by(
-            id_evento=id_evento, 
-            id_despesa=despesa_id
-        ).first()
-        
         # Converter data
         data_obj = datetime.strptime(data_despesa, '%Y-%m-%d').date() if data_despesa else date.today()
         fornecedor_id = int(id_fornecedor) if id_fornecedor and id_fornecedor != '0' else None
         
-        if despesa_existente:
-            # ATUALIZAR despesa existente (comum para despesas fixas)
-            print(f"âœ… Atualizando despesa existente ID {despesa_existente.id_despesa_evento}")
-            print(f"   Valor antigo: {despesa_existente.valor} â†' Valor novo: {valor_float}")
-            
-            despesa_existente.data = data_obj
-            despesa_existente.valor = valor_float
-            despesa_existente.status_pagamento = status_pagamento
-            despesa_existente.forma_pagamento = forma_pagamento
-            despesa_existente.pago_por = pago_por
-            despesa_existente.observacoes = observacoes
-            despesa_existente.id_fornecedor = fornecedor_id  # Novo campo
-            despesa_existente.despesa_cabeca = despesa_cabeca  # Flag despesa da cabeça
-            
-            # Se foi informado um fornecedor, adicionar automaticamente na tabela fornecedor_evento
-            if fornecedor_id:
-                fornecedor_evento_existente = FornecedorEvento.query.filter_by(
-                    id_evento=id_evento,
-                    id_fornecedor=fornecedor_id
-                ).first()
-                
-                if not fornecedor_evento_existente:
-                    novo_fornecedor_evento = FornecedorEvento(
-                        id_evento=id_evento,
-                        id_fornecedor=fornecedor_id,
-                        observacoes=observacoes if observacoes else ''
-                    )
-                    db.session.add(novo_fornecedor_evento)
-                    print(f"âœ… Fornecedor {fornecedor_id} adicionado automaticamente ao evento")
-            
-            db.session.commit()
-            
-            print(f"âœ… Despesa atualizada com sucesso!")
-            
-            # Buscar dados da despesa para retornar
-            despesa = Despesa.query.get(despesa_id)
-            fornecedor = Fornecedor.query.get(fornecedor_id) if fornecedor_id else None
-            
-            return jsonify({
-                'success': True, 
-                'message': 'Despesa atualizada com sucesso!',
-                'despesa_evento_id': despesa_existente.id_despesa_evento,
-                'despesa_nome': despesa.nome,
-                'fornecedor_nome': fornecedor.nome if fornecedor else None,
-                'valor_salvo': valor_float,
-                'action': 'updated'
-            })
-        else:
-            # CRIAR nova despesa no evento (comum para despesas variÃ¡veis)
-            print(f"ðŸ†• Criando nova despesa no evento")
-            
-            nova_despesa = DespesaEvento(
+        # SEMPRE CRIAR nova despesa no evento (permitir múltiplas entradas da mesma despesa)
+        print(f"🆕 Criando nova despesa no evento - permite múltiplas da mesma despesa")
+        
+        nova_despesa = DespesaEvento(
+            id_evento=id_evento,
+            id_despesa=int(despesa_id),
+            data=data_obj,
+            valor=valor_float,
+            status_pagamento=status_pagamento,
+            forma_pagamento=forma_pagamento,
+            pago_por=pago_por,
+            observacoes=observacoes,
+            id_fornecedor=fornecedor_id,  # Novo campo
+            despesa_cabeca=despesa_cabeca  # Flag despesa da cabeça
+        )
+        
+        db.session.add(nova_despesa)
+        
+        # Se foi informado um fornecedor, adicionar automaticamente na tabela fornecedor_evento
+        if fornecedor_id:
+            fornecedor_evento_existente = FornecedorEvento.query.filter_by(
                 id_evento=id_evento,
-                id_despesa=int(despesa_id),
-                data=data_obj,
-                valor=valor_float,
-                status_pagamento=status_pagamento,
-                forma_pagamento=forma_pagamento,
-                pago_por=pago_por,
-                observacoes=observacoes,
-                id_fornecedor=fornecedor_id,  # Novo campo
-                despesa_cabeca=despesa_cabeca  # Flag despesa da cabeça
-            )
+                id_fornecedor=fornecedor_id
+            ).first()
             
-            db.session.add(nova_despesa)
-            
-            # Se foi informado um fornecedor, adicionar automaticamente na tabela fornecedor_evento
-            if fornecedor_id:
-                fornecedor_evento_existente = FornecedorEvento.query.filter_by(
+            if not fornecedor_evento_existente:
+                novo_fornecedor_evento = FornecedorEvento(
                     id_evento=id_evento,
-                    id_fornecedor=fornecedor_id
-                ).first()
-                
-                if not fornecedor_evento_existente:
-                    novo_fornecedor_evento = FornecedorEvento(
-                        id_evento=id_evento,
-                        id_fornecedor=fornecedor_id,
-                        observacoes=observacoes if observacoes else ''
-                    )
-                    db.session.add(novo_fornecedor_evento)
-                    print(f"âœ… Fornecedor {fornecedor_id} adicionado automaticamente ao evento")
-            
-            db.session.commit()
-            
-            print(f"âœ… Nova despesa criada com sucesso! ID: {nova_despesa.id_despesa_evento}")
-            
-            # Buscar dados da despesa para retornar
-            despesa = Despesa.query.get(despesa_id)
-            fornecedor = Fornecedor.query.get(fornecedor_id) if fornecedor_id else None
-            
-            return jsonify({
-                'success': True, 
-                'message': 'Despesa salva com sucesso!',
-                'despesa_evento_id': nova_despesa.id_despesa_evento,
-                'despesa_nome': despesa.nome,
-                'fornecedor_nome': fornecedor.nome if fornecedor else None,
-                'valor_salvo': valor_float,
-                'action': 'created'
-            })
+                    id_fornecedor=fornecedor_id,
+                    observacoes=observacoes if observacoes else ''
+                )
+                db.session.add(novo_fornecedor_evento)
+                print(f"✅ Fornecedor {fornecedor_id} adicionado automaticamente ao evento")
+        
+        db.session.commit()
+        
+        print(f"✅ Nova despesa criada com sucesso! ID: {nova_despesa.id_despesa_evento}")
+        
+        # Buscar dados da despesa para retornar
+        despesa = Despesa.query.get(despesa_id)
+        fornecedor = Fornecedor.query.get(fornecedor_id) if fornecedor_id else None
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Despesa salva com sucesso!',
+            'despesa_evento_id': nova_despesa.id_despesa_evento,
+            'despesa_nome': despesa.nome,
+            'fornecedor_nome': fornecedor.nome if fornecedor else None,
+            'valor_salvo': valor_float,
+            'action': 'created'
+        })
         
     except Exception as e:
         db.session.rollback()

@@ -200,10 +200,11 @@
                       <table class="table table-sm table-bordered table-compact">
                         <thead class="table-light">
                           <tr>
-                            <th style="width: 35%;">Receita</th>
-                            <th style="width: 20%;">Data</th>
-                            <th style="width: 20%;">Valor</th>
-                            <th style="width: 25%;">Ações</th>
+                            <th style="width: 30%;">Receita</th>
+                            <th style="width: 15%;">Data</th>
+                            <th style="width: 15%;">Valor</th>
+                            <th style="width: 20%;">Observações</th>
+                            <th style="width: 20%;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,6 +225,15 @@
                                        id="receita_salva_valor_{{ receita.id_receita_evento }}" 
                                        value="{{ ("%.2f"|format(receita.valor)|replace('.', ',')) }}"
                                        oninput="formatarMoeda(this)">
+                              </td>
+                              <td>
+                                <span class="receita-display">
+                                  <small>{{ receita.observacoes or '—' }}</small>
+                                </span>
+                                <input type="text" class="form-control form-control-sm receita-edit d-none" 
+                                       id="receita_obs_inline_{{ receita.id_receita_evento }}" 
+                                       value="{{ receita.observacoes or '' }}"
+                                       placeholder="Observações">
                               </td>
                               <td>
                                 <div class="d-flex gap-1">
@@ -260,26 +270,33 @@
                           {% if receita.id_receita not in receitas_salvas|map(attribute='receita.id_receita')|list %}
                           <tr class="table-light">
                             <td><strong>{{ receita.nome }}</strong></td>
-                            <td colspan="2" class="text-muted">Clique no botão + para cadastrar esta receita</td>
-                            <td>
-                              <button type="button" class="btn btn-sm btn-success" 
+                            <td colspan="4">
+                              <button type="button" class="btn btn-sm btn-success w-100" 
                                       onclick="abrirModalReceita('{{ receita.id_receita }}', '{{ categoria.id_categoria_receita }}', '{{ receita.nome }}', '{{ categoria.nome }}')" 
                                       title="Cadastrar Receita">
-                                <i class="bi bi-plus"></i>
+                                <i class="bi bi-plus me-2"></i>Cadastrar esta receita
                               </button>
-                                </td>
-                            </tr>
+                            </td>
+                          </tr>
                           {% endif %}
                             {% endfor %}
                           
+                          <!-- Subtotal da categoria -->
+                          {% set receitas_da_categoria = receitas_salvas|selectattr('receita.categoria.id_categoria_receita', 'equalto', categoria.id_categoria_receita)|list %}
+                          {% set categoria_total = receitas_da_categoria|map(attribute='valor')|sum %}
+                          <tr class="table-info">
+                            <td colspan="2"><strong>Subtotal da Categoria</strong></td>
+                            <td><strong>R$ {{ "%.2f"|format(categoria_total) }}</strong></td>
+                            <td colspan="2"></td>
+                          </tr>
+                          
                           <!-- Linha para adicionar nova receita na categoria -->
                           <tr class="table-light">
-                            <td colspan="3"><em class="text-muted">+ Incluir nova receita</em></td>
-                            <td>
-                              <button type="button" class="btn btn-sm btn-outline-success" 
+                            <td colspan="5">
+                              <button type="button" class="btn btn-sm btn-outline-success w-100" 
                                       onclick="abrirModalReceita('', '{{ categoria.id_categoria_receita }}', '', '{{ categoria.nome }}')" 
                                       title="Incluir Nova Receita">
-                                <i class="bi bi-plus"></i>
+                                <i class="bi bi-plus me-2"></i>Incluir nova receita
                               </button>
                             </td>
                           </tr>
@@ -309,11 +326,12 @@
                       <table class="table table-sm table-bordered table-compact">
                         <thead class="table-light">
                           <tr>
-                            <th style="width: 30%;">Despesa</th>
-                            <th style="width: 15%;">Data</th>
-                            <th style="width: 15%;">Valor</th>
-                            <th style="width: 15%;">Status</th>
-                            <th style="width: 25%;">Ações</th>
+                            <th style="width: 25%;">Despesa</th>
+                            <th style="width: 12%;">Data</th>
+                            <th style="width: 12%;">Valor</th>
+                            <th style="width: 10%;">Status</th>
+                            <th style="width: 20%;">Observações</th>
+                            <th style="width: 21%;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -323,7 +341,7 @@
                           <tr class="table-primary" id="despesa_row_{{ despesa.id_despesa_evento }}">
                             <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small></td>
                             <td>
-                              <span class="despesa-display">{{ despesa.data_atual }}</span>
+                              <span class="despesa-display">{{ despesa.data_atual|date_br if despesa.data_atual else '' }}</span>
                               <input type="date" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_data_{{ despesa.id_despesa }}" 
                                      value="{{ despesa.data_atual }}">
@@ -345,6 +363,15 @@
                                 <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
                                 <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
                               </select>
+                                </td>
+                                <td>
+                              <span class="despesa-display">
+                                <small>{{ despesa.obs_atual or '—' }}</small>
+                              </span>
+                              <input type="text" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_obs_inline_{{ despesa.id_despesa }}" 
+                                     value="{{ despesa.obs_atual or '' }}"
+                                     placeholder="Observações">
                                 </td>
                                 <td>
                               <div class="d-flex gap-1">
@@ -416,7 +443,7 @@
                           <tr class="table-success" id="despesa_row_{{ despesa.id_despesa_evento }}">
                             <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small></td>
                             <td>
-                              <span class="despesa-display">{{ despesa.data_atual }}</span>
+                              <span class="despesa-display">{{ despesa.data_atual|date_br if despesa.data_atual else '' }}</span>
                               <input type="date" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_data_{{ despesa.id_despesa }}" 
                                      value="{{ despesa.data_atual }}">
@@ -438,6 +465,15 @@
                                 <option value="pendente" {% if despesa.status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
                                 <option value="pago" {% if despesa.status_atual == 'pago' %}selected{% endif %}>Pago</option>
                                     </select>
+                                </td>
+                                <td>
+                              <span class="despesa-display">
+                                <small>{{ despesa.obs_atual or '—' }}</small>
+                              </span>
+                              <input type="text" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_obs_inline_{{ despesa.id_despesa }}" 
+                                     value="{{ despesa.obs_atual or '' }}"
+                                     placeholder="Observações">
                                 </td>
                                 <td>
                               <div class="d-flex gap-1">
@@ -510,19 +546,17 @@
                           {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['fixas'] %}
                           {% if not despesa.ja_cadastrada %}
                           <tr class="table-light">
-                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small></td>
-                            <td colspan="3" class="text-muted">
-                              Clique no botão + para cadastrar esta despesa 
+                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Fixa)</small>
                               {% if despesa.valor_medio %}
-                                <em>(valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }})</em>
+                                <br><em class="text-info">Valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }}</em>
                               {% endif %}
                             </td>
-                            <td>
-                              <button type="button" class="btn btn-sm btn-success" 
+                            <td colspan="5">
+                              <button type="button" class="btn btn-sm btn-success w-100" 
                                       onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'true', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
-                                <i class="bi bi-plus"></i>
-                                    </button>
+                                <i class="bi bi-plus me-2"></i>Cadastrar esta despesa fixa
+                              </button>
                             </td>
                           </tr>
                           {% endif %}
@@ -531,32 +565,42 @@
                           {% for despesa in categorias_despesa_dict[categoria.id_categoria_despesa]['variaveis'] %}
                           {% if not despesa.ja_cadastrada %}
                           <tr class="table-light">
-                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small></td>
-                            <td colspan="3" class="text-muted">
-                              Clique no botão + para cadastrar esta despesa
+                            <td><strong>{{ despesa.nome }}</strong> <small class="text-muted">(Variável)</small>
                               {% if despesa.valor_medio %}
-                                <em>(valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }})</em>
-                                    {% endif %}
-                                </td>
-                            <td>
-                              <button type="button" class="btn btn-sm btn-success" 
+                                <br><em class="text-info">Valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }}</em>
+                              {% endif %}
+                            </td>
+                            <td colspan="5">
+                              <button type="button" class="btn btn-sm btn-success w-100" 
                                       onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'false', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
-                                <i class="bi bi-plus"></i>
+                                <i class="bi bi-plus me-2"></i>Cadastrar esta despesa variável
                               </button>
                             </td>
-                            </tr>
+                          </tr>
                           {% endif %}
                             {% endfor %}
                           
+                          <!-- Subtotal da categoria -->
+                          {% set categoria_total_despesa = 0 %}
+                          {% if despesas_evento_por_categoria[categoria.id_categoria_despesa] %}
+                            {% set valores_fixas = despesas_evento_por_categoria[categoria.id_categoria_despesa]['fixas']|map(attribute='valor_atual')|map('float')|sum %}
+                            {% set valores_variaveis = despesas_evento_por_categoria[categoria.id_categoria_despesa]['variaveis']|map(attribute='valor_atual')|map('float')|sum %}
+                            {% set categoria_total_despesa = valores_fixas + valores_variaveis %}
+                          {% endif %}
+                          <tr class="table-warning">
+                            <td colspan="2"><strong>Subtotal da Categoria</strong></td>
+                            <td><strong>R$ {{ "%.2f"|format(categoria_total_despesa) }}</strong></td>
+                            <td colspan="3"></td>
+                          </tr>
+                          
                           <!-- Linha para adicionar nova despesa na categoria -->
                           <tr class="table-light">
-                            <td colspan="4"><em class="text-muted">+ Incluir nova despesa</em></td>
-                            <td>
-                              <button type="button" class="btn btn-sm btn-outline-danger" 
+                            <td colspan="6">
+                              <button type="button" class="btn btn-sm btn-outline-danger w-100" 
                                       onclick="abrirModalDespesa('', '{{ categoria.id_categoria_despesa }}', '', '{{ categoria.nome }}', 'false', '')" 
                                       title="Incluir Nova Despesa">
-                                <i class="bi bi-plus"></i>
+                                <i class="bi bi-plus me-2"></i>Incluir nova despesa
                               </button>
                             </td>
                           </tr>
