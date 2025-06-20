@@ -102,6 +102,9 @@
                     <a class="nav-link {% if request.endpoint == 'relatorios_faturamento_evento' %}active{% endif %}" href="{{ url_for('relatorios_faturamento_evento') }}">
                         <i class="bi bi-calendar-check"></i> Faturamento por Evento
                     </a>
+                    <a class="nav-link {% if request.endpoint == 'relatorios_fechamento_evento' %}active{% endif %}" href="{{ url_for('relatorios_fechamento_evento') }}">
+                        <i class="bi bi-clipboard-check"></i> Fechamento por Evento
+                    </a>
                 </div>
             </div>
             {% endif %}

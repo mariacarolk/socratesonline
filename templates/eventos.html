@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block breadcrumbs %}
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
     <li class="breadcrumb-item active" aria-current="page">Eventos</li>
@@ -10,137 +10,222 @@
 {% endblock %}
 
 {% block content %}
+<!-- Header com melhor design -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h4>
-    {% if is_admin %}
-      Todos os Eventos
-    {% else %}
-      Meus Eventos
-    {% endif %}
-  </h4>
-  <a href="{{ url_for('novo_evento') }}" class="btn btn-primary">
+  <div>
+    <h2 class="mb-1 fw-bold text-primary">
+      {% if is_admin %}
+        <i class="bi bi-calendar-event me-2"></i>Todos os Eventos
+      {% else %}
+        <i class="bi bi-calendar-heart me-2"></i>Meus Eventos
+      {% endif %}
+    </h2>
+    <p class="text-muted mb-0">Gerencie e acompanhe seus eventos de forma eficiente</p>
+  </div>
+  <a href="{{ url_for('novo_evento') }}" class="btn btn-primary btn-lg shadow-sm">
     <i class="bi bi-plus-circle me-2"></i>Novo Evento
   </a>
 </div>
 
+<!-- Filtros aprimorados -->
 {% set period = request.args.get('period', '90dias') %}
-<div class="text-end mb-2" style="font-size: 0.95em;">
-  <div class="btn-group btn-group-sm" role="group">
-    <a href="?period=hoje" class="btn btn-filter-dark btn-group-sm {% if period == 'hoje' %}active{% endif %}">Hoje</a>
-    <a href="?period=ontem" class="btn btn-filter-dark btn-group-sm {% if period == 'ontem' %}active{% endif %}">Ontem</a>
-    <a href="?period=7dias" class="btn btn-filter-dark btn-group-sm {% if period == '7dias' %}active{% endif %}">7 Dias</a>
-    <a href="?period=mes" class="btn btn-filter-dark btn-group-sm {% if period == 'mes' %}active{% endif %}">Este Mês</a>
-    <a href="?period=90dias" class="btn btn-filter-dark btn-group-sm {% if period == '90dias' %}active{% endif %}">90 Dias</a>
-    <a href="?period=custom" class="btn btn-filter-dark btn-group-sm {% if period == 'custom' %}active{% endif %}">Custom</a>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between">
+      <div class="d-flex align-items-center mb-2 mb-md-0">
+        <i class="bi bi-funnel text-primary me-2"></i>
+        <span class="fw-medium text-dark me-3">Filtrar por período:</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="?period=hoje" class="btn btn-outline-primary {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+          <a href="?period=ontem" class="btn btn-outline-primary {% if period == 'ontem' %}active{% endif %}">Ontem</a>
+          <a href="?period=7dias" class="btn btn-outline-primary {% if period == '7dias' %}active{% endif %}">7 Dias</a>
+          <a href="?period=mes" class="btn btn-outline-primary {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+          <a href="?period=90dias" class="btn btn-outline-primary {% if period == '90dias' %}active{% endif %}">90 Dias</a>
+          <a href="?period=custom" class="btn btn-outline-primary {% if period == 'custom' %}active{% endif %}">Personalizado</a>
+        </div>
+      </div>
+      
+      {% if period == 'custom' %}
+        <form method="get" class="d-flex align-items-center gap-2">
+          <input type="hidden" name="period" value="custom">
+          <input type="date" name="data_inicio" class="form-control form-control-sm" 
+                 value="{{ data_inicio or request.args.get('data_inicio', '') }}" 
+                 style="width: 140px;">
+          <span class="text-muted">até</span>
+          <input type="date" name="data_fim" class="form-control form-control-sm" 
+                 value="{{ data_fim or request.args.get('data_fim', '') }}" 
+                 style="width: 140px;">
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-search me-1"></i>Filtrar
+          </button>
+        </form>
+      {% endif %}
+    </div>
   </div>
-  {% if period == 'custom' %}
-    <form method="get" class="d-inline ms-2">
-      <input type="hidden" name="period" value="custom">
-      <input type="date" name="data_inicio" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ data_inicio or request.args.get('data_inicio', '') }}">
-      <input type="date" name="data_fim" class="form-control form-control-sm d-inline-block" style="width: 120px;" value="{{ data_fim or request.args.get('data_fim', '') }}">
-      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
-    </form>
-  {% endif %}
 </div>
 
 {% if eventos %}
-  <div class="row">
+  <!-- Contador de eventos -->
+  <div class="d-flex align-items-center mb-3">
+    <div class="badge bg-light text-dark fs-6 px-3 py-2">
+      <i class="bi bi-calendar-check me-1"></i>
+      {{ eventos|length }} evento{{ 's' if eventos|length != 1 else '' }} encontrado{{ 's' if eventos|length != 1 else '' }}
+    </div>
+  </div>
+
+  <div class="row g-4">
     {% for evento in eventos %}
-      <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100 shadow-sm border-0 rounded-3 fade-in event-card">
-          <div class="card-header bg-gradient-primary text-white py-3">
-            <h5 class="card-title mb-0 text-truncate">{{ evento.nome }}</h5>
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 border-0 shadow-sm evento-card" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
+          <!-- Header do card com gradiente baseado no status -->
+          <div class="card-header border-0 p-0 position-relative">
+            <div class="evento-header 
+              {% if evento.status == 'a realizar' %}bg-warning-gradient
+              {% elif evento.status == 'em andamento' %}bg-info-gradient
+              {% elif evento.status == 'realizado' %}bg-success-gradient
+              {% else %}bg-secondary-gradient{% endif %} 
+              text-white p-4 rounded-top">
+              
+              <!-- Status badge no canto superior direito -->
+              <div class="position-absolute top-0 end-0 mt-2 me-2">
+                <span class="badge bg-white bg-opacity-90 text-dark fw-medium px-2 py-1">
+                  {% if evento.status == 'a realizar' %}
+                    <i class="bi bi-clock me-1"></i>A Realizar
+                  {% elif evento.status == 'em andamento' %}
+                    <i class="bi bi-play-circle me-1"></i>Em Andamento
+                  {% elif evento.status == 'realizado' %}
+                    <i class="bi bi-check-circle me-1"></i>Realizado
+                  {% else %}
+                    <i class="bi bi-question-circle me-1"></i>{{ evento.status.capitalize() }}
+                  {% endif %}
+                </span>
+              </div>
+              
+              <h5 class="card-title mb-2 fw-bold text-truncate" title="{{ evento.nome }}">
+                {{ evento.nome }}
+              </h5>
+              
+              <!-- Datas em destaque -->
+              <div class="d-flex align-items-center text-white-50">
+                <i class="bi bi-calendar3 me-2"></i>
+                <span class="small">
+                  {{ evento.data_inicio.strftime('%d/%m/%Y') }} 
+                  {% if evento.data_inicio != evento.data_fim %}
+                    - {{ evento.data_fim.strftime('%d/%m/%Y') }}
+                  {% endif %}
+                </span>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <div class="mb-3">
-              <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-calendar-event text-primary me-2"></i>
-                <span>{{ evento.data_inicio.strftime('%d/%m/%Y') }} até {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
+          
+          <div class="card-body p-4">
+            <!-- Informações básicas com ícones -->
+            <div class="evento-info mb-4">
+              <div class="info-item d-flex align-items-center mb-2">
+                <div class="info-icon bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
+                  <i class="bi bi-geo-alt"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-medium text-dark">{{ evento.cidade }}/{{ evento.estado }}</div>
+                  {% if evento.endereco %}
+                    <div class="text-muted small">{{ evento.endereco }}</div>
+                  {% endif %}
+                </div>
               </div>
-              <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-geo-alt text-primary me-2"></i>
-                <span>{{ evento.cidade }}/{{ evento.estado }}</span>
+              
+              <div class="info-item d-flex align-items-center mb-2">
+                <div class="info-icon bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
+                  <i class="bi bi-building"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-medium text-dark">{{ evento.circo.nome if evento.circo else 'Circo não definido' }}</div>
+                  <div class="text-muted small">Circo responsável</div>
+                </div>
               </div>
-              <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-building text-primary me-2"></i>
-                <span>{{ evento.circo.nome if evento.circo else '—' }}</span>
-              </div>
-              <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-person text-primary me-2"></i>
-                <span>{{ evento.produtor.nome if evento.produtor else '—' }}</span>
+              
+              <div class="info-item d-flex align-items-center">
+                <div class="info-icon bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
+                  <i class="bi bi-person-badge"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-medium text-dark">{{ evento.produtor.nome if evento.produtor else 'Produtor não definido' }}</div>
+                  <div class="text-muted small">Produtor responsável</div>
+                </div>
               </div>
             </div>
             
-            <!-- Botões de acesso rápido -->
-            <div class="mb-3">
-              <!-- Primeira linha: Despesa e Receita (maiores) -->
-              <div class="row g-2 mb-2">
+            <!-- Ações rápidas redesenhadas -->
+            <div class="evento-actions mb-3">
+              <div class="row g-2 mb-3">
+                <!-- Ações principais (maiores) -->
                 <div class="col-6">
-                  <button type="button" class="btn btn-sm btn-outline-danger w-100" 
+                  <button type="button" class="btn btn-outline-danger w-100 btn-action" 
                           data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}">
-                    <i class="bi bi-credit-card d-block"></i>
-                    <small class="text-nowrap">+ Despesa</small>
+                    <i class="bi bi-credit-card d-block mb-1"></i>
+                    <span class="small fw-medium">Despesa</span>
                   </button>
                 </div>
                 <div class="col-6">
-                  <button type="button" class="btn btn-sm btn-outline-info w-100" 
+                  <button type="button" class="btn btn-outline-info w-100 btn-action" 
                           data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}">
-                    <i class="bi bi-cash-coin d-block"></i>
-                    <small class="text-nowrap">+ Receita</small>
+                    <i class="bi bi-cash-coin d-block mb-1"></i>
+                    <span class="small fw-medium">Receita</span>
                   </button>
                 </div>
               </div>
               
-              <!-- Segunda linha: Equipe, Elenco, Fornecedores (menores) -->
+              <!-- Ações secundárias (menores) -->
               <div class="row g-1">
                 <div class="col-4">
-                  <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" class="btn btn-xs btn-outline-primary w-100">
-                    <i class="bi bi-people d-block" style="font-size: 0.9rem;"></i>
-                    <small class="text-nowrap" style="font-size: 0.65rem;">Equipe</small>
+                  <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
+                     class="btn btn-outline-primary btn-sm w-100 btn-action-sm">
+                    <i class="bi bi-people d-block mb-1" style="font-size: 0.9rem;"></i>
+                    <span style="font-size: 0.7rem;">Equipe</span>
                   </a>
                 </div>
                 <div class="col-4">
-                  <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" class="btn btn-xs btn-outline-warning w-100">
-                    <i class="bi bi-person-video d-block" style="font-size: 0.9rem;"></i>
-                    <small class="text-nowrap" style="font-size: 0.65rem;">Elenco</small>
+                  <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
+                     class="btn btn-outline-warning btn-sm w-100 btn-action-sm">
+                    <i class="bi bi-person-video d-block mb-1" style="font-size: 0.9rem;"></i>
+                    <span style="font-size: 0.7rem;">Elenco</span>
                   </a>
                 </div>
                 <div class="col-4">
-                  <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" class="btn btn-xs btn-outline-success w-100">
-                    <i class="bi bi-shop d-block" style="font-size: 0.9rem;"></i>
-                    <small class="text-nowrap" style="font-size: 0.65rem;">Fornecedores</small>
+                  <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
+                     class="btn btn-outline-success btn-sm w-100 btn-action-sm">
+                    <i class="bi bi-shop d-block mb-1" style="font-size: 0.9rem;"></i>
+                    <span style="font-size: 0.7rem;">Fornecedores</span>
                   </a>
                 </div>
               </div>
             </div>
             
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="badge
-                {% if evento.status == 'a realizar' %}bg-warning text-dark
-                {% elif evento.status == 'em andamento' %}bg-info text-white
-                {% elif evento.status == 'realizado' %}bg-success
-                {% else %}bg-secondary{% endif %} px-3 py-2">
-                {{ evento.status.capitalize() }}
-              </span>
+            <!-- Footer com menu de ações -->
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+              <button class="btn btn-outline-primary btn-sm" 
+                      data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
+                <i class="bi bi-eye me-1"></i>Ver Detalhes
+              </button>
               
               <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary rounded-circle dropdown-toggle-custom" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="dropdownMenuButton{{ evento.id_evento }}">
-                  <i class="bi bi-three-dots-vertical"></i>
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                        data-bs-toggle="dropdown" aria-expanded="false" id="dropdownMenuButton{{ evento.id_evento }}">
+                  <i class="bi bi-three-dots"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
+                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
                   <li>
                     <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-pencil me-2 text-primary"></i>Editar
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
-                      <i class="bi bi-eye me-2 text-info"></i>Ver Detalhes
+                      <i class="bi bi-pencil me-2 text-primary"></i>Editar Evento
                     </a>
                   </li>
                   <li>
                     <a href="{{ url_for('relatorio_faturamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-bar-chart text-info me-2"></i>Relatório de Faturamento
+                      <i class="bi bi-bar-chart me-2 text-info"></i>Relatório Financeiro
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{{ url_for('relatorio_fechamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-clipboard-check me-2 text-warning"></i>Fechamento de Evento
                     </a>
                   </li>
                   <li><hr class="dropdown-divider"></li>
@@ -157,23 +242,23 @@
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-people me-2 text-primary"></i>Equipe do Evento
+                      <i class="bi bi-people me-2 text-primary"></i>Gerenciar Equipe
                     </a>
                   </li>
                   <li>
                     <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-person-video me-2 text-warning"></i>Elenco do Evento
+                      <i class="bi bi-person-video me-2 text-warning"></i>Gerenciar Elenco
                     </a>
                   </li>
                   <li>
                     <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-shop me-2 text-success"></i>Fornecedores do Evento
+                      <i class="bi bi-shop me-2 text-success"></i>Gerenciar Fornecedores
                     </a>
                   </li>
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <a href="#" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ evento.id_evento }}">
-                      <i class="bi bi-trash me-2"></i>Excluir
+                      <i class="bi bi-trash me-2"></i>Excluir Evento
                     </a>
                   </li>
                 </ul>
@@ -185,19 +270,29 @@
 
       <!-- Modal Adicionar Despesa -->
       <div class="modal fade" id="modalAdicionarDespesa{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-              <h5 class="modal-title">
-                <i class="bi bi-credit-card me-2"></i>Adicionar Despesa - {{ evento.nome }}
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-credit-card me-2"></i>Adicionar Despesa
               </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form onsubmit="adicionarDespesaRapida(event, '{{ evento.id_evento }}')">
-              <div class="modal-body">
+              <div class="modal-body p-4">
+                <div class="alert alert-light border-start border-danger border-4 mb-4">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle text-danger me-2"></i>
+                    <div>
+                      <strong>{{ evento.nome }}</strong>
+                      <div class="text-muted small">{{ evento.cidade }}/{{ evento.estado }} • {{ evento.data_inicio.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                  </div>
+                </div>
+                
                 <div class="row g-3">
                   <div class="col-12">
-                    <label class="form-label">Categoria da Despesa</label>
+                    <label class="form-label fw-medium">Categoria da Despesa</label>
                     <select name="categoria_despesa" class="form-select" required 
                             onchange="carregarDespesasPorCategoria(this, '{{ evento.id_evento }}')">
                       <option value="">Selecione uma categoria...</option>
@@ -208,25 +303,25 @@
                   </div>
                   
                   <div class="col-12">
-                    <label class="form-label">Despesa</label>
+                    <label class="form-label fw-medium">Despesa</label>
                     <select name="despesa_id" class="form-select" required>
                       <option value="">Primeiro selecione a categoria...</option>
                     </select>
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label">Data</label>
+                    <label class="form-label fw-medium">Data</label>
                     <input type="date" name="data" class="form-control" required value="{{ current_date }}">
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label">Valor (R$)</label>
+                    <label class="form-label fw-medium">Valor (R$)</label>
                     <input type="text" name="valor" class="form-control" required placeholder="0,00"
                            oninput="formatarMoeda(this)">
                   </div>
                   
                   <div class="col-12">
-                    <label class="form-label">Fornecedor</label>
+                    <label class="form-label fw-medium">Fornecedor</label>
                     <select name="fornecedor_id" class="form-select">
                       <option value="">Selecione um fornecedor...</option>
                       {% for fornecedor in fornecedores %}
@@ -236,7 +331,7 @@
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label">Status</label>
+                    <label class="form-label fw-medium">Status</label>
                     <select name="status_pagamento" class="form-select" required>
                       <option value="pendente">Pendente</option>
                       <option value="pago">Pago</option>
@@ -244,7 +339,7 @@
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label">Forma de Pagamento</label>
+                    <label class="form-label fw-medium">Forma de Pagamento</label>
                     <select name="forma_pagamento" class="form-select" required>
                       <option value="débito">Débito</option>
                       <option value="crédito">Crédito</option>
@@ -254,27 +349,29 @@
                   </div>
                   
                   <div class="col-12">
-                    <label class="form-label">Pago por</label>
+                    <label class="form-label fw-medium">Pago por</label>
                     <input type="text" name="pago_por" class="form-control">
                   </div>
                   
                   <div class="col-12">
-                    <label class="form-label">Observações</label>
-                    <textarea name="observacoes" class="form-control" rows="2"></textarea>
+                    <label class="form-label fw-medium">Observações</label>
+                    <textarea name="observacoes" class="form-control" rows="3"></textarea>
                   </div>
                   
                   <div class="col-12">
                     <div class="form-check">
                       <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_{{ evento.id_evento }}" value="1">
-                      <label class="form-check-label" for="despesa_cabeca_{{ evento.id_evento }}">
+                      <label class="form-check-label fw-medium" for="despesa_cabeca_{{ evento.id_evento }}">
                         Despesa da cabeça
                       </label>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
                 <button type="submit" class="btn btn-danger">
                   <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
                 </button>
@@ -286,19 +383,29 @@
 
       <!-- Modal Adicionar Receita -->
       <div class="modal fade" id="modalAdicionarReceita{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-              <h5 class="modal-title">
-                <i class="bi bi-cash-coin me-2"></i>Adicionar Receita - {{ evento.nome }}
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-info text-white border-0">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-cash-coin me-2"></i>Adicionar Receita
               </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form onsubmit="adicionarReceitaRapida(event, '{{ evento.id_evento }}')">
-              <div class="modal-body">
+              <div class="modal-body p-4">
+                <div class="alert alert-light border-start border-info border-4 mb-4">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle text-info me-2"></i>
+                    <div>
+                      <strong>{{ evento.nome }}</strong>
+                      <div class="text-muted small">{{ evento.cidade }}/{{ evento.estado }} • {{ evento.data_inicio.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                  </div>
+                </div>
+                
                 <div class="row g-3">
                   <div class="col-12">
-                    <label class="form-label">Categoria da Receita</label>
+                    <label class="form-label fw-medium">Categoria da Receita</label>
                     <select name="categoria_receita" class="form-select" required 
                             onchange="carregarReceitasPorCategoria(this, '{{ evento.id_evento }}')">
                       <option value="">Selecione uma categoria...</option>
@@ -309,31 +416,33 @@
                   </div>
                   
                   <div class="col-12">
-                    <label class="form-label">Receita</label>
+                    <label class="form-label fw-medium">Receita</label>
                     <select name="receita_id" class="form-select" required>
                       <option value="">Primeiro selecione a categoria...</option>
                     </select>
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label">Data</label>
+                    <label class="form-label fw-medium">Data</label>
                     <input type="date" name="data" class="form-control" required value="{{ current_date }}">
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label">Valor (R$)</label>
+                    <label class="form-label fw-medium">Valor (R$)</label>
                     <input type="text" name="valor" class="form-control" required placeholder="0,00"
                            oninput="formatarMoeda(this)">
                   </div>
                   
                   <div class="col-12">
-                    <label class="form-label">Observações</label>
+                    <label class="form-label fw-medium">Observações</label>
                     <textarea name="observacoes" class="form-control" rows="3"></textarea>
                   </div>
                 </div>
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
                 <button type="submit" class="btn btn-info">
                   <i class="bi bi-plus-circle me-2"></i>Adicionar Receita
                 </button>
@@ -343,94 +452,148 @@
         </div>
       </div>
 
-      <!-- Modal Detalhes -->
+      <!-- Modal Detalhes aprimorado -->
       <div class="modal fade" id="modalDetalhes{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header bg-gradient-primary text-white">
-              <h5 class="modal-title">Detalhes do Evento</h5>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-gradient-primary text-white border-0">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-eye me-2"></i>Detalhes do Evento
+              </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <h6 class="text-primary">Informações Gerais</h6>
-                <div class="row">
-                  <div class="col-md-6 mb-2">
-                    <strong>Nome:</strong> {{ evento.nome }}
-                  </div>
-                  <div class="col-md-6 mb-2">
-                    <strong>Status:</strong> {{ evento.status.capitalize() }}
-                  </div>
-                  <div class="col-md-6 mb-2">
-                    <strong>Data Início:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }}
-                  </div>
-                  <div class="col-md-6 mb-2">
-                    <strong>Data Fim:</strong> {{ evento.data_fim.strftime('%d/%m/%Y') }}
-                  </div>
+            <div class="modal-body p-4">
+              <!-- Header do evento -->
+              <div class="text-center mb-4 p-4 bg-light rounded-3">
+                <h4 class="text-primary fw-bold mb-2">{{ evento.nome }}</h4>
+                <div class="d-flex justify-content-center align-items-center gap-3 text-muted">
+                  <span><i class="bi bi-calendar3 me-1"></i>{{ evento.data_inicio.strftime('%d/%m/%Y') }} - {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
+                  <span><i class="bi bi-geo-alt me-1"></i>{{ evento.cidade }}/{{ evento.estado }}</span>
                 </div>
               </div>
               
-              <div class="mb-3">
-                <h6 class="text-primary">Localização</h6>
-                <div class="row">
-                  <div class="col-md-6 mb-2">
-                    <strong>Cidade:</strong> {{ evento.cidade or '—' }}
-                  </div>
-                  <div class="col-md-6 mb-2">
-                    <strong>Estado:</strong> {{ evento.estado or '—' }}
-                  </div>
-                  <div class="col-12 mb-2">
-                    <strong>Endereço:</strong> {{ evento.endereco or '—' }}
+              <div class="row g-4">
+                <!-- Informações Gerais -->
+                <div class="col-md-6">
+                  <div class="card border-0 bg-light h-100">
+                    <div class="card-body">
+                      <h6 class="text-primary fw-bold mb-3">
+                        <i class="bi bi-info-circle me-2"></i>Informações Gerais
+                      </h6>
+                      <div class="mb-2">
+                        <strong>Status:</strong> 
+                        <span class="badge 
+                          {% if evento.status == 'a realizar' %}bg-warning text-dark
+                          {% elif evento.status == 'em andamento' %}bg-info
+                          {% elif evento.status == 'realizado' %}bg-success
+                          {% else %}bg-secondary{% endif %} ms-1">
+                          {{ evento.status.capitalize() }}
+                        </span>
+                      </div>
+                      <div class="mb-2">
+                        <strong>Data Início:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }}
+                      </div>
+                      <div class="mb-2">
+                        <strong>Data Fim:</strong> {{ evento.data_fim.strftime('%d/%m/%Y') }}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div class="mb-3">
-                <h6 class="text-primary">Responsáveis</h6>
-                <div class="row">
-                  <div class="col-md-6 mb-2">
-                    <strong>Circo:</strong> {{ evento.circo.nome if evento.circo else '—' }}
-                  </div>
-                  <div class="col-md-6 mb-2">
-                    <strong>Produtor:</strong> {{ evento.produtor.nome if evento.produtor else '—' }}
+                
+                <!-- Localização -->
+                <div class="col-md-6">
+                  <div class="card border-0 bg-light h-100">
+                    <div class="card-body">
+                      <h6 class="text-primary fw-bold mb-3">
+                        <i class="bi bi-geo-alt me-2"></i>Localização
+                      </h6>
+                      <div class="mb-2">
+                        <strong>Cidade:</strong> {{ evento.cidade or '—' }}
+                      </div>
+                      <div class="mb-2">
+                        <strong>Estado:</strong> {{ evento.estado or '—' }}
+                      </div>
+                      <div class="mb-2">
+                        <strong>Endereço:</strong> {{ evento.endereco or '—' }}
+                      </div>
+                    </div>
                   </div>
                 </div>
+                
+                <!-- Responsáveis -->
+                <div class="col-12">
+                  <div class="card border-0 bg-light">
+                    <div class="card-body">
+                      <h6 class="text-primary fw-bold mb-3">
+                        <i class="bi bi-people me-2"></i>Responsáveis
+                      </h6>
+                      <div class="row">
+                        <div class="col-md-6 mb-2">
+                          <strong>Circo:</strong> {{ evento.circo.nome if evento.circo else '—' }}
+                        </div>
+                        <div class="col-md-6 mb-2">
+                          <strong>Produtor:</strong> {{ evento.produtor.nome if evento.produtor else '—' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {% if evento.observacoes %}
+                <div class="col-12">
+                  <div class="card border-0 bg-light">
+                    <div class="card-body">
+                      <h6 class="text-primary fw-bold mb-3">
+                        <i class="bi bi-chat-left-text me-2"></i>Observações
+                      </h6>
+                      <p class="mb-0">{{ evento.observacoes }}</p>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
               </div>
-              
-              {% if evento.observacoes %}
-              <div>
-                <h6 class="text-primary">Observações</h6>
-                <p>{{ evento.observacoes }}</p>
-              </div>
-              {% endif %}
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            <div class="modal-footer border-0 bg-light">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle me-2"></i>Fechar
+              </button>
               <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="btn btn-primary">
-                <i class="bi bi-pencil me-2"></i>Editar
+                <i class="bi bi-pencil me-2"></i>Editar Evento
               </a>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Modal Excluir Evento -->
+      <!-- Modal Excluir -->
       <div class="modal fade" id="modalExcluir{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-              <h5 class="modal-title">Confirmar Exclusão</h5>
+          <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão
+              </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center py-4">
-              <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
-              <h5 class="mt-3">Tem certeza que deseja excluir?</h5>
-              <p class="text-muted">Esta ação não poderá ser desfeita e todos os dados do evento <strong>{{ evento.nome }}</strong> serão perdidos.</p>
+            <div class="modal-body p-4">
+              <div class="text-center">
+                <div class="mb-3">
+                  <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="mb-3">Tem certeza que deseja excluir este evento?</h5>
+                <div class="alert alert-warning">
+                  <strong>{{ evento.nome }}</strong><br>
+                  <small class="text-muted">{{ evento.cidade }}/{{ evento.estado }} • {{ evento.data_inicio.strftime('%d/%m/%Y') }}</small>
+                </div>
+                <p class="text-muted">Esta ação não pode ser desfeita. Todos os dados relacionados ao evento serão perdidos permanentemente.</p>
+              </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <div class="modal-footer border-0 bg-light">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle me-2"></i>Cancelar
+              </button>
               <a href="{{ url_for('excluir_evento', id=evento.id_evento) }}" class="btn btn-danger">
-                <i class="bi bi-trash me-2"></i>Excluir
+                <i class="bi bi-trash me-2"></i>Sim, Excluir
               </a>
             </div>
           </div>
@@ -439,118 +602,217 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="card">
-    <div class="card-body text-center py-5">
-      <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
-      <h5 class="mt-3">Nenhum evento encontrado</h5>
-      <p class="text-muted">Comece criando seu primeiro evento!</p>
-      <a href="{{ url_for('novo_evento') }}" class="btn btn-primary mt-2">
-        <i class="bi bi-plus-circle me-2"></i>Novo Evento
+  <!-- Estado vazio aprimorado -->
+  <div class="text-center py-5">
+    <div class="mb-4">
+      <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+    </div>
+    <h4 class="text-muted mb-3">Nenhum evento encontrado</h4>
+    <p class="text-muted mb-4">
+      {% if period == 'custom' %}
+        Não há eventos no período selecionado.
+      {% else %}
+        Não há eventos para o filtro "{{ period }}" selecionado.
+      {% endif %}
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+      <a href="{{ url_for('novo_evento') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Criar Primeiro Evento
+      </a>
+      <a href="?period=90dias" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-clockwise me-2"></i>Ver Últimos 90 Dias
       </a>
     </div>
   </div>
 {% endif %}
 
+<!-- Estilos específicos da página -->
 <style>
-.btn-filter-dark {
-  background-color: #22336b !important;
-  color: #fff !important;
-  border: 1px solid #22336b !important;
-  transition: background 0.2s, color 0.2s;
+/* Gradientes para headers dos cards */
+.bg-warning-gradient {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
 }
-.btn-filter-dark.active, .btn-filter-dark:active, .btn-filter-dark:hover, .btn-filter-dark:focus {
-  background-color: #1a2650 !important;
-  color: #fff !important;
-  border: 1px solid #1a2650 !important;
+.bg-info-gradient {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+.bg-success-gradient {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+.bg-secondary-gradient {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
 }
 
-/* Corrigir dropdown - remover overflow hidden e ajustar z-index */
-.event-card {
-  overflow: visible !important;
+/* Animações e transições */
+.evento-card {
+  transition: all 0.3s ease;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.evento-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+}
+
+.evento-header {
   position: relative;
+  overflow: hidden;
 }
 
-.event-card .card-body {
-  overflow: visible !important;
+.evento-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
 }
 
-.dropdown {
-  position: static !important;
+/* Botões de ação */
+.btn-action {
+  padding: 12px 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  border-width: 2px;
 }
 
-.dropdown-menu {
-  position: absolute !important;
-  z-index: 1060 !important;
-  border: 1px solid #dee2e6 !important;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-  min-width: 200px !important;
+.btn-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.dropdown-toggle-custom::after {
-  display: none !important;
+.btn-action-sm {
+  padding: 8px 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
-/* Garantir que o dropdown apareça acima de outros elementos */
-.card:has(.dropdown-menu.show) {
-  z-index: 1070 !important;
+.btn-action-sm:hover {
+  transform: translateY(-1px);
 }
 
-/* Melhorar a aparência dos botões de acesso rápido */
-.btn-outline-primary:hover i,
-.btn-outline-warning:hover i,
-.btn-outline-success:hover i,
-.btn-outline-danger:hover i,
-.btn-outline-info:hover i {
+/* Info items */
+.info-item {
+  transition: all 0.2s ease;
+}
+
+.info-item:hover {
+  transform: translateX(4px);
+}
+
+.info-icon {
+  transition: all 0.2s ease;
+}
+
+.info-item:hover .info-icon {
   transform: scale(1.1);
-  transition: transform 0.2s ease;
 }
 
-/* Classe para botões extra pequenos */
-.btn-xs {
-  padding: 0.15rem 0.3rem;
-  font-size: 0.7rem;
-  line-height: 1.2;
-  border-radius: 0.2rem;
+/* Modais */
+.modal-content {
+  border-radius: 16px;
+  overflow: hidden;
 }
 
-/* Evitar quebra de linha nos botões */
-.text-nowrap {
-  white-space: nowrap !important;
+.modal-header {
+  padding: 24px;
 }
 
-/* Responsividade para mobile */
-@media (max-width: 576px) {
-  .event-card .btn-sm {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  padding: 20px 24px;
+}
+
+/* Filtros */
+.btn-outline-primary.active {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white;
+}
+
+/* Responsividade aprimorada */
+@media (max-width: 768px) {
+  .evento-card {
+    margin-bottom: 1rem;
   }
   
-  .event-card .btn-xs {
-    padding: 0.1rem 0.2rem;
-    font-size: 0.65rem;
+  .btn-action {
+    padding: 10px 6px;
+    font-size: 0.85rem;
   }
   
-  .event-card .btn-sm i {
-    font-size: 1rem;
-  }
-  
-  .event-card .btn-xs i {
-    font-size: 0.8rem !important;
-  }
-  
-  .event-card .btn-sm small {
+  .btn-action-sm {
+    padding: 6px 3px;
     font-size: 0.7rem;
   }
   
-  .event-card .btn-xs small {
-    font-size: 0.6rem !important;
+  .info-icon {
+    width: 28px !important;
+    height: 28px !important;
   }
+  
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+}
+
+/* Loading states */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Animações de entrada */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+/* Badges personalizados */
+.badge {
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-weight: 500;
+}
+
+/* Dropdowns */
+.dropdown-menu {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  padding: 8px 0;
+}
+
+.dropdown-item {
+  padding: 10px 20px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8fafc;
+  transform: translateX(4px);
+}
+
+.dropdown-divider {
+  margin: 8px 0;
 }
 </style>
 
-{% endblock %}
-
-{% block scripts %}
 <script>
 // Função para formatar valor como moeda
 function formatarMoeda(input) {
@@ -970,4 +1232,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
 {% endblock %}

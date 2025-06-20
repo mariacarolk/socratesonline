@@ -32,6 +32,9 @@
         <form method="POST" class="needs-validation" novalidate>
             {{ form.hidden_tag() }}
             
+            <!-- Campos hidden para despesas cabeça -->
+            <div id="despesas-cabeca-hidden"></div>
+            
             <!-- Dados Básicos do Evento -->
             <div class="row mb-4">
                 <div class="col-md-6 mb-3">
@@ -330,8 +333,9 @@
                             <th style="width: 12%;">Data</th>
                             <th style="width: 12%;">Valor</th>
                             <th style="width: 10%;">Status</th>
-                            <th style="width: 20%;">Observações</th>
-                            <th style="width: 21%;">Ações</th>
+                            <th style="width: 10%;">Despesa da Cabeça</th>
+                            <th style="width: 16%;">Observações</th>
+                            <th style="width: 15%;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -366,6 +370,17 @@
                                 </td>
                                 <td>
                               <span class="despesa-display">
+                                <input type="checkbox" class="form-check-input despesa-cabeca" 
+                                       id="despesa_cabeca_{{ despesa.id_despesa }}" 
+                                       data-despesa-evento-id="{{ despesa.id_despesa_evento }}"
+                                       data-evento-id="{{ evento.id_evento if evento else '{{evento.id_evento}}' }}"
+                                       onchange="atualizarDespesaCabeca(this)"
+                                       {% if despesa.despesa_cabeca_atual %}checked{% endif %}>
+                              </span>
+                              <input type="checkbox" class="form-check-input despesa-edit d-none" id="despesa_cabeca_edit_{{ despesa.id_despesa }}" {% if despesa.despesa_cabeca_atual %}checked{% endif %}>
+                                </td>
+                                <td>
+                              <span class="despesa-display">
                                 <small>{{ despesa.obs_atual or '—' }}</small>
                               </span>
                               <input type="text" class="form-control form-control-sm despesa-edit d-none" 
@@ -396,6 +411,7 @@
                                         data-forma="{{ despesa.forma_atual }}"
                                         data-pago-por="{{ despesa.pago_por_atual or "" }}"
                                         data-obs="{{ despesa.obs_atual or "" }}"
+                                        data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
                                         title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </button>
@@ -468,6 +484,17 @@
                                 </td>
                                 <td>
                               <span class="despesa-display">
+                                <input type="checkbox" class="form-check-input despesa-cabeca" 
+                                       id="despesa_cabeca_{{ despesa.id_despesa }}" 
+                                       data-despesa-evento-id="{{ despesa.id_despesa_evento }}"
+                                       data-evento-id="{{ evento.id_evento if evento else '{{evento.id_evento}}' }}"
+                                       onchange="atualizarDespesaCabeca(this)"
+                                       {% if despesa.despesa_cabeca_atual %}checked{% endif %}>
+                              </span>
+                              <input type="checkbox" class="form-check-input despesa-edit d-none" id="despesa_cabeca_edit_{{ despesa.id_despesa }}" {% if despesa.despesa_cabeca_atual %}checked{% endif %}>
+                                </td>
+                                <td>
+                              <span class="despesa-display">
                                 <small>{{ despesa.obs_atual or '—' }}</small>
                               </span>
                               <input type="text" class="form-control form-control-sm despesa-edit d-none" 
@@ -498,6 +525,7 @@
                                         data-forma="{{ despesa.forma_atual }}"
                                         data-pago-por="{{ despesa.pago_por_atual or "" }}"
                                         data-obs="{{ despesa.obs_atual or "" }}"
+                                        data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
                                         title="Editar">
                                   <i class="bi bi-pencil"></i>
                                 </button>
@@ -551,7 +579,7 @@
                                 <br><em class="text-info">Valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }}</em>
                               {% endif %}
                             </td>
-                            <td colspan="5">
+                            <td colspan="6">
                               <button type="button" class="btn btn-sm btn-success w-100" 
                                       onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'true', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
@@ -570,7 +598,7 @@
                                 <br><em class="text-info">Valor médio: R$ {{ "%.2f"|format(despesa.valor_medio) }}</em>
                               {% endif %}
                             </td>
-                            <td colspan="5">
+                            <td colspan="6">
                               <button type="button" class="btn btn-sm btn-success w-100" 
                                       onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'false', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
@@ -591,12 +619,12 @@
                           <tr class="table-warning">
                             <td colspan="2"><strong>Subtotal da Categoria</strong></td>
                             <td><strong>R$ {{ "%.2f"|format(categoria_total_despesa) }}</strong></td>
-                            <td colspan="3"></td>
+                            <td colspan="4"></td>
                           </tr>
                           
                           <!-- Linha para adicionar nova despesa na categoria -->
                           <tr class="table-light">
-                            <td colspan="6">
+                            <td colspan="7">
                               <button type="button" class="btn btn-sm btn-outline-danger w-100" 
                                       onclick="abrirModalDespesa('', '{{ categoria.id_categoria_despesa }}', '', '{{ categoria.nome }}', 'false', '')" 
                                       title="Incluir Nova Despesa">
@@ -768,6 +796,13 @@
             <div class="col-12">
               <label class="form-label">Observações</label>
               <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="2"></textarea>
+            </div>
+            
+            <div class="col-12">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="modal_despesa_cabeca" name="despesa_cabeca">
+                <label class="form-check-label" for="modal_despesa_cabeca">Despesa da Cabeça</label>
+              </div>
             </div>
           </div>
         </div>
@@ -1512,6 +1547,7 @@ function salvarDespesa(despesaId, isFixa) {
     var forma = document.getElementById('despesa_forma_' + despesaId).value;
     var pagoPor = document.getElementById('despesa_pago_por_' + despesaId).value;
     var observacoes = document.getElementById('despesa_obs_' + despesaId).value;
+    var despesaCabeca = document.getElementById('despesa_cabeca_' + despesaId).checked;
     
     if (!data || !valor) {
         alert('Data e valor são obrigatórios!');
@@ -1530,7 +1566,8 @@ function salvarDespesa(despesaId, isFixa) {
                 forma_pagamento: forma,
                 pago_por: pagoPor,
                 observacoes: observacoes,
-                is_fixa: isFixa
+                is_fixa: isFixa,
+                despesa_cabeca: despesaCabeca
             };
             
             return fetch('/eventos/' + eventoId + '/salvar-despesa', {
@@ -1614,15 +1651,19 @@ function esconderCamposDespesa(despesaId, dadosDespesa, fornecedorNome) {
         '<span class="badge bg-' + statusBadge + '" style="font-size: 10px;">' + 
         dadosDespesa.status_pagamento.charAt(0).toUpperCase() + dadosDespesa.status_pagamento.slice(1) + '</span>';
     
-    // Forma (índice 5)
-    cells[5].querySelector('.despesa-display').innerHTML = 
+    // Despesa da Cabeça (índice 5)
+    var despesaCabecaCheckbox = cells[5].querySelector('.despesa-display input[type="checkbox"]');
+    despesaCabecaCheckbox.checked = dadosDespesa.despesa_cabeca;
+    
+    // Forma (índice 6)
+    cells[6].querySelector('.despesa-display').innerHTML = 
         dadosDespesa.forma_pagamento.charAt(0).toUpperCase() + dadosDespesa.forma_pagamento.slice(1);
     
-    // Pago Por (índice 6)
-    cells[6].querySelector('.despesa-display').innerHTML = dadosDespesa.pago_por || '-';
+    // Pago Por (índice 7)
+    cells[7].querySelector('.despesa-display').innerHTML = dadosDespesa.pago_por || '-';
     
-    // Observações (índice 7)
-    cells[7].querySelector('.despesa-display').innerHTML = dadosDespesa.observacoes || '-';
+    // Observações (índice 8)
+    cells[8].querySelector('.despesa-display').innerHTML = dadosDespesa.observacoes || '-';
 }
 
 // Função para formatar data para formato brasileiro
@@ -2056,6 +2097,7 @@ function editarDespesaModal(button) {
     const forma = button.getAttribute('data-forma');
     const pagoPor = button.getAttribute('data-pago-por');
     const obs = button.getAttribute('data-obs');
+    const despesaCabeca = button.getAttribute('data-despesa-cabeca') === 'true';
     
     // Debug logs
     console.log('=== DEBUG MODAL EDIÇÃO ===');
@@ -2073,6 +2115,7 @@ function editarDespesaModal(button) {
     console.log('Forma:', forma);
     console.log('Pago Por:', pagoPor);
     console.log('Obs:', obs);
+    console.log('Despesa da Cabeça:', despesaCabeca);
     
     // Limpar formulário
     const form = document.querySelector('#modalAdicionarDespesa form');
@@ -2088,6 +2131,7 @@ function editarDespesaModal(button) {
     document.getElementById('modal_despesa_forma').value = forma || 'débito';
     document.getElementById('modal_despesa_pago_por').value = pagoPor || '';
     document.getElementById('modal_despesa_obs').value = obs || '';
+    document.getElementById('modal_despesa_cabeca').checked = despesaCabeca;
     
     // Carregar despesas da categoria e selecionar a correta
     if (categoriaId && despesaId) {
@@ -2146,7 +2190,8 @@ function editarDespesaEvento(form, despesaEventoId) {
         status_pagamento: formData.get('status_pagamento'),
         forma_pagamento: formData.get('forma_pagamento'),
         pago_por: formData.get('pago_por'),
-        observacoes: formData.get('observacoes') || ''
+        observacoes: formData.get('observacoes') || '',
+        despesa_cabeca: formData.get('despesa_cabeca') === 'on'
     };
     
     // Desabilitar botão durante envio
@@ -2201,6 +2246,123 @@ function editarDespesaEvento(form, despesaEventoId) {
         titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Adicionar Despesa';
     });
 }
+
+// Função para atualizar despesa da cabeça automaticamente
+function atualizarDespesaCabeca(checkbox) {
+    const despesaEventoId = checkbox.getAttribute('data-despesa-evento-id');
+    // Extrair ID do evento da URL
+    const eventoId = window.location.pathname.match(/\/eventos\/editar\/(\d+)/)?.[1] || 
+                     window.location.pathname.match(/\/eventos\/(\d+)/)?.[1];
+    const despesaCabeca = checkbox.checked;
+    
+    console.log('=== ATUALIZANDO DESPESA CABEÇA ===');
+    console.log('Despesa Evento ID:', despesaEventoId);
+    console.log('Evento ID:', eventoId);
+    console.log('Despesa Cabeça:', despesaCabeca);
+    
+    // Desabilitar o checkbox temporariamente
+    checkbox.disabled = true;
+    
+    // Fazer requisição AJAX
+    fetch(`/eventos/${eventoId}/atualizar-despesa-cabeca/${despesaEventoId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            despesa_cabeca: despesaCabeca
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Resposta do servidor:', data);
+        
+        if (data.success) {
+            // Mostrar mensagem de sucesso discreta
+            mostrarToast(data.message, 'success');
+            console.log(`✅ ${data.message}`);
+        } else {
+            // Reverter o checkbox em caso de erro
+            checkbox.checked = !despesaCabeca;
+            mostrarToast(data.message || 'Erro ao atualizar despesa', 'error');
+            console.error('❌ Erro:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro na requisição:', error);
+        // Reverter o checkbox em caso de erro
+        checkbox.checked = !despesaCabeca;
+        mostrarToast('Erro de conexão ao atualizar despesa', 'error');
+    })
+    .finally(() => {
+        // Reabilitar o checkbox
+        checkbox.disabled = false;
+    });
+}
+
+// Função para mostrar toast/notificação discreta
+function mostrarToast(mensagem, tipo = 'info') {
+    // Criar elemento de toast
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${tipo === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Adicionar ao body
+    document.body.appendChild(toast);
+    
+    // Remover automaticamente após 3 segundos
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// Função para coletar despesas cabeça e adicionar ao formulário
+function incluirDespesaCabecaNoFormulario() {
+    // Limpar campos hidden existentes
+    const container = document.getElementById('despesas-cabeca-hidden');
+    container.innerHTML = '';
+    
+    // Coletar todos os checkboxes de despesa_cabeca marcados
+    const checkboxes = document.querySelectorAll('.despesa-cabeca:checked');
+    console.log('=== INCLUINDO DESPESAS CABEÇA NO FORMULÁRIO ===');
+    console.log('Checkboxes marcados encontrados:', checkboxes.length);
+    
+    checkboxes.forEach((checkbox, index) => {
+        const despesaEventoId = checkbox.getAttribute('data-despesa-evento-id');
+        if (despesaEventoId) {
+            // Criar campo hidden
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'despesa_cabeca_evento[]';
+            hiddenInput.value = despesaEventoId;
+            container.appendChild(hiddenInput);
+            
+            console.log(`Despesa cabeça ${index + 1}: ID ${despesaEventoId}`);
+        }
+    });
+    
+    console.log('Total de despesas cabeça incluídas:', container.children.length);
+}
+
+// Interceptar submit do formulário principal para incluir despesas cabeça
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[method="POST"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Incluir despesas cabeça antes do submit
+            incluirDespesaCabecaNoFormulario();
+            
+            console.log('=== FORMULÁRIO SENDO ENVIADO ===');
+            console.log('Despesas cabeça incluídas no formulário');
+        });
+    }
+});
 
 </script>
 

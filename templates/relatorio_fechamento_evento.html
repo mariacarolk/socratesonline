@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('relatorios_fechamento_evento') }}">Relatórios</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('relatorios_fechamento_evento') }}">Fechamento por Evento</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ evento.nome }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- Cabeçalho do Evento -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Relatório de Fechamento</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <h5 class="text-primary">{{ evento.nome }}</h5>
+                <p class="mb-1"><strong>Cidade:</strong> {{ evento.cidade }}/{{ evento.estado }}</p>
+                <p class="mb-1"><strong>Endereço:</strong> {{ evento.endereco or 'Não informado' }}</p>
+                <p class="mb-1"><strong>Período:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }} até {{ evento.data_fim.strftime('%d/%m/%Y') }}</p>
+                <p class="mb-0"><strong>Produtor:</strong> {{ evento.produtor.nome if evento.produtor else 'Não informado' }}</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <span class="badge bg-{% if evento.status == 'realizado' %}success{% elif evento.status == 'em andamento' %}warning{% else %}secondary{% endif %} fs-6">
+                    {{ evento.status|title }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Despesas de Mídia da Cabeça -->
+<div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-megaphone me-2"></i>Despesas de Mídia da Cabeça</h5>
+    </div>
+    <div class="card-body">
+        {% if despesas_cabeca %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th class="text-end">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for despesa in despesas_cabeca %}
+                        <tr>
+                            <td>{{ despesa.categoria_nome }}</td>
+                            <td class="text-end">R$ {{ "%.2f"|format(despesa.total_categoria)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-warning">
+                            <th>DESPESAS SOBRE O BRUTO</th>
+                            <th class="text-end">R$ {{ "%.2f"|format(total_despesas_bruto)|replace('.', ',')|replace(',', '.', 1) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>Não há despesas de cabeça cadastradas para este evento.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Receitas Gerais -->
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-cash-coin me-2"></i>RECEITAS GERAIS</h5>
+    </div>
+    <div class="card-body">
+        {% if receitas_evento %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Receita</th>
+                            <th>Categoria</th>
+                            <th>Data</th>
+                            <th class="text-end">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for receita in receitas_evento %}
+                        <tr>
+                            <td>{{ receita.receita_nome }}</td>
+                            <td>{{ receita.categoria_nome }}</td>
+                            <td>{{ receita.data.strftime('%d/%m/%Y') }}</td>
+                            <td class="text-end">R$ {{ "%.2f"|format(receita.valor)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-success">
+                            <th colspan="3">TOTAL RECEITAS GERAIS</th>
+                            <th class="text-end">R$ {{ "%.2f"|format(total_receitas)|replace('.', ',')|replace(',', '.', 1) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>Não há receitas cadastradas para este evento.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Cálculos do Fechamento -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>Cálculos do Fechamento</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>TOTAL LÍQUIDO</strong></td>
+                            <td class="text-end"><strong>R$ {{ "%.2f"|format(total_liquido)|replace('.', ',')|replace(',', '.', 1) }}</strong></td>
+                        </tr>
+                        <tr class="text-muted">
+                            <td style="font-size: 0.9em;">(Receitas - Despesas de Cabeça)</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td><strong>50% Show</strong></td>
+                            <td class="text-end"><strong>R$ {{ "%.2f"|format(cinquenta_porcento_show)|replace('.', ',')|replace(',', '.', 1) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Reembolso Mídias Sócrates Online</strong></td>
+                            <td class="text-end"><strong>R$ {{ "%.2f"|format(reembolso_midias)|replace('.', ',')|replace(',', '.', 1) }}</strong></td>
+                        </tr>
+                        <tr class="table-primary">
+                            <td><strong>REPASSE TOTAL</strong></td>
+                            <td class="text-end"><strong>R$ {{ "%.2f"|format(repasse_total)|replace('.', ',')|replace(',', '.', 1) }}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Resumo Financeiro</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td>Total Receitas</td>
+                            <td class="text-end">R$ {{ "%.2f"|format(total_receitas)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Despesas sobre o Bruto</td>
+                            <td class="text-end">R$ {{ "%.2f"|format(total_despesas_bruto)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Total Despesas Sócrates</td>
+                            <td class="text-end">R$ {{ "%.2f"|format(total_despesas_socrates)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                        </tr>
+                        <tr class="table-{% if resultado_show >= 0 %}success{% else %}danger{% endif %}">
+                            <td><strong>Resultado Final</strong></td>
+                            <td class="text-end"><strong>R$ {{ "%.2f"|format(resultado_show)|replace('.', ',')|replace(',', '.', 1) }}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Todas as Despesas por Categoria -->
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Todas as Despesas por Categoria</h5>
+    </div>
+    <div class="card-body">
+        {% if todas_despesas %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for despesa in todas_despesas %}
+                        <tr>
+                            <td>{{ despesa.categoria_nome }}</td>
+                            <td class="text-end">R$ {{ "%.2f"|format(despesa.total_categoria)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-danger">
+                            <th>TOTAL DESPESAS SÓCRATES ONLINE</th>
+                            <th class="text-end">R$ {{ "%.2f"|format(total_despesas_socrates)|replace('.', ',')|replace(',', '.', 1) }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>Não há despesas cadastradas para este evento.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Resultado Final do Show -->
+<div class="card">
+    <div class="card-header bg-{% if resultado_show >= 0 %}success{% else %}danger{% endif %} text-white">
+        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>RESULTADO DO SHOW</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Descrição</th>
+                        <th class="text-end">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Repasse Total</strong></td>
+                        <td class="text-end"><strong>R$ {{ "%.2f"|format(repasse_total)|replace('.', ',')|replace(',', '.', 1) }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total Despesas Sócrates Online</strong></td>
+                        <td class="text-end"><strong>(R$ {{ "%.2f"|format(total_despesas_socrates)|replace('.', ',')|replace(',', '.', 1) }})</strong></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="table-{% if resultado_show >= 0 %}success{% else %}danger{% endif %}">
+                        <th><i class="bi bi-{% if resultado_show >= 0 %}check-circle{% else %}x-circle{% endif %} me-2"></i>RESULTADO FINAL</th>
+                        <th class="text-end fs-5">R$ {{ "%.2f"|format(resultado_show)|replace('.', ',')|replace(',', '.', 1) }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        {% if resultado_show >= 0 %}
+            <div class="alert alert-success mt-3">
+                <i class="bi bi-check-circle me-2"></i><strong>Resultado Positivo!</strong> O evento gerou lucro.
+            </div>
+        {% else %}
+            <div class="alert alert-danger mt-3">
+                <i class="bi bi-exclamation-triangle me-2"></i><strong>Resultado Negativo!</strong> O evento gerou prejuízo.
+            </div>
+        {% endif %}
+        
+        <div class="mt-4 text-center">
+            <a href="{{ url_for('relatorios_fechamento_evento') }}" class="btn btn-primary">
+                <i class="bi bi-arrow-left me-2"></i>Voltar para Lista de Eventos
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-printer me-2"></i>Imprimir Relatório
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .card-header {
+        background-color: #f8f9fa !important;
+        color: #000 !important;
+        border-bottom: 2px solid #000 !important;
+    }
+    
+    .btn, .breadcrumb {
+        display: none !important;
+    }
+    
+    .table th, .table td {
+        border: 1px solid #000 !important;
+    }
+    
+    .alert {
+        border: 1px solid #000 !important;
+    }
+}
+</style>
+{% endblock %} 
