@@ -1,6 +1,6 @@
 ﻿from datetime import date, timedelta, datetime
 import os
-from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify
 from models import (
     Usuario, Circo, CategoriaColaborador, Colaborador, ColaboradorCategoria,
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
@@ -8,7 +8,7 @@ from models import (
     CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, TIPOS_DESPESA
 )
 from forms import (
-    UsuarioForm, RegisterForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
+    UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm
@@ -16,13 +16,11 @@ from forms import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from extensions import db, login_manager
-from sqlalchemy import func, event, text
+from sqlalchemy import func
 from flask_migrate import Migrate
-from werkzeug.utils import secure_filename
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, login_user, login_required, logout_user, current_user
+from flask_login import login_required, current_user
 
-load_dotenv()  # Carrega variÃ¡veis do .env
+load_dotenv()  # Carrega variáveis do .env
 
 app = Flask(__name__)
 env = os.getenv("FLASK_ENV", "development")
@@ -30,11 +28,6 @@ if env == "production":
     app.config.from_object("config.ProductionConfig")
 else:
     app.config.from_object("config.DevelopmentConfig")
-
-# ConfiguraÃ§Ãµes
-app.config['SECRET_KEY'] = 'sua-chave-secreta-aqui'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # InicializaÃ§Ã£o das extensÃµes
 db.init_app(app)
@@ -357,7 +350,7 @@ def editar_colaborador(id):
             categorias_selecionadas = [int(cat_id) for cat_id in categorias_selecionadas if cat_id.isdigit()]
         
         # Debug: Mostrar que categorias foram selecionadas
-        print(f"Categorias selecionadas: {categorias_selecionadas}")
+        
         
         if not categorias_selecionadas:
             flash('Ã‰ necessÃ¡rio selecionar pelo menos uma categoria.', 'danger')
@@ -382,12 +375,7 @@ def editar_colaborador(id):
             
         except Exception as e:
             db.session.rollback()
-            print(f"Erro ao salvar colaborador: {e}")
             flash(f'Erro ao atualizar colaborador: {str(e)}', 'danger')
-    else:
-        # Debug: Mostrar erros de validaÃ§Ã£o
-        if form.errors:
-            print(f"Erros de validaÃ§Ã£o: {form.errors}")
     
     colaboradores = Colaborador.query.all()
     return render_template('colaboradores.html', form=form, colaboradores=colaboradores)
@@ -835,7 +823,7 @@ def listar_eventos():
         data_fim = date.today() + timedelta(days=365)  # Incluir eventos futuros
         data_inicio = date.today() - timedelta(days=90)
     
-    print(f"Filtro aplicado - Período: {period}, Data início: {data_inicio}, Data fim: {data_fim}")
+
     
     # Filtrar eventos baseado no tipo de usuário
     eventos_query = Evento.query.filter(
@@ -851,13 +839,11 @@ def listar_eventos():
     if not is_admin:
         # Produtores veem apenas seus eventos
         eventos_query = eventos_query.filter_by(id_produtor=usuario.colaborador.id_colaborador)
-        print(f"Filtrado para produtor ID: {usuario.colaborador.id_colaborador}")
+
     
     eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
     
-    print(f"Eventos filtrados encontrados: {len(eventos)}")
-    for evento in eventos:
-        print(f"Evento filtrado: {evento.nome}, Data: {evento.data_inicio}, Status: {evento.status}")
+
     
     # Buscar dados para os modais de adição rápida
     categorias_receita = CategoriaReceita.query.all()
@@ -914,7 +900,7 @@ def api_despesas_por_categoria(categoria_id):
         
         return jsonify(despesas_data)
     except Exception as e:
-        print(f"Erro no endpoint despesas-por-categoria: {e}")
+
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/receitas-por-categoria/<int:categoria_id>')
@@ -965,7 +951,7 @@ def salvar_receita_individual(id_evento):
                 return jsonify({'success': False, 'message': 'Valor deve ser maior que zero'})
                 
         except (ValueError, TypeError) as e:
-            print(f"Erro ao converter valor '{data['valor']}': {e}")
+
             return jsonify({'success': False, 'message': 'Valor invÃ¡lido'})
         
         # Converter data
