@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('relatorios_fechamento_evento') }}">Relatórios</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Fechamento por Evento</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-clipboard-check me-2 text-primary"></i>Fechamento por Evento
+    </h2>
+</div>
+
+<!-- Filtros de Data -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Data Início</label>
+                <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio or '' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Data Fim</label>
+                <input type="date" name="data_fim" class="form-control" value="{{ data_fim or '' }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Eventos -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-list me-2"></i>Eventos ({{ total_eventos }})</h5>
+    </div>
+    <div class="card-body">
+        {% if eventos %}
+        <!-- DEBUG: Total de eventos: {{ eventos|length }} -->
+        <div class="row">
+            {% for evento in eventos %}
+            <!-- DEBUG: Evento - {{ evento.nome|default('SEM NOME') }} -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm border-0 rounded-3">
+                    <div class="card-header bg-gradient-primary text-white py-3">
+                        <h6 class="card-title mb-0 text-truncate" title="{{ evento.nome }}" style="color: white !important; font-weight: bold !important;">
+                            {{ evento.nome|default('Nome não disponível') }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <i class="bi bi-calendar-event text-primary me-2"></i>
+                            <small>{{ evento.data_inicio.strftime('%d/%m/%Y') }} até {{ evento.data_fim.strftime('%d/%m/%Y') }}</small>
+                        </div>
+                        <div class="mb-2">
+                            <i class="bi bi-geo-alt text-primary me-2"></i>
+                            <small>{{ evento.cidade }}/{{ evento.estado }}</small>
+                        </div>
+                        <div class="mb-2">
+                            <i class="bi bi-info-circle text-primary me-2"></i>
+                            <small>
+                                <span class="badge bg-{% if evento.status == 'realizado' %}success{% elif evento.status == 'em andamento' %}warning{% else %}secondary{% endif %}">
+                                    {{ evento.status|title }}
+                                </span>
+                            </small>
+                        </div>
+                        <a href="{{ url_for('relatorio_fechamento_evento', id_evento=evento.id_evento) }}" class="btn btn-outline-warning btn-sm mt-2 w-100">
+                            <i class="bi bi-clipboard-check me-1"></i> Ver Relatório de Fechamento
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>Nenhum evento encontrado no período selecionado.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

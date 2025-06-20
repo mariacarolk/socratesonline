@@ -16,7 +16,7 @@ from forms import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from extensions import db, login_manager
-from sqlalchemy import func
+from sqlalchemy import func, event, text
 from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
@@ -1584,13 +1584,88 @@ def editar_evento(id):
 
 @app.route('/eventos/excluir/<int:id>')
 def excluir_evento(id):
-    if session.get('categoria', '').lower() != 'administrativo':
-        flash('VocÃª nÃ£o tem permissÃ£o para excluir eventos.', 'danger')
-        return redirect(url_for('listar_eventos'))
-    evento = Evento.query.get_or_404(id)
-    db.session.delete(evento)
-    db.session.commit()
-    flash('Evento excluÃ­do com sucesso!', 'success')
+    try:
+        print(f"Tentando excluir evento com ID: {id}")
+        
+        # Buscar o evento primeiro
+        evento = Evento.query.get(id)
+        if not evento:
+            flash('Evento não encontrado!', 'error')
+            return redirect(url_for('listar_eventos'))
+        
+        nome_evento = evento.nome
+        print(f"Deletando dependências do evento {nome_evento}...")
+        
+        # Fechar a sessão atual para liberar locks
+        db.session.close()
+        
+        # Criar uma nova sessão para as operações de exclusão
+        db.session.execute(text("PRAGMA foreign_keys=OFF"))
+        db.session.execute(text("PRAGMA journal_mode=DELETE"))
+        
+        # Deletar todas as dependências
+        print("Iniciando exclusão das dependências...")
+        
+        # 1. Despesas do evento
+        despesas_deletadas = db.session.execute(
+            text("DELETE FROM despesas_evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Despesas deletadas: {despesas_deletadas}")
+        
+        # 2. Receitas do evento  
+        receitas_deletadas = db.session.execute(
+            text("DELETE FROM receitas_evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Receitas deletadas: {receitas_deletadas}")
+        
+        # 3. Equipe do evento
+        equipe_deletada = db.session.execute(
+            text("DELETE FROM equipe_evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Equipe deletada: {equipe_deletada}")
+        
+        # 4. Elenco do evento
+        elenco_deletado = db.session.execute(
+            text("DELETE FROM elenco_evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Elenco deletado: {elenco_deletado}")
+        
+        # 5. Fornecedores do evento
+        fornecedores_deletados = db.session.execute(
+            text("DELETE FROM fornecedor_evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Fornecedores deletados: {fornecedores_deletados}")
+        
+        # 6. Deletar o evento principal
+        evento_deletado = db.session.execute(
+            text("DELETE FROM evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Evento deletado: {evento_deletado}")
+        
+        # Commit das alterações
+        db.session.commit()
+        
+        # Reabilitar foreign keys
+        db.session.execute(text("PRAGMA foreign_keys=ON"))
+        db.session.commit()
+        
+        print(f"Evento '{nome_evento}' excluído com sucesso!")
+        flash(f'Evento "{nome_evento}" excluído com sucesso!', 'success')
+        
+    except Exception as e:
+        print(f"Erro ao deletar evento: {e}")
+        try:
+            db.session.rollback()
+        except:
+            pass
+        flash(f'Erro ao excluir evento: {str(e)}', 'error')
+    
     return redirect(url_for('listar_eventos'))
 
 @app.route('/relatorios/lucratividade-periodo')
@@ -1814,6 +1889,172 @@ def relatorio_faturamento_evento(id_evento):
         is_admin=is_admin,
         usuario=usuario
     )
+
+@app.route('/relatorios/fechamento-evento')
+def relatorios_fechamento_evento():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Obter informações do usuário logado
+    usuario = Usuario.query.get(session['user_id'])
+    if not usuario or not usuario.colaborador:
+        flash('Erro ao carregar informações do usuário.', 'danger')
+        return redirect(url_for('login'))
+    
+    # Verificar se é administrador
+    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    
+    # Verificar se tem permissão (administrador ou produtor)
+    if not is_admin:
+        is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
+        if not is_produtor:
+            flash('Acesso restrito a administradores e produtores.', 'danger')
+            return redirect(url_for('dashboard'))
+
+    # Filtros de data
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    # Query base de eventos
+    eventos_query = Evento.query.filter(Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado']))
+    
+    if not is_admin:
+        # Produtores veem apenas seus eventos
+        eventos_query = eventos_query.filter_by(id_produtor=usuario.colaborador.id_colaborador)
+    
+    # Aplicar filtros de data se fornecidos
+    if data_inicio:
+        try:
+            data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            eventos_query = eventos_query.filter(Evento.data_inicio >= data_inicio_obj)
+        except ValueError:
+            data_inicio = None
+    
+    if data_fim:
+        try:
+            data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            eventos_query = eventos_query.filter(Evento.data_inicio <= data_fim_obj)
+        except ValueError:
+            data_fim = None
+    
+    eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
+    
+    return render_template('relatorios_fechamento_evento.html', 
+                         eventos=eventos,
+                         total_eventos=len(eventos),
+                         data_inicio=data_inicio,
+                         data_fim=data_fim,
+                         is_admin=is_admin,
+                         usuario=usuario)
+
+@app.route('/relatorios/fechamento-evento/<int:id_evento>')
+def relatorio_fechamento_evento(id_evento):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Obter informações do usuário logado
+    usuario = Usuario.query.get(session['user_id'])
+    if not usuario or not usuario.colaborador:
+        flash('Erro ao carregar informações do usuário.', 'danger')
+        return redirect(url_for('login'))
+    
+    # Verificar se é administrador
+    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+
+    # Buscar o evento
+    evento = Evento.query.get_or_404(id_evento)
+    
+    # Verificar se o usuário tem permissão para ver este evento
+    if not is_admin:
+        # Verificar se é produtor
+        is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
+        if not is_produtor:
+            flash('Acesso restrito a administradores e produtores.', 'danger')
+            return redirect(url_for('dashboard'))
+        
+        # Verificar se é o produtor deste evento
+        if evento.id_produtor != usuario.colaborador.id_colaborador:
+            flash('Você só pode visualizar relatórios dos seus próprios eventos.', 'danger')
+            return redirect(url_for('relatorios_fechamento_evento'))
+    
+    # Buscar despesas de cabeça agrupadas por categoria
+    despesas_cabeca_query = db.session.query(
+        CategoriaDespesa.nome.label('categoria_nome'),
+        func.sum(DespesaEvento.valor).label('total_categoria')
+    ).join(
+        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).filter(
+        DespesaEvento.id_evento == id_evento,
+        DespesaEvento.despesa_cabeca == True
+    ).group_by(CategoriaDespesa.nome).all()
+    
+    # Calcular total das despesas sobre o bruto
+    total_despesas_bruto = sum(item.total_categoria for item in despesas_cabeca_query)
+    
+    # Buscar todas as receitas do evento
+    receitas_evento = db.session.query(
+        Receita.nome.label('receita_nome'),
+        CategoriaReceita.nome.label('categoria_nome'),
+        ReceitaEvento.valor,
+        ReceitaEvento.data
+    ).join(
+        Receita, ReceitaEvento.id_receita == Receita.id_receita
+    ).join(
+        CategoriaReceita, Receita.id_categoria_receita == CategoriaReceita.id_categoria_receita
+    ).filter(
+        ReceitaEvento.id_evento == id_evento
+    ).all()
+    
+    # Calcular total das receitas
+    total_receitas = sum(receita.valor for receita in receitas_evento)
+    
+    # Calcular total líquido (receitas - despesas de cabeça)
+    total_liquido = total_receitas - total_despesas_bruto
+    
+    # Calcular 50% show
+    cinquenta_porcento_show = total_liquido / 2
+    
+    # Reembolso mídias sócrates online = despesas sobre o bruto
+    reembolso_midias = total_despesas_bruto
+    
+    # Repasse total = 50% show + reembolso mídias
+    repasse_total = cinquenta_porcento_show + reembolso_midias
+    
+    # Buscar todas as despesas do evento agrupadas por categoria
+    todas_despesas_query = db.session.query(
+        CategoriaDespesa.nome.label('categoria_nome'),
+        func.sum(DespesaEvento.valor).label('total_categoria')
+    ).join(
+        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).filter(
+        DespesaEvento.id_evento == id_evento
+    ).group_by(CategoriaDespesa.nome).all()
+    
+    # Total de todas as despesas Sócrates Online
+    total_despesas_socrates = sum(item.total_categoria for item in todas_despesas_query)
+    
+    # Resultado do show = repasse total - total despesas sócrates
+    resultado_show = repasse_total - total_despesas_socrates
+    
+    return render_template('relatorio_fechamento_evento.html', 
+                         evento=evento,
+                         usuario=usuario,
+                         is_admin=is_admin,
+                         despesas_cabeca=despesas_cabeca_query,
+                         total_despesas_bruto=total_despesas_bruto,
+                         receitas_evento=receitas_evento,
+                         total_receitas=total_receitas,
+                         total_liquido=total_liquido,
+                         cinquenta_porcento_show=cinquenta_porcento_show,
+                         reembolso_midias=reembolso_midias,
+                         repasse_total=repasse_total,
+                         todas_despesas=todas_despesas_query,
+                         total_despesas_socrates=total_despesas_socrates,
+                         resultado_show=resultado_show)
 
 @app.route('/cadastros/categorias-veiculo', methods=['GET', 'POST'])
 def cadastrar_categoria_veiculo():
@@ -2755,6 +2996,51 @@ def api_fornecedores_busca():
             'message': f'Erro ao buscar fornecedores: {str(e)}'
         }), 500
 
+@app.route('/eventos/<int:id_evento>/atualizar-despesa-cabeca/<int:despesa_evento_id>', methods=['PUT'])
+def atualizar_despesa_cabeca(id_evento, despesa_evento_id):
+    """Atualiza apenas o campo despesa_cabeca de uma despesa específica do evento"""
+    try:
+        data = request.get_json()
+        despesa_cabeca = data.get('despesa_cabeca', False)
+        
+        print(f"=== ATUALIZANDO DESPESA CABEÇA ===")
+        print(f"Evento ID: {id_evento}")
+        print(f"Despesa Evento ID: {despesa_evento_id}")
+        print(f"Nova flag despesa_cabeca: {despesa_cabeca}")
+        
+        # Buscar a despesa do evento
+        despesa_evento = DespesaEvento.query.filter_by(
+            id_despesa_evento=despesa_evento_id,
+            id_evento=id_evento
+        ).first()
+        
+        if not despesa_evento:
+            return jsonify({
+                'success': False, 
+                'message': 'Despesa do evento não encontrada'
+            }), 404
+        
+        # Atualizar apenas o campo despesa_cabeca
+        despesa_evento.despesa_cabeca = despesa_cabeca
+        
+        db.session.commit()
+        
+        print(f"✅ Despesa cabeça atualizada: {despesa_evento.despesa.nome} - Cabeça: {despesa_cabeca}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Despesa {"marcada" if despesa_cabeca else "desmarcada"} como despesa da cabeça',
+            'despesa_cabeca': despesa_cabeca,
+            'despesa_nome': despesa_evento.despesa.nome
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao atualizar despesa cabeça: {e}")
+        return jsonify({
+            'success': False, 
+            'message': f'Erro ao atualizar: {str(e)}'
+        }), 500
 
 # Rota para servir os arquivos
 if __name__ == '__main__':
