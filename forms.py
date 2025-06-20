@@ -1,10 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField
+from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField
 from wtforms.fields.datetime import DateField
 from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional
-from wtforms import StringField, TextAreaField, SelectMultipleField
 from wtforms.widgets import CheckboxInput, ListWidget
-from flask_wtf.file import FileField, FileAllowed
 
 class MultiCheckboxField(SelectMultipleField):
     widget = ListWidget(prefix_label=False)
@@ -27,11 +25,7 @@ class UsuarioForm(FlaskForm):
         if not self.is_edit:
             self.password.validators.insert(0, InputRequired())
 
-class RegisterForm(FlaskForm):
-    nome = StringField('Nome', validators=[InputRequired()])
-    email = StringField('Email', validators=[InputRequired()])
-    password = StringField('Senha', validators=[InputRequired()])
-    categoria = SelectField('Categoria', coerce=int)
+
 
 class CircoForm(FlaskForm):
     nome = StringField('Nome', validators=[InputRequired()])
