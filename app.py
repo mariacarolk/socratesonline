@@ -1199,6 +1199,14 @@ def novo_evento():
             } for d in despesas_variaveis]
         }
 
+    # Criar estrutura vazia para despesas_evento_por_categoria (novo evento não tem despesas ainda)
+    despesas_evento_por_categoria = {}
+    for categoria in categorias_despesa:
+        despesas_evento_por_categoria[categoria.id_categoria_despesa] = {
+            'fixas': [],
+            'variaveis': []
+        }
+
     return render_template(
         'novo_evento.html',
         form=form,
@@ -1206,6 +1214,7 @@ def novo_evento():
         categorias_receita_dict=categorias_receita_dict,
         categorias_despesa=categorias_despesa,
         categorias_despesa_dict=categorias_despesa_dict,
+        despesas_evento_por_categoria=despesas_evento_por_categoria,  # Adicionando a variável faltante
         fornecedores=[{'id_fornecedor': f.id_fornecedor, 'nome': f.nome} for f in Fornecedor.query.all()],
         receitas_salvas=[],
         despesas_salvas=[],
@@ -1963,24 +1972,49 @@ def relatorio_fechamento_evento(id_evento):
             flash('Você só pode visualizar relatórios dos seus próprios eventos.', 'danger')
             return redirect(url_for('relatorios_fechamento_evento'))
     
-    # Buscar despesas de cabeça agrupadas por categoria
-    despesas_cabeca_query = db.session.query(
+    # Buscar despesas de cabeça agrupadas por categoria COM DETALHES
+    despesas_cabeca_detalhadas = db.session.query(
         CategoriaDespesa.nome.label('categoria_nome'),
-        func.sum(DespesaEvento.valor).label('total_categoria')
+        Despesa.nome.label('despesa_nome'),
+        DespesaEvento.valor,
+        DespesaEvento.data,
+        Fornecedor.nome.label('fornecedor_nome')
     ).join(
         Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
     ).join(
         CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).outerjoin(
+        Fornecedor, DespesaEvento.id_fornecedor == Fornecedor.id_fornecedor
     ).filter(
         DespesaEvento.id_evento == id_evento,
         DespesaEvento.despesa_cabeca == True
-    ).group_by(CategoriaDespesa.nome).all()
+    ).all()
+    
+    # Agrupar despesas de cabeça por categoria
+    despesas_cabeca_agrupadas = {}
+    for item in despesas_cabeca_detalhadas:
+        if item.categoria_nome not in despesas_cabeca_agrupadas:
+            despesas_cabeca_agrupadas[item.categoria_nome] = {
+                'categoria_nome': item.categoria_nome,
+                'total_categoria': 0,
+                'itens': []
+            }
+        
+        despesas_cabeca_agrupadas[item.categoria_nome]['total_categoria'] += item.valor
+        despesas_cabeca_agrupadas[item.categoria_nome]['itens'].append({
+            'despesa_nome': item.despesa_nome,
+            'valor': item.valor,
+            'data': item.data,
+            'fornecedor_nome': item.fornecedor_nome
+        })
+    
+    despesas_cabeca = list(despesas_cabeca_agrupadas.values())
     
     # Calcular total das despesas sobre o bruto
-    total_despesas_bruto = sum(item.total_categoria for item in despesas_cabeca_query)
+    total_despesas_bruto = sum(item['total_categoria'] for item in despesas_cabeca)
     
-    # Buscar todas as receitas do evento
-    receitas_evento = db.session.query(
+    # Buscar todas as receitas do evento COM AGRUPAMENTO POR CATEGORIA
+    receitas_detalhadas = db.session.query(
         Receita.nome.label('receita_nome'),
         CategoriaReceita.nome.label('categoria_nome'),
         ReceitaEvento.valor,
@@ -1993,8 +2027,27 @@ def relatorio_fechamento_evento(id_evento):
         ReceitaEvento.id_evento == id_evento
     ).all()
     
+    # Agrupar receitas por categoria
+    receitas_agrupadas = {}
+    for item in receitas_detalhadas:
+        if item.categoria_nome not in receitas_agrupadas:
+            receitas_agrupadas[item.categoria_nome] = {
+                'categoria_nome': item.categoria_nome,
+                'total_categoria': 0,
+                'itens': []
+            }
+        
+        receitas_agrupadas[item.categoria_nome]['total_categoria'] += item.valor
+        receitas_agrupadas[item.categoria_nome]['itens'].append({
+            'receita_nome': item.receita_nome,
+            'valor': item.valor,
+            'data': item.data
+        })
+    
+    receitas_evento = list(receitas_agrupadas.values())
+    
     # Calcular total das receitas
-    total_receitas = sum(receita.valor for receita in receitas_evento)
+    total_receitas = sum(categoria['total_categoria'] for categoria in receitas_evento)
     
     # Calcular total líquido (receitas - despesas de cabeça)
     total_liquido = total_receitas - total_despesas_bruto
@@ -2008,20 +2061,45 @@ def relatorio_fechamento_evento(id_evento):
     # Repasse total = 50% show + reembolso mídias
     repasse_total = cinquenta_porcento_show + reembolso_midias
     
-    # Buscar todas as despesas do evento agrupadas por categoria
-    todas_despesas_query = db.session.query(
+    # Buscar todas as despesas do evento agrupadas por categoria COM DETALHES
+    todas_despesas_detalhadas = db.session.query(
         CategoriaDespesa.nome.label('categoria_nome'),
-        func.sum(DespesaEvento.valor).label('total_categoria')
+        Despesa.nome.label('despesa_nome'),
+        DespesaEvento.valor,
+        DespesaEvento.data,
+        Fornecedor.nome.label('fornecedor_nome')
     ).join(
         Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
     ).join(
         CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).outerjoin(
+        Fornecedor, DespesaEvento.id_fornecedor == Fornecedor.id_fornecedor
     ).filter(
         DespesaEvento.id_evento == id_evento
-    ).group_by(CategoriaDespesa.nome).all()
+    ).all()
+    
+    # Agrupar todas as despesas por categoria
+    todas_despesas_agrupadas = {}
+    for item in todas_despesas_detalhadas:
+        if item.categoria_nome not in todas_despesas_agrupadas:
+            todas_despesas_agrupadas[item.categoria_nome] = {
+                'categoria_nome': item.categoria_nome,
+                'total_categoria': 0,
+                'itens': []
+            }
+        
+        todas_despesas_agrupadas[item.categoria_nome]['total_categoria'] += item.valor
+        todas_despesas_agrupadas[item.categoria_nome]['itens'].append({
+            'despesa_nome': item.despesa_nome,
+            'valor': item.valor,
+            'data': item.data,
+            'fornecedor_nome': item.fornecedor_nome
+        })
+    
+    todas_despesas = list(todas_despesas_agrupadas.values())
     
     # Total de todas as despesas Sócrates Online
-    total_despesas_socrates = sum(item.total_categoria for item in todas_despesas_query)
+    total_despesas_socrates = sum(categoria['total_categoria'] for categoria in todas_despesas)
     
     # Resultado do show = repasse total - total despesas sócrates
     resultado_show = repasse_total - total_despesas_socrates
@@ -2030,7 +2108,7 @@ def relatorio_fechamento_evento(id_evento):
                          evento=evento,
                          usuario=usuario,
                          is_admin=is_admin,
-                         despesas_cabeca=despesas_cabeca_query,
+                         despesas_cabeca=despesas_cabeca,
                          total_despesas_bruto=total_despesas_bruto,
                          receitas_evento=receitas_evento,
                          total_receitas=total_receitas,
@@ -2038,7 +2116,7 @@ def relatorio_fechamento_evento(id_evento):
                          cinquenta_porcento_show=cinquenta_porcento_show,
                          reembolso_midias=reembolso_midias,
                          repasse_total=repasse_total,
-                         todas_despesas=todas_despesas_query,
+                         todas_despesas=todas_despesas,
                          total_despesas_socrates=total_despesas_socrates,
                          resultado_show=resultado_show)
 
