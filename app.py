@@ -16,7 +16,7 @@ from forms import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from extensions import db, login_manager
-from sqlalchemy import func
+from sqlalchemy import func, text
 from flask_migrate import Migrate
 from flask_login import login_required, current_user
 
@@ -2013,6 +2013,10 @@ def relatorio_fechamento_evento(id_evento):
     # Calcular total das despesas sobre o bruto
     total_despesas_bruto = sum(item['total_categoria'] for item in despesas_cabeca)
     
+    # Calcular reembolso mídias (despesas de cabeça EXCLUINDO categoria "PAGAS PELO CIRCO")
+    reembolso_midias = sum(item['total_categoria'] for item in despesas_cabeca 
+                          if item['categoria_nome'].upper() != 'PAGAS PELO CIRCO')
+    
     # Buscar todas as receitas do evento COM AGRUPAMENTO POR CATEGORIA
     receitas_detalhadas = db.session.query(
         Receita.nome.label('receita_nome'),
@@ -2055,9 +2059,6 @@ def relatorio_fechamento_evento(id_evento):
     # Calcular 50% show
     cinquenta_porcento_show = total_liquido / 2
     
-    # Reembolso mídias sócrates online = despesas sobre o bruto
-    reembolso_midias = total_despesas_bruto
-    
     # Repasse total = 50% show + reembolso mídias
     repasse_total = cinquenta_porcento_show + reembolso_midias
     
@@ -2098,8 +2099,9 @@ def relatorio_fechamento_evento(id_evento):
     
     todas_despesas = list(todas_despesas_agrupadas.values())
     
-    # Total de todas as despesas Sócrates Online
-    total_despesas_socrates = sum(categoria['total_categoria'] for categoria in todas_despesas)
+    # Total de todas as despesas Sócrates Online (EXCLUINDO categoria "PAGAS PELO CIRCO")
+    total_despesas_socrates = sum(categoria['total_categoria'] for categoria in todas_despesas
+                                 if categoria['categoria_nome'].upper() != 'PAGAS PELO CIRCO')
     
     # Resultado do show = repasse total - total despesas sócrates
     resultado_show = repasse_total - total_despesas_socrates

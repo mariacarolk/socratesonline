@@ -186,7 +186,8 @@
                 </div>
             </div>
 
-            <!-- Seção de Receitas -->
+            <!-- Seção de Receitas - Apenas no modo edição -->
+            {% if is_editing %}
             <div class="row mb-3">
               <div class="col-12">
                 <h5 class="text-success mb-2">
@@ -311,8 +312,10 @@
             {% endfor %}
               </div>
             </div>
+            {% endif %}
 
-            <!-- Seção de Despesas -->
+            <!-- Seção de Despesas - Apenas no modo edição -->
+            {% if is_editing %}
             <div class="row mb-3">
               <div class="col-12">
                 <h5 class="text-danger mb-2">
@@ -640,6 +643,7 @@
                 {% endfor %}
               </div>
             </div>
+            {% endif %}
             
             <div class="d-flex justify-content-end gap-2">
               <a href="{{ url_for('listar_eventos') }}" class="btn btn-secondary">
