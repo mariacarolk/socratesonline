@@ -39,6 +39,113 @@ migrate = Migrate(app, db)
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
+def calcular_lucro_evento(id_evento):
+    """
+    Função unificada para calcular o lucro real de um evento
+    usando a mesma lógica do relatório de fechamento.
+    
+    Returns:
+        dict: {
+            'total_receitas': float,
+            'despesas_cabeca': float,
+            'total_liquido': float,
+            'cinquenta_porcento_show': float,
+            'reembolso_midias': float,
+            'repasse_total': float,
+            'total_despesas_socrates': float,
+            'resultado_show': float (lucro real),
+            'total_despesas': float (para exibição)
+        }
+    """
+    # Calcular receitas do evento
+    total_receitas = db.session.query(func.sum(ReceitaEvento.valor)).filter_by(id_evento=id_evento).scalar() or 0
+    
+    # Calcular despesas de cabeça
+    despesas_cabeca = db.session.query(func.sum(DespesaEvento.valor)).filter_by(
+        id_evento=id_evento, 
+        despesa_cabeca=True
+    ).scalar() or 0
+    
+    # Calcular total líquido (receitas - despesas de cabeça)
+    total_liquido = total_receitas - despesas_cabeca
+    
+    # Calcular 50% show
+    cinquenta_porcento_show = total_liquido / 2
+    
+    # Calcular reembolso mídias (despesas de cabeça EXCLUINDO categoria "PAGAS PELO CIRCO")
+    reembolso_midias = db.session.query(func.sum(DespesaEvento.valor)).join(
+        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).filter(
+        DespesaEvento.id_evento == id_evento,
+        DespesaEvento.despesa_cabeca == True,
+        CategoriaDespesa.nome != 'PAGAS PELO CIRCO'
+    ).scalar() or 0
+    
+    # Repasse total = 50% show + reembolso mídias
+    repasse_total = cinquenta_porcento_show + reembolso_midias
+    
+    # Total de todas as despesas Sócrates Online (EXCLUINDO categoria "PAGAS PELO CIRCO")
+    total_despesas_socrates = db.session.query(func.sum(DespesaEvento.valor)).join(
+        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).filter(
+        DespesaEvento.id_evento == id_evento,
+        CategoriaDespesa.nome != 'PAGAS PELO CIRCO'
+    ).scalar() or 0
+    
+    # Resultado do show = repasse total - total despesas sócrates (LUCRO REAL)
+    resultado_show = repasse_total - total_despesas_socrates
+    
+    # Total de todas as despesas para exibição
+    total_despesas = db.session.query(func.sum(DespesaEvento.valor)).filter_by(id_evento=id_evento).scalar() or 0
+    
+    return {
+        'total_receitas': float(total_receitas),
+        'despesas_cabeca': float(despesas_cabeca),
+        'total_liquido': float(total_liquido),
+        'cinquenta_porcento_show': float(cinquenta_porcento_show),
+        'reembolso_midias': float(reembolso_midias),
+        'repasse_total': float(repasse_total),
+        'total_despesas_socrates': float(total_despesas_socrates),
+        'resultado_show': float(resultado_show),
+        'total_despesas': float(total_despesas)
+    }
+
+def calcular_lucro_simples(id_evento):
+    """
+    Função simplificada que retorna apenas o lucro do evento.
+    Útil para casos onde só precisamos do valor final.
+    
+    Returns:
+        float: Lucro real do evento (resultado do show)
+    """
+    calculo = calcular_lucro_evento(id_evento)
+    return calculo['resultado_show']
+
+def obter_datas_filtro_padrao(data_inicio_param=None, data_fim_param=None):
+    """
+    Função utilitária para definir datas padrão dos filtros.
+    Se não fornecidas, usa os últimos 90 dias como padrão.
+    
+    Args:
+        data_inicio_param: Data de início fornecida pelo usuário
+        data_fim_param: Data de fim fornecida pelo usuário
+        
+    Returns:
+        tuple: (data_inicio, data_fim) como strings no formato YYYY-MM-DD
+    """
+    if data_inicio_param and data_fim_param:
+        return data_inicio_param, data_fim_param
+    
+    # Definir padrão: últimos 90 dias
+    data_fim = date.today()
+    data_inicio = data_fim - timedelta(days=90)
+    
+    return data_inicio.strftime('%Y-%m-%d'), data_fim.strftime('%Y-%m-%d')
+
 @app.route('/')
 def dashboard():
     if 'user_id' not in session:
@@ -127,7 +234,7 @@ def dashboard():
         current += timedelta(days=1)
 
     # Filtro de datas da lista de eventos do dashboard
-    eventos_period = request.args.get('eventos_period', '7dias')
+    eventos_period = request.args.get('eventos_period', '90dias')  # Mudança: padrão para 90 dias
     if eventos_period == 'hoje':
         eventos_data_inicio = eventos_data_fim = date.today()
     elif eventos_period == 'ontem':
@@ -135,6 +242,13 @@ def dashboard():
     elif eventos_period == '7dias':
         eventos_data_fim = date.today()
         eventos_data_inicio = eventos_data_fim - timedelta(days=6)
+    elif eventos_period == '30dias':
+        eventos_data_fim = date.today()
+        eventos_data_inicio = eventos_data_fim - timedelta(days=30)
+    elif eventos_period == '90dias':
+        # Incluir eventos futuros também
+        eventos_data_fim = date.today() + timedelta(days=365)  # Eventos futuros até 1 ano
+        eventos_data_inicio = date.today() - timedelta(days=90)  # Eventos passados até 90 dias
     elif eventos_period == 'mes':
         eventos_data_fim = date.today()
         eventos_data_inicio = eventos_data_fim.replace(day=1)
@@ -145,11 +259,13 @@ def dashboard():
             eventos_data_inicio = datetime.strptime(eventos_data_inicio, '%Y-%m-%d').date()
             eventos_data_fim = datetime.strptime(eventos_data_fim, '%Y-%m-%d').date()
         else:
-            eventos_data_fim = date.today()
-            eventos_data_inicio = eventos_data_fim - timedelta(days=6)
+            # Se custom mas sem datas, usar 90 dias
+            eventos_data_fim = date.today() + timedelta(days=365)
+            eventos_data_inicio = date.today() - timedelta(days=90)
     else:
-        eventos_data_fim = date.today()
-        eventos_data_inicio = eventos_data_fim - timedelta(days=6)
+        # Default: últimos 90 dias + eventos futuros
+        eventos_data_fim = date.today() + timedelta(days=365)
+        eventos_data_inicio = date.today() - timedelta(days=90)
 
     # Filtrar eventos baseado no tipo de usuÃ¡rio
     eventos_query = Evento.query.filter(Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado']))
@@ -1777,9 +1893,31 @@ def relatorios_faturamento_evento():
         if not is_produtor:
             flash('Acesso restrito a administradores e produtores.', 'danger')
             return redirect(url_for('dashboard'))
+
+    # Processar período selecionado
+    period = request.args.get('period', '90dias')
     
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
+    if period == 'custom':
+        data_inicio, data_fim = obter_datas_filtro_padrao(
+            request.args.get('data_inicio'),
+            request.args.get('data_fim')
+        )
+    else:
+        # Definir datas baseado no período selecionado
+        data_fim = date.today()
+        if period == 'hoje':
+            data_inicio = data_fim
+        elif period == 'ontem':
+            data_inicio = data_fim = data_fim - timedelta(days=1)
+        elif period == '7dias':
+            data_inicio = data_fim - timedelta(days=7)
+        elif period == '30dias':
+            data_inicio = data_fim - timedelta(days=30)
+        else:  # 90dias (padrão)
+            data_inicio = data_fim - timedelta(days=90)
+        
+        data_inicio = data_inicio.strftime('%Y-%m-%d')
+        data_fim = data_fim.strftime('%Y-%m-%d')
     
     # Filtrar eventos baseado no tipo de usuÃ¡rio
     eventos_query = Evento.query
@@ -1788,51 +1926,40 @@ def relatorios_faturamento_evento():
         # Produtores veem apenas seus eventos
         eventos_query = eventos_query.filter_by(id_produtor=usuario.colaborador.id_colaborador)
     
-    if data_inicio:
-        eventos_query = eventos_query.filter(Evento.data_inicio >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
-    if data_fim:
-        eventos_query = eventos_query.filter(Evento.data_fim <= datetime.strptime(data_fim, '%Y-%m-%d').date())
+    # Aplicar filtros de data
+    eventos_query = eventos_query.filter(Evento.data_inicio >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
+    eventos_query = eventos_query.filter(Evento.data_fim <= datetime.strptime(data_fim, '%Y-%m-%d').date())
     
     eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
     
-    # Calcular lucratividade dos eventos para o grÃ¡fico
+    # Calcular lucratividade dos eventos usando a função unificada
     eventos_lucratividade = []
     for evento in eventos:
-        # Calcular receitas do evento
-        total_receitas = db.session.query(func.sum(ReceitaEvento.valor)).filter_by(id_evento=evento.id_evento).scalar() or 0
-        
-        # Calcular despesas do evento
-        total_despesas = db.session.query(func.sum(DespesaEvento.valor)).filter_by(id_evento=evento.id_evento).scalar() or 0
-        
-        # Calcular lucro
-        lucro = total_receitas - total_despesas
+        calculo = calcular_lucro_evento(evento.id_evento)
         
         eventos_lucratividade.append({
             'nome': evento.nome,
-            'receitas': float(total_receitas),
-            'despesas': float(total_despesas),
-            'lucro': float(lucro),
+            'receitas': calculo['total_receitas'],
+            'despesas': calculo['total_despesas'],
+            'lucro': calculo['resultado_show'],
             'evento': evento
         })
     
     # Ordenar por lucro (do maior para o menor) e pegar top 10
     eventos_mais_lucrativos = sorted(eventos_lucratividade, key=lambda x: x['lucro'], reverse=True)[:10]
     
-    # Preparar dados para o grÃ¡fico
-    nomes_eventos = [e['nome'][:20] + '...' if len(e['nome']) > 20 else e['nome'] for e in eventos_mais_lucrativos]
+    # Preparar dados para o grÃ¡fico (apenas lucro)
+    nomes_eventos = [e['nome'][:25] + '...' if len(e['nome']) > 25 else e['nome'] for e in eventos_mais_lucrativos]
     lucros_eventos = [e['lucro'] for e in eventos_mais_lucrativos]
-    receitas_eventos = [e['receitas'] for e in eventos_mais_lucrativos]
-    despesas_eventos = [e['despesas'] for e in eventos_mais_lucrativos]
     
     return render_template(
         'relatorios_faturamento_evento.html', 
         eventos=eventos, 
         data_inicio=data_inicio, 
         data_fim=data_fim,
+        period=period,
         nomes_eventos=nomes_eventos,
         lucros_eventos=lucros_eventos,
-        receitas_eventos=receitas_eventos,
-        despesas_eventos=despesas_eventos,
         total_eventos=len(eventos),
         is_admin=is_admin,
         usuario=usuario
@@ -1906,9 +2033,11 @@ def relatorios_fechamento_evento():
             flash('Acesso restrito a administradores e produtores.', 'danger')
             return redirect(url_for('dashboard'))
 
-    # Filtros de data
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
+    # Obter datas do filtro com padrão de 90 dias
+    data_inicio, data_fim = obter_datas_filtro_padrao(
+        request.args.get('data_inicio'),
+        request.args.get('data_fim')
+    )
 
     # Query base de eventos
     eventos_query = Evento.query.filter(Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado']))
@@ -1917,20 +2046,9 @@ def relatorios_fechamento_evento():
         # Produtores veem apenas seus eventos
         eventos_query = eventos_query.filter_by(id_produtor=usuario.colaborador.id_colaborador)
     
-    # Aplicar filtros de data se fornecidos
-    if data_inicio:
-        try:
-            data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            eventos_query = eventos_query.filter(Evento.data_inicio >= data_inicio_obj)
-        except ValueError:
-            data_inicio = None
-    
-    if data_fim:
-        try:
-            data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d').date()
-            eventos_query = eventos_query.filter(Evento.data_inicio <= data_fim_obj)
-        except ValueError:
-            data_fim = None
+    # Aplicar filtros de data
+    eventos_query = eventos_query.filter(Evento.data_inicio >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
+    eventos_query = eventos_query.filter(Evento.data_inicio <= datetime.strptime(data_fim, '%Y-%m-%d').date())
     
     eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
     
@@ -2010,10 +2128,11 @@ def relatorio_fechamento_evento(id_evento):
     
     despesas_cabeca = list(despesas_cabeca_agrupadas.values())
     
-    # Calcular total das despesas sobre o bruto
-    total_despesas_bruto = sum(item['total_categoria'] for item in despesas_cabeca)
+    # Usar função unificada para calcular valores financeiros
+    calculo = calcular_lucro_evento(id_evento)
     
-    # Calcular reembolso mídias (despesas de cabeça EXCLUINDO categoria "PAGAS PELO CIRCO")
+    # Manter cálculos locais para compatibilidade com o template
+    total_despesas_bruto = sum(item['total_categoria'] for item in despesas_cabeca)
     reembolso_midias = sum(item['total_categoria'] for item in despesas_cabeca 
                           if item['categoria_nome'].upper() != 'PAGAS PELO CIRCO')
     
@@ -2050,17 +2169,11 @@ def relatorio_fechamento_evento(id_evento):
     
     receitas_evento = list(receitas_agrupadas.values())
     
-    # Calcular total das receitas
-    total_receitas = sum(categoria['total_categoria'] for categoria in receitas_evento)
-    
-    # Calcular total líquido (receitas - despesas de cabeça)
-    total_liquido = total_receitas - total_despesas_bruto
-    
-    # Calcular 50% show
-    cinquenta_porcento_show = total_liquido / 2
-    
-    # Repasse total = 50% show + reembolso mídias
-    repasse_total = cinquenta_porcento_show + reembolso_midias
+    # Usar valores da função unificada para garantir consistência
+    total_receitas = calculo['total_receitas']
+    total_liquido = calculo['total_liquido']
+    cinquenta_porcento_show = calculo['cinquenta_porcento_show']
+    repasse_total = calculo['repasse_total']
     
     # Buscar todas as despesas do evento agrupadas por categoria COM DETALHES
     todas_despesas_detalhadas = db.session.query(
@@ -2099,12 +2212,9 @@ def relatorio_fechamento_evento(id_evento):
     
     todas_despesas = list(todas_despesas_agrupadas.values())
     
-    # Total de todas as despesas Sócrates Online (EXCLUINDO categoria "PAGAS PELO CIRCO")
-    total_despesas_socrates = sum(categoria['total_categoria'] for categoria in todas_despesas
-                                 if categoria['categoria_nome'].upper() != 'PAGAS PELO CIRCO')
-    
-    # Resultado do show = repasse total - total despesas sócrates
-    resultado_show = repasse_total - total_despesas_socrates
+    # Usar valores da função unificada para garantir consistência
+    total_despesas_socrates = calculo['total_despesas_socrates']
+    resultado_show = calculo['resultado_show']
     
     return render_template('relatorio_fechamento_evento.html', 
                          evento=evento,

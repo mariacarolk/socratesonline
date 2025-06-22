@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block breadcrumbs %}
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
     <li class="breadcrumb-item"><a href="{{ url_for('relatorios_faturamento_evento') }}">Relatórios</a></li>
@@ -12,79 +12,120 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">
-        <i class="bi bi-calendar-check me-2 text-primary"></i>Faturamento por Evento
-    </h2>
+    <div>
+        <h2 class="mb-1 text-gray-900">
+            <i class="bi bi-calendar-check text-primary me-2"></i>Faturamento por Evento
+        </h2>
+        <p class="text-muted mb-0">Análise de lucratividade e performance dos eventos</p>
+    </div>
 </div>
 
-<!-- Filtros de Data -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+<!-- Filtros de Data Modernos -->
+{% set period = request.args.get('period', '90dias') %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center">
+        <div class="icon-box bg-primary-light text-primary rounded-3 p-2 me-3">
+          <i class="bi bi-funnel"></i>
+        </div>
+        <span class="text-muted">Filtrar período:</span>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="?period=hoje" class="btn btn-outline-primary {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+        <a href="?period=ontem" class="btn btn-outline-primary {% if period == 'ontem' %}active{% endif %}">Ontem</a>
+        <a href="?period=7dias" class="btn btn-outline-primary {% if period == '7dias' %}active{% endif %}">7 Dias</a>
+        <a href="?period=mes" class="btn btn-outline-primary {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+        <a href="?period=90dias" class="btn btn-outline-primary {% if period == '90dias' %}active{% endif %}">90 Dias</a>
+        <a href="?period=custom" class="btn btn-outline-primary {% if period == 'custom' %}active{% endif %}">
+          <i class="bi bi-calendar-range"></i>
+        </a>
+      </div>
     </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Data Início</label>
-                <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio or '' }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Data Fim</label>
-                <input type="date" name="data_fim" class="form-control" value="{{ data_fim or '' }}">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search me-1"></i>Filtrar
-                </button>
-            </div>
+    
+    {% if period == 'custom' %}
+      <div class="mt-3 pt-3 border-top">
+        <form method="get" class="d-flex align-items-center gap-2">
+          <input type="hidden" name="period" value="custom">
+          <div class="d-flex align-items-center gap-2">
+            <label class="text-muted small mb-0">De:</label>
+            <input type="date" name="data_inicio" class="form-control form-control-sm" 
+                   value="{{ data_inicio or request.args.get('data_inicio', '') }}" 
+                   style="max-width: 140px;">
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <label class="text-muted small mb-0">Até:</label>
+            <input type="date" name="data_fim" class="form-control form-control-sm" 
+                   value="{{ data_fim or request.args.get('data_fim', '') }}" 
+                   style="max-width: 140px;">
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-search me-1"></i>Filtrar
+          </button>
         </form>
-    </div>
+      </div>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Gráfico dos Eventos Mais Lucrativos -->
 {% if nomes_eventos %}
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Top 10 Eventos Mais Lucrativos</h5>
+<div class="chart-container mb-4">
+    <div class="chart-header">
+        <div>
+            <h5 class="chart-title">Top 10 Eventos Mais Lucrativos</h5>
+            <p class="chart-subtitle">Baseado no resultado final do show</p>
+        </div>
     </div>
-    <div class="card-body">
-        <canvas id="eventosLucrativosChart" style="height: 400px;"></canvas>
+    <div id="chartContainer" style="position: relative; width: 100%; min-height: 300px; max-height: 600px;">
+        <canvas id="eventosLucrativosChart"></canvas>
     </div>
 </div>
 {% endif %}
 
 <!-- Lista de Eventos -->
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-list me-2"></i>Eventos ({{ total_eventos }})</h5>
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 text-gray-900">
+            <i class="bi bi-list-ul text-primary me-2"></i>Lista de Eventos
+        </h5>
+        <span class="badge bg-primary-light text-primary-dark px-3 py-2">
+            {{ total_eventos }} evento{% if total_eventos != 1 %}s{% endif %}
+        </span>
     </div>
     <div class="card-body">
         {% if eventos %}
-        <div class="row">
+        <div class="row g-4">
             {% for evento in eventos %}
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card h-100 shadow-sm border-0 rounded-3">
-                    <div class="card-header bg-gradient-primary text-white py-3">
-                        <h6 class="card-title mb-0 text-truncate">{{ evento.nome }}</h6>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm evento-card">
+                    <div class="card-header evento-header">
+                        <h6 class="card-title mb-0 text-white text-truncate" title="{{ evento.nome }}">
+                            {{ evento.nome }}
+                        </h6>
                     </div>
                     <div class="card-body">
-                        <div class="mb-2">
-                            <i class="bi bi-calendar-event text-primary me-2"></i>
-                            <small>{{ evento.data_inicio.strftime('%d/%m/%Y') }} até {{ evento.data_fim.strftime('%d/%m/%Y') }}</small>
+                        <div class="info-item mb-2">
+                            <i class="bi bi-calendar3"></i>
+                            <span>{{ evento.data_inicio.strftime('%d/%m/%Y') }} - {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
                         </div>
-                        <div class="mb-2">
-                            <i class="bi bi-geo-alt text-primary me-2"></i>
-                            <small>{{ evento.cidade }}/{{ evento.estado }}</small>
+                        <div class="info-item mb-2">
+                            <i class="bi bi-geo-alt"></i>
+                            <span>{{ evento.cidade }}/{{ evento.estado }}</span>
                         </div>
-                        <div class="mb-2">
-                            <i class="bi bi-info-circle text-primary me-2"></i>
-                            <small>
-                                <span class="badge bg-{% if evento.status == 'realizado' %}success{% elif evento.status == 'em andamento' %}warning{% else %}secondary{% endif %}">
-                                    {{ evento.status|title }}
-                                </span>
-                            </small>
+                        <div class="info-item mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <span class="badge rounded-pill
+                                {% if evento.status == 'realizado' %}bg-success-light text-success-dark
+                                {% elif evento.status == 'em andamento' %}bg-warning-light text-warning-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ evento.status|title }}
+                            </span>
                         </div>
-                        <a href="{{ url_for('relatorio_faturamento_evento', id_evento=evento.id_evento) }}" class="btn btn-outline-primary btn-sm mt-2 w-100">
+                    </div>
+                    <div class="card-footer bg-transparent border-0 p-3 pt-0">
+                        <a href="{{ url_for('relatorio_faturamento_evento', id_evento=evento.id_evento) }}" 
+                           class="btn btn-primary btn-sm w-100">
                             <i class="bi bi-bar-chart me-1"></i> Ver Relatório Detalhado
                         </a>
                     </div>
@@ -93,95 +134,193 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>Nenhum evento encontrado no período selecionado.
+        <div class="text-center py-5">
+            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+            <p class="text-muted mt-3">Nenhum evento encontrado no período selecionado.</p>
         </div>
         {% endif %}
     </div>
 </div>
+
+<style>
+/* Estilos específicos para o relatório */
+.icon-box {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-primary-light { background-color: var(--primary-100) !important; }
+.text-primary-dark { color: var(--primary-700) !important; }
+
+.info-item i {
+    width: 20px;
+    color: var(--primary-500);
+}
+
+.evento-card {
+    transition: all var(--transition-base);
+}
+
+.evento-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg) !important;
+}
+
+.evento-header {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+}
+
+.text-gray-900 { color: var(--gray-900) !important; }
+</style>
 {% endblock %}
 
 {% block scripts %}
 {% if nomes_eventos %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/charts-modern.js') }}"></script>
 <script>
-// Gráfico de Barras dos Eventos Mais Lucrativos
+// Dados do gráfico
+const lucroData = {{ lucros_eventos|tojson|safe }};
+const nomesEventos = {{ nomes_eventos|tojson|safe }};
+
+// Ajuste dinâmico da altura do gráfico
+const minHeight = 300;
+const maxHeight = 600;
+const barHeight = 50;
+const chartHeight = Math.max(minHeight, Math.min(maxHeight, lucroData.length * barHeight));
+document.getElementById('chartContainer').style.height = chartHeight + 'px';
+
+// Criar contexto do canvas
 const ctx = document.getElementById('eventosLucrativosChart').getContext('2d');
 
-// Preparar cores baseadas nos valores de lucro
-const lucroData = {{ lucros_eventos|tojson|safe }};
-const lucroColors = lucroData.map(value => value >= 0 ? 'rgba(13, 110, 253, 0.7)' : 'rgba(255, 193, 7, 0.7)');
-const lucroBorderColors = lucroData.map(value => value >= 0 ? 'rgba(13, 110, 253, 1)' : 'rgba(255, 193, 7, 1)');
+// Preparar cores baseadas no valor (lucro ou prejuízo)
+const backgroundColors = lucroData.map((value, index) => {
+    if (value >= 0) {
+        return ChartModern.palette[index % ChartModern.palette.length];
+    } else {
+        return ChartModern.colors.danger;
+    }
+});
 
-const eventosChart = new Chart(ctx, {
+// Configurar gráfico usando o sistema moderno
+const chartConfig = {
     type: 'bar',
     data: {
-        labels: {{ nomes_eventos|tojson|safe }},
-        datasets: [
-            {
-                label: 'Receitas',
-                data: {{ receitas_eventos|tojson|safe }},
-                backgroundColor: 'rgba(25, 135, 84, 0.7)',
-                borderColor: 'rgba(25, 135, 84, 1)',
-                borderWidth: 1
-            },
-            {
-                label: 'Despesas',
-                data: {{ despesas_eventos|tojson|safe }},
-                backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                borderColor: 'rgba(220, 53, 69, 1)',
-                borderWidth: 1
-            },
-            {
-                label: 'Lucro',
-                data: lucroData,
-                backgroundColor: lucroColors,
-                borderColor: lucroBorderColors,
-                borderWidth: 1
-            }
-        ]
+        labels: nomesEventos,
+        datasets: [{
+            label: 'Lucro do Evento',
+            data: lucroData,
+            backgroundColor: backgroundColors,
+            borderColor: backgroundColors.map(color => color),
+            borderWidth: 0,
+            borderRadius: 8,
+            borderSkipped: false,
+            barThickness: 28,
+            maxBarThickness: 35
+        }]
     },
     options: {
+        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            title: {
-                display: true,
-                text: 'Eventos Mais Lucrativos - Receitas, Despesas e Lucro'
-            },
             legend: {
-                position: 'top'
+                display: false
             },
             tooltip: {
+                ...ChartModern.configs.bar().options.plugins.tooltip,
                 callbacks: {
+                    title: function(context) {
+                        return context[0].label;
+                    },
                     label: function(context) {
-                        return context.dataset.label + ': R$ ' + context.parsed.y.toFixed(2);
+                        const value = context.parsed.x;
+                        const status = value >= 0 ? 'Lucro' : 'Prejuízo';
+                        return status + ': ' + ChartModern.utils.formatCurrency(Math.abs(value));
                     }
                 }
             }
         },
         scales: {
-            y: {
+            x: {
                 beginAtZero: true,
+                grid: {
+                    color: ChartModern.colors.gray[200],
+                    drawBorder: false
+                },
                 ticks: {
+                    font: {
+                        family: 'Inter',
+                        size: 12
+                    },
+                    color: ChartModern.colors.gray[600],
                     callback: function(value) {
-                        return 'R$ ' + value.toFixed(2);
+                        return ChartModern.utils.formatCurrency(value);
                     }
                 }
             },
-            x: {
+            y: {
+                grid: {
+                    display: false
+                },
                 ticks: {
-                    maxRotation: 45,
-                    minRotation: 45
+                    font: {
+                        family: 'Inter',
+                        size: 12,
+                        weight: '500'
+                    },
+                    color: ChartModern.colors.gray[700],
+                    padding: 8
                 }
             }
         },
         interaction: {
             intersect: false,
             mode: 'index'
+        },
+        animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+        },
+        onHover: (event, activeElements) => {
+            event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
         }
-    }
-});
+    },
+    plugins: [{
+        id: 'valueLabels',
+        afterDatasetsDraw: function(chart) {
+            const ctx = chart.ctx;
+            chart.data.datasets.forEach((dataset, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((bar, index) => {
+                    const data = dataset.data[index];
+                    
+                    // Configurar estilo do texto
+                    ctx.fillStyle = ChartModern.colors.gray[700];
+                    ctx.font = 'bold 12px Inter';
+                    ctx.textAlign = data >= 0 ? 'left' : 'right';
+                    ctx.textBaseline = 'middle';
+                    
+                    // Formatar valor
+                    const valor = ChartModern.utils.formatCurrency(Math.abs(data));
+                    
+                    // Posicionar texto
+                    const x = data >= 0 ? bar.x + 10 : bar.x - 10;
+                    const y = bar.y;
+                    
+                    // Desenhar texto
+                    ctx.fillText(valor, x, y);
+                });
+            });
+        }
+    }]
+};
+
+// Criar gráfico
+const eventosChart = new Chart(ctx, chartConfig);
 </script>
 {% endif %}
 {% endblock %} 
