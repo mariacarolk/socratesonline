@@ -4,6 +4,8 @@ globs:
 alwaysApply: true
 ---
 - Sempre respeitar o design já utilizado para as demais páginas e manter um padrão, inclusive de paleta de cores
+- Pensar sempre que tudo deve funcionar responsivamente, para desktop e mobile
+- Ao aplicar filtro de datas, usar o filtro de datas padrão para todas as páginas
 - Sempre que houver uma mudança em uma tabela de banco de dados, revisar os forms, os models, os templates e os demais locais onde a tabela é acessada, e tbm fazer a migração do database se necessário.
 - Nas criações de tabelas sempre deverá haver um campo unico de id na tabela (verificar os moldes já criados e seguir o mesmo padrão);
 - Sempre que criar uma nova entidade ou elaborar uma exclusão, analisar as dependências - proteção de dependências: PROTEGER registros que estão sendo usados (não permitir exclusão) / PERMITIR exclusão em cascata apenas de pai para filho;

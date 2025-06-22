@@ -18,38 +18,40 @@
 </div>
 
 <!-- Filtros de Data -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros</h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" id="filtroForm">
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Período</label>
-                    <select name="period" id="periodSelect" class="form-select" onchange="toggleCustomDates()">
-                        <option value="ano" {{ 'selected' if period == 'ano' }}>Este Ano</option>
-                        <option value="6meses" {{ 'selected' if period == '6meses' }}>Últimos 6 Meses</option>
-                        <option value="mes" {{ 'selected' if period == 'mes' }}>Últimos 12 Meses</option>
-                        <option value="custom" {{ 'selected' if period == 'custom' }}>Personalizado</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-3" id="dataInicioDiv" style="display: {{ 'block' if period == 'custom' else 'none' }};">
-                    <label class="form-label">Data Início</label>
-                    <input type="date" name="data_inicio" id="dataInicio" class="form-control" value="{{ data_inicio }}">
-                </div>
-                <div class="col-md-3 mb-3" id="dataFimDiv" style="display: {{ 'block' if period == 'custom' else 'none' }};">
-                    <label class="form-label">Data Fim</label>
-                    <input type="date" name="data_fim" id="dataFim" class="form-control" value="{{ data_fim }}">
-                </div>
-                <div class="col-md-3 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search me-1"></i>Filtrar
-                    </button>
-                </div>
-            </div>
+{% set period = request.args.get('period', '90dias') %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between">
+      <div class="d-flex align-items-center mb-2 mb-md-0">
+        <i class="bi bi-funnel text-primary me-2"></i>
+        <span class="fw-medium text-dark me-3">Filtrar por período:</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="?period=hoje" class="btn btn-outline-primary {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+          <a href="?period=ontem" class="btn btn-outline-primary {% if period == 'ontem' %}active{% endif %}">Ontem</a>
+          <a href="?period=7dias" class="btn btn-outline-primary {% if period == '7dias' %}active{% endif %}">7 Dias</a>
+          <a href="?period=mes" class="btn btn-outline-primary {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+          <a href="?period=90dias" class="btn btn-outline-primary {% if period == '90dias' %}active{% endif %}">90 Dias</a>
+          <a href="?period=custom" class="btn btn-outline-primary {% if period == 'custom' %}active{% endif %}">Personalizado</a>
+        </div>
+      </div>
+      
+      {% if period == 'custom' %}
+        <form method="get" class="d-flex align-items-center gap-2">
+          <input type="hidden" name="period" value="custom">
+          <input type="date" name="data_inicio" class="form-control form-control-sm" 
+                 value="{{ data_inicio or request.args.get('data_inicio', '') }}" 
+                 style="width: 140px;">
+          <span class="text-muted">até</span>
+          <input type="date" name="data_fim" class="form-control form-control-sm" 
+                 value="{{ data_fim or request.args.get('data_fim', '') }}" 
+                 style="width: 140px;">
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-search me-1"></i>Filtrar
+          </button>
         </form>
+      {% endif %}
     </div>
+  </div>
 </div>
 
 <!-- Cards de Resumo -->
@@ -131,6 +133,7 @@ function toggleCustomDates() {
 
 // Gráfico de Barras Mensal
 const ctx = document.getElementById('lucratividadeChart').getContext('2d');
+ctx.canvas.style.background = '#22336b';
 
 // Preparar cores baseadas nos valores de lucro
 const lucroData = {{ lucro_por_mes|tojson|safe }};
@@ -145,13 +148,13 @@ const lucratividadeChart = new Chart(ctx, {
             {
                 label: 'Evolução do Lucro',
                 data: lucroData,
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                borderColor: 'rgba(13, 110, 253, 1)',
+                backgroundColor: 'rgba(79,140,255,0.2)',
+                borderColor: '#4f8cff',
                 borderWidth: 3,
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: lucroColors,
-                pointBorderColor: lucroBorderColors,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#4f8cff',
                 pointBorderWidth: 2,
                 pointRadius: 6,
                 pointHoverRadius: 8
@@ -165,14 +168,21 @@ const lucratividadeChart = new Chart(ctx, {
             title: {
                 display: true,
                 text: 'Evolução do Lucro Mensal',
-                font: {
-                    size: 16
-                }
+                color: '#fff',
+                font: { size: 16 }
             },
             legend: {
-                position: 'top'
+                position: 'top',
+                labels: { color: '#fff' }
             },
             tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                displayColors: false,
                 callbacks: {
                     label: function(context) {
                         const value = context.parsed.y;
@@ -186,29 +196,22 @@ const lucratividadeChart = new Chart(ctx, {
             y: {
                 beginAtZero: true,
                 ticks: {
-                    callback: function(value) {
-                        return 'R$ ' + value.toFixed(2);
-                    }
+                    color: '#fff',
+                    callback: function(value) { return 'R$ ' + value.toFixed(2); }
                 },
                 grid: {
                     color: function(context) {
-                        if (context.tick.value === 0) {
-                            return 'rgba(0, 0, 0, 0.3)';
-                        }
-                        return 'rgba(0, 0, 0, 0.1)';
+                        if (context.tick.value === 0) return 'rgba(255,255,255,0.3)';
+                        return 'rgba(255,255,255,0.1)';
                     }
                 }
             },
             x: {
-                grid: {
-                    display: false
-                }
+                grid: { display: false },
+                ticks: { color: '#fff' }
             }
         },
-        interaction: {
-            intersect: false,
-            mode: 'index'
-        }
+        interaction: { intersect: false, mode: 'index' }
     }
 });
 </script>

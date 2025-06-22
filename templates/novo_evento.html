@@ -196,8 +196,10 @@
 
             {% for categoria in categorias_receita %}
                 <div class="card mb-2">
-                  <div class="card-header bg-success text-white py-1">
-                    <h6 class="mb-0" style="font-size: 12px;">{{ categoria.nome }}</h6>
+                  <div class="card-header bg-success text-white py-2">
+                    <h5 class="mb-0 fw-bold text-uppercase" style="font-size: 14px; letter-spacing: 0.5px;">
+                      <i class="bi bi-cash-stack me-2"></i>{{ categoria.nome }}
+                    </h5>
                 </div>
                   <div class="card-body py-2">
                     <div class="table-responsive">
@@ -324,8 +326,10 @@
 
             {% for categoria in categorias_despesa %}
                 <div class="card mb-2">
-                  <div class="card-header bg-danger text-white py-1">
-                    <h6 class="mb-0" style="font-size: 12px;">{{ categoria.nome }}</h6>
+                  <div class="card-header bg-danger text-white py-2">
+                    <h5 class="mb-0 fw-bold text-uppercase" style="font-size: 14px; letter-spacing: 0.5px;">
+                      <i class="bi bi-credit-card-2-front me-2"></i>{{ categoria.nome }}
+                    </h5>
                 </div>
                   <div class="card-body py-2">
                     <div class="table-responsive">
@@ -2372,6 +2376,104 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Script de cidades dinâmicas -->
 <script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
+
+<!-- Estilos CSS para destacar cabeçalhos das categorias -->
+<style>
+/* Cabeçalhos das categorias mais destacados com melhor contraste */
+.card-header.bg-success {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+    border: 2px solid #155724 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.card-header.bg-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border: 2px solid #721c24 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+/* Barra superior colorida para destaque */
+.card-header.bg-success::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: #0d5132;
+}
+
+.card-header.bg-danger::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: #58151c;
+}
+
+/* Texto dos cabeçalhos com melhor contraste */
+.card-header h5 {
+    color: #ffffff !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5) !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.8px !important;
+    margin: 0 !important;
+    padding: 4px 0 !important;
+}
+
+/* Ícones dos cabeçalhos */
+.card-header h5 i {
+    font-size: 1.1em;
+    margin-right: 8px;
+    color: #ffffff !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5) !important;
+}
+
+/* Efeito hover nos cards */
+.card:hover .card-header.bg-success {
+    background-color: #157347 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+}
+
+.card:hover .card-header.bg-danger {
+    background-color: #bb2d3b !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+}
+
+/* Melhorar contraste dos cards */
+.card {
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* Estilo responsivo para dispositivos móveis */
+@media (max-width: 768px) {
+    .card-header h5 {
+        font-size: 13px !important;
+        letter-spacing: 0.5px !important;
+    }
+    
+    .card-header h5 i {
+        font-size: 1em;
+        margin-right: 6px;
+    }
+}
+</style>
 
 {% endblock %}
 

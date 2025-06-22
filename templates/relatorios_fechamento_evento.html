@@ -17,28 +17,40 @@
     </h2>
 </div>
 
-<!-- Filtros de Data -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros</h5>
-    </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Data Início</label>
-                <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio or '' }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Data Fim</label>
-                <input type="date" name="data_fim" class="form-control" value="{{ data_fim or '' }}">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-search me-1"></i>Filtrar
-                </button>
-            </div>
+{% set period = request.args.get('period', '90dias') %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between">
+      <div class="d-flex align-items-center mb-2 mb-md-0">
+        <i class="bi bi-funnel text-primary me-2"></i>
+        <span class="fw-medium text-dark me-3">Filtrar por período:</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <a href="?period=hoje" class="btn btn-outline-primary {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+          <a href="?period=ontem" class="btn btn-outline-primary {% if period == 'ontem' %}active{% endif %}">Ontem</a>
+          <a href="?period=7dias" class="btn btn-outline-primary {% if period == '7dias' %}active{% endif %}">7 Dias</a>
+          <a href="?period=mes" class="btn btn-outline-primary {% if period == 'mes' %}active{% endif %}">Este Mês</a>
+          <a href="?period=90dias" class="btn btn-outline-primary {% if period == '90dias' %}active{% endif %}">90 Dias</a>
+          <a href="?period=custom" class="btn btn-outline-primary {% if period == 'custom' %}active{% endif %}">Personalizado</a>
+        </div>
+      </div>
+      
+      {% if period == 'custom' %}
+        <form method="get" class="d-flex align-items-center gap-2">
+          <input type="hidden" name="period" value="custom">
+          <input type="date" name="data_inicio" class="form-control form-control-sm" 
+                 value="{{ data_inicio or request.args.get('data_inicio', '') }}" 
+                 style="width: 140px;">
+          <span class="text-muted">até</span>
+          <input type="date" name="data_fim" class="form-control form-control-sm" 
+                 value="{{ data_fim or request.args.get('data_fim', '') }}" 
+                 style="width: 140px;">
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-search me-1"></i>Filtrar
+          </button>
         </form>
+      {% endif %}
     </div>
+  </div>
 </div>
 
 <!-- Lista de Eventos -->

@@ -1,4 +1,48 @@
-# Sistema Sócrates Online
+# Sistema de Gestão de Eventos - Sócrates Online
+
+Sistema web para gestão de eventos de circo, desenvolvido em Flask.
+
+## Funcionalidades Principais
+
+- Gestão de eventos, colaboradores, elenco e fornecedores
+- Controle financeiro (receitas e despesas)
+- Relatórios de faturamento e fechamento
+- Sistema de usuários com diferentes níveis de acesso
+
+## Cálculo de Lucro Unificado
+
+O sistema utiliza uma função unificada (`calcular_lucro_evento`) para garantir consistência nos cálculos de lucro entre diferentes relatórios:
+
+### Fórmula de Cálculo:
+1. **Total Receitas** - **Despesas de Cabeça** = **Total Líquido**
+2. **Total Líquido** ÷ 2 = **50% Show**
+3. **Reembolso Mídias** = despesas de cabeça excluindo categoria "PAGAS PELO CIRCO"
+4. **Repasse Total** = **50% Show** + **Reembolso Mídias**
+5. **Total Despesas Sócrates** = todas as despesas excluindo categoria "PAGAS PELO CIRCO"
+6. **Resultado do Show (Lucro Real)** = **Repasse Total** - **Total Despesas Sócrates**
+
+### Funções Disponíveis:
+- `calcular_lucro_evento(id_evento)`: Retorna todos os valores detalhados do cálculo
+- `calcular_lucro_simples(id_evento)`: Retorna apenas o lucro final
+
+### Relatórios que Utilizam:
+- **Top 10 Eventos Mais Lucrativos**: Usa o cálculo unificado para ranking
+- **Relatório de Fechamento Individual**: Usa o cálculo unificado para consistência
+
+## Tecnologias Utilizadas
+
+- **Backend**: Python Flask
+- **Banco de Dados**: SQLite com SQLAlchemy
+- **Frontend**: HTML, CSS, Bootstrap, JavaScript
+- **Gráficos**: Chart.js
+
+## Como Executar
+
+```bash
+python app.py
+```
+
+O sistema estará disponível em `http://127.0.0.1:5000`
 
 ## Funcionalidade Cidades/Estados Dinâmicas
 
