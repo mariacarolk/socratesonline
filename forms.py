@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField
+from flask_wtf.file import FileField, FileAllowed
+from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField
 from wtforms.fields.datetime import DateField
 from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
@@ -260,3 +261,4 @@ class DespesaEventoForm(FlaskForm):
     ], validators=[DataRequired()])
     pago_por = StringField('Pago por')
     observacoes = TextAreaField('Observações')
+    comprovante = FileField('Comprovante', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 'Apenas arquivos de imagem, PDF ou documento são permitidos')])
