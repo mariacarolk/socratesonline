@@ -419,6 +419,7 @@
                                         data-pago-por="{{ despesa.pago_por_atual or "" }}"
                                         data-obs="{{ despesa.obs_atual or "" }}"
                                         data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
+                                        data-comprovante="{{ despesa.comprovante_atual or "" }}"
                                         title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </button>
@@ -533,6 +534,7 @@
                                         data-pago-por="{{ despesa.pago_por_atual or "" }}"
                                         data-obs="{{ despesa.obs_atual or "" }}"
                                         data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
+                                        data-comprovante="{{ despesa.comprovante_atual or "" }}"
                                         title="Editar">
                                   <i class="bi bi-pencil"></i>
                                 </button>
@@ -732,7 +734,7 @@
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form onsubmit="adicionarDespesaEvento(event)">
+      <form onsubmit="adicionarDespesaEvento(event)" enctype="multipart/form-data">
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-12">
@@ -802,15 +804,49 @@
             </div>
             
             <div class="col-12">
-              <label class="form-label">Observações</label>
-              <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="2"></textarea>
+              <label class="form-label">Comprovante</label>
+              
+              <!-- Comprovante atual (se existir) -->
+              <div id="comprovante_atual_info" class="mb-3 d-none">
+                <div class="card border-primary">
+                  <div class="card-body py-2">
+                    <div class="row align-items-center">
+                      <div class="col">
+                        <div class="d-flex align-items-center">
+                          <i class="bi bi-file-earmark-check text-primary me-2"></i>
+                          <div>
+                            <small class="text-muted d-block">Comprovante anexado:</small>
+                            <span class="fw-medium" id="comprovante_atual_nome">arquivo_atual.pdf</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-auto">
+                        <div class="btn-group btn-group-sm">
+                          <button type="button" class="btn btn-outline-primary" onclick="visualizarComprovante()" title="Visualizar arquivo">
+                            <i class="bi bi-eye"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-danger" onclick="excluirComprovanteAtual()" title="Remover arquivo">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <input type="file" name="comprovante" class="form-control" id="modal_despesa_comprovante" 
+                     accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+              <input type="hidden" id="comprovante_atual_arquivo" name="comprovante_atual">
+              <div class="form-text">
+                <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
+                <br><small class="text-muted">Se anexar um novo arquivo, o anterior será substituído automaticamente.</small>
+              </div>
             </div>
             
             <div class="col-12">
-              <div class="form-check">
-                <input type="checkbox" class="form-check-input" id="modal_despesa_cabeca" name="despesa_cabeca">
-                <label class="form-check-label" for="modal_despesa_cabeca">Despesa da Cabeça</label>
-              </div>
+              <label class="form-label">Observações</label>
+              <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="2"></textarea>
             </div>
           </div>
         </div>
@@ -1392,22 +1428,15 @@ function adicionarDespesaEvento(event) {
     var form = event.target;
     var formData = new FormData(form);
     
-    // Converter valor formatado para número
-    var valorFormatado = formData.get('valor');
-    var valorNumerico = converterMoedaParaNumero(valorFormatado);
+    // Verificar se é edição ou nova despesa
+    const isEditing = form.getAttribute('data-editing') === 'true';
+    const despesaEventoId = form.getAttribute('data-despesa-evento-id');
     
-    // Preparar dados para envio
-    var dados = {
-        despesa_id: parseInt(formData.get('despesa_id')),
-        data: formData.get('data'),
-        valor: valorNumerico.toString(),
-        id_fornecedor: formData.get('id_fornecedor') || null,
-        status_pagamento: formData.get('status_pagamento'),
-        forma_pagamento: formData.get('forma_pagamento'),
-        pago_por: formData.get('pago_por'),
-        observacoes: formData.get('observacoes') || '',
-        is_fixa: false
-    };
+    if (isEditing) {
+        // Lógica de edição
+        editarDespesaEvento(form, despesaEventoId);
+        return;
+    }
     
     // Desabilitar botão durante envio
     var submitBtn = form.querySelector('button[type="submit"]');
@@ -1418,12 +1447,10 @@ function adicionarDespesaEvento(event) {
     // Salvar evento primeiro se necessário
     salvarEventoSeNecessario()
         .then(eventoId => {
+            // Usar FormData diretamente para suporte a arquivos
             return fetch(`/eventos/${eventoId}/salvar-despesa`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(dados)
+                body: formData  // FormData já inclui o arquivo e outros dados
             });
         })
         .then(response => response.json())
@@ -1435,7 +1462,7 @@ function adicionarDespesaEvento(event) {
                 
                 // Recarregar a página
                 window.location.reload();
-  } else {
+            } else {
                 alert('Erro: ' + result.message);
             }
         })
@@ -2139,7 +2166,27 @@ function editarDespesaModal(button) {
     document.getElementById('modal_despesa_forma').value = forma || 'débito';
     document.getElementById('modal_despesa_pago_por').value = pagoPor || '';
     document.getElementById('modal_despesa_obs').value = obs || '';
-    document.getElementById('modal_despesa_cabeca').checked = despesaCabeca;
+    
+    // Limpar campo de comprovante e exibir comprovante atual se existir
+    const comprovanteField = document.getElementById('modal_despesa_comprovante');
+    if (comprovanteField) {
+        comprovanteField.value = '';
+    }
+    
+    // Verificar se há comprovante atual e exibir informações
+    const comprovanteAtual = button.getAttribute('data-comprovante');
+    const comprovanteInfo = document.getElementById('comprovante_atual_info');
+    const comprovanteNome = document.getElementById('comprovante_atual_nome');
+    const comprovanteArquivo = document.getElementById('comprovante_atual_arquivo');
+    
+    if (comprovanteAtual && comprovanteAtual.trim() !== '') {
+        comprovanteInfo.classList.remove('d-none');
+        comprovanteNome.textContent = comprovanteAtual;
+        comprovanteArquivo.value = comprovanteAtual;
+    } else {
+        comprovanteInfo.classList.add('d-none');
+        comprovanteArquivo.value = '';
+    }
     
     // Carregar despesas da categoria e selecionar a correta
     if (categoriaId && despesaId) {
@@ -2163,44 +2210,74 @@ function editarDespesaModal(button) {
     modal.show();
 }
 
-// Modificar a função adicionarDespesaEvento para suportar edição
-const originalAdicionarDespesaEvento = adicionarDespesaEvento;
-adicionarDespesaEvento = function(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const isEditing = form.getAttribute('data-editing') === 'true';
-    const despesaEventoId = form.getAttribute('data-despesa-evento-id');
-    
-    if (isEditing) {
-        // Lógica de edição
-        editarDespesaEvento(form, despesaEventoId);
-    } else {
-        // Lógica original de adição
-        originalAdicionarDespesaEvento(event);
+// A lógica de edição foi integrada na função adicionarDespesaEvento original
+
+// Função para visualizar comprovante atual
+function visualizarComprovante() {
+    const nomeArquivo = document.getElementById('comprovante_atual_arquivo').value;
+    if (nomeArquivo) {
+        window.open(`/uploads/comprovantes/${nomeArquivo}`, '_blank');
     }
-};
+}
+
+// Função para excluir comprovante atual
+function excluirComprovanteAtual() {
+    if (!confirm('Tem certeza que deseja excluir o comprovante atual? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    // Obter ID do evento e despesa evento
+    const form = document.querySelector('#modalAdicionarDespesa form');
+    const despesaEventoId = form.getAttribute('data-despesa-evento-id');
+    const eventoId = obterEventoId();
+    
+    if (!eventoId || !despesaEventoId) {
+        alert('Erro: Não foi possível identificar o evento ou despesa');
+        return;
+    }
+    
+    // Desabilitar botão durante exclusão
+    const excluirBtn = document.querySelector('[onclick="excluirComprovanteAtual()"]');
+    const originalText = excluirBtn.innerHTML;
+    excluirBtn.disabled = true;
+    excluirBtn.innerHTML = '<i class="bi bi-clock"></i>';
+    
+    // Fazer requisição AJAX para excluir
+    fetch(`/eventos/${eventoId}/excluir-comprovante/${despesaEventoId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Esconder interface do comprovante
+            document.getElementById('comprovante_atual_info').classList.add('d-none');
+            document.getElementById('comprovante_atual_arquivo').value = '';
+            
+            // Mostrar mensagem de sucesso
+            mostrarToast(result.message, 'success');
+            console.log('✅ Comprovante excluído com sucesso');
+        } else {
+            alert('Erro: ' + result.message);
+            console.error('❌ Erro:', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro na requisição:', error);
+        alert('Erro de conexão ao excluir comprovante');
+    })
+    .finally(() => {
+        // Reabilitar botão
+        excluirBtn.disabled = false;
+        excluirBtn.innerHTML = originalText;
+    });
+}
 
 // Função para editar despesa do evento
 function editarDespesaEvento(form, despesaEventoId) {
     const formData = new FormData(form);
-    
-    // Converter valor formatado para número
-    const valorFormatado = formData.get('valor');
-    const valorNumerico = converterMoedaParaNumero(valorFormatado);
-    
-    // Preparar dados para envio
-    const dados = {
-        despesa_id: parseInt(formData.get('despesa_id')),
-        data: formData.get('data'),
-        valor: valorNumerico.toString(),
-        id_fornecedor: formData.get('id_fornecedor') || null,
-        status_pagamento: formData.get('status_pagamento'),
-        forma_pagamento: formData.get('forma_pagamento'),
-        pago_por: formData.get('pago_por'),
-        observacoes: formData.get('observacoes') || '',
-        despesa_cabeca: formData.get('despesa_cabeca') === 'on'
-    };
     
     // Desabilitar botão durante envio
     const submitBtn = form.querySelector('button[type="submit"]');
@@ -2217,13 +2294,10 @@ function editarDespesaEvento(form, despesaEventoId) {
         return;
     }
     
-    // Enviar para o backend
+    // Enviar para o backend usando FormData para suportar arquivo
     fetch(`/eventos/${eventoId}/editar-despesa/${despesaEventoId}`, {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dados)
+        body: formData  // FormData já inclui o arquivo e outros dados
     })
     .then(response => response.json())
     .then(result => {

@@ -19,6 +19,8 @@ from extensions import db, login_manager
 from sqlalchemy import func, text
 from flask_migrate import Migrate
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
+import uuid
 
 load_dotenv()  # Carrega variáveis do .env
 
@@ -34,10 +36,20 @@ db.init_app(app)
 login_manager.init_app(app)
 migrate = Migrate(app, db)
 
+# Configurar pasta de upload se não existe
+if not hasattr(app.config, 'UPLOAD_FOLDER'):
+    app.config['UPLOAD_FOLDER'] = 'uploads/comprovantes'
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+
 # User loader para Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
+
+def allowed_file(filename):
+    """Verifica se o arquivo tem uma extensão permitida"""
+    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def calcular_lucro_evento(id_evento):
     """
@@ -1613,7 +1625,8 @@ def editar_evento(id):
                 'pago_por_atual': despesas_evento_dict[d.id_despesa].pago_por if d.id_despesa in despesas_ja_cadastradas else '',
                 'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else 'Despesa fixa automática',
                 'despesa_cabeca_atual': despesas_evento_dict[d.id_despesa].despesa_cabeca if d.id_despesa in despesas_ja_cadastradas else False,
-                'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None
+                'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None,
+                'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else ''
             } for d in despesas_fixas],  # TODAS as despesas fixas
             'variaveis': [{
                 'id_despesa': d.id_despesa, 
@@ -1633,7 +1646,8 @@ def editar_evento(id):
                 'pago_por_atual': despesas_evento_dict[d.id_despesa].pago_por if d.id_despesa in despesas_ja_cadastradas else '',
                 'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else '',
                 'despesa_cabeca_atual': despesas_evento_dict[d.id_despesa].despesa_cabeca if d.id_despesa in despesas_ja_cadastradas else False,
-                'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None
+                'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None,
+                'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else ''
             } for d in despesas_variaveis]  # TODAS as despesas variáveis (cadastradas e não cadastradas)
         }
 
@@ -1670,6 +1684,7 @@ def editar_evento(id):
                 'pago_por_atual': despesa_evento.pago_por or '',
                 'obs_atual': despesa_evento.observacoes or '',
                 'despesa_cabeca_atual': despesa_evento.despesa_cabeca,
+                'comprovante_atual': despesa_evento.comprovante or '',
                 'tipo': despesa_evento.despesa.id_tipo_despesa
             }
             
@@ -2473,42 +2488,38 @@ def cadastrar_despesa_evento(id_evento):
 
 @app.route('/eventos/<int:id_evento>/salvar-despesa', methods=['POST'])
 def salvar_despesa_individual(id_evento):
-    """Salva ou atualiza uma despesa individual via AJAX"""
+    """Salva ou atualiza uma despesa individual via AJAX com suporte a upload"""
+    
     evento = Evento.query.get_or_404(id_evento)
     
     try:
-        data = request.get_json()
+        # Processar dados do FormData
+        despesa_id = request.form.get('despesa_id')
+        valor_str = request.form.get('valor', '')
+        data_despesa = request.form.get('data')
+        status_pagamento = request.form.get('status_pagamento', 'pendente')
+        forma_pagamento = request.form.get('forma_pagamento', 'débito')
+        pago_por = request.form.get('pago_por', '')
+        observacoes = request.form.get('observacoes', '')
+        id_fornecedor = request.form.get('id_fornecedor', None)
         
-        # Validar dados
-        despesa_id = data.get('despesa_id')
-        valor_str = data.get('valor', '')
-        data_despesa = data.get('data')
-        status_pagamento = data.get('status_pagamento', 'pendente')
-        forma_pagamento = data.get('forma_pagamento', 'dÃ©bito')
-        pago_por = data.get('pago_por', '')
-        observacoes = data.get('observacoes', '')
-        id_fornecedor = data.get('id_fornecedor', None)  # Novo campo
-        despesa_cabeca = data.get('despesa_cabeca', False)  # Flag despesa da cabeça
-        is_fixa = data.get('is_fixa', False)  # Flag para identificar despesas fixas
-        
-        print(f"=== SALVAMENTO INDIVIDUAL VIA AJAX ===")
+        print(f"=== SALVAMENTO INDIVIDUAL VIA FORMDATA ===")
         print(f"Despesa ID: {despesa_id}")
         print(f"Valor recebido: '{valor_str}'")
         print(f"Fornecedor ID: {id_fornecedor}")
-        print(f"Ã‰ despesa fixa: {is_fixa}")
         
         if not despesa_id or not valor_str:
-            return jsonify({'success': False, 'message': 'Despesa e valor sÃ£o obrigatÃ³rios'})
+            return jsonify({'success': False, 'message': 'Despesa e valor são obrigatórios'})
         
-        # Converter valor - tratar tanto formato brasileiro quanto americano
+        # Converter valor - tratar formato brasileiro
         try:
             valor_str = str(valor_str).strip()
             
-            # Se contÃ©m ponto e vÃ­rgula, Ã© formato brasileiro (ex: 1.000,50)
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
             if '.' in valor_str and ',' in valor_str:
-                # Remover pontos de milhares e trocar vÃ­rgula por ponto
+                # Remover pontos de milhares e trocar vírgula por ponto
                 valor_str = valor_str.replace('.', '').replace(',', '.')
-            # Se contÃ©m apenas vÃ­rgula, trocar por ponto
+            # Se contém apenas vírgula, trocar por ponto
             elif ',' in valor_str and '.' not in valor_str:
                 valor_str = valor_str.replace(',', '.')
             
@@ -2518,15 +2529,37 @@ def salvar_despesa_individual(id_evento):
                 return jsonify({'success': False, 'message': 'Valor deve ser maior que zero'})
                 
         except (ValueError, TypeError) as e:
-            print(f"Erro ao converter valor '{data.get('valor')}': {e}")
-            return jsonify({'success': False, 'message': 'Valor invÃ¡lido'})
+            print(f"Erro ao converter valor '{valor_str}': {e}")
+            return jsonify({'success': False, 'message': 'Valor inválido'})
         
         # Converter data
         data_obj = datetime.strptime(data_despesa, '%Y-%m-%d').date() if data_despesa else date.today()
         fornecedor_id = int(id_fornecedor) if id_fornecedor and id_fornecedor != '0' else None
         
-        # SEMPRE CRIAR nova despesa no evento (permitir múltiplas entradas da mesma despesa)
-        print(f"🆕 Criando nova despesa no evento - permite múltiplas da mesma despesa")
+        # Processar upload do comprovante
+        comprovante_filename = None
+        if 'comprovante' in request.files:
+            file = request.files['comprovante']
+            if file and file.filename != '':
+                filename = secure_filename(file.filename)
+                # Gerar nome único para o arquivo (mais simples)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                name_part, ext_part = os.path.splitext(filename)
+                # Usar apenas os primeiros 8 caracteres do nome + timestamp + extensão
+                unique_filename = f"{name_part[:8]}_{timestamp}{ext_part}"
+                
+                # Criar pasta se não existir
+                upload_folder = os.path.join(app.config['UPLOAD_FOLDER'])
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                # Salvar arquivo
+                file_path = os.path.join(upload_folder, unique_filename)
+                file.save(file_path)
+                comprovante_filename = unique_filename
+                print(f"📎 Comprovante salvo: {comprovante_filename}")
+        
+        # Criar nova despesa no evento
+        print(f"🆕 Criando nova despesa no evento")
         
         nova_despesa = DespesaEvento(
             id_evento=id_evento,
@@ -2537,8 +2570,8 @@ def salvar_despesa_individual(id_evento):
             forma_pagamento=forma_pagamento,
             pago_por=pago_por,
             observacoes=observacoes,
-            id_fornecedor=fornecedor_id,  # Novo campo
-            despesa_cabeca=despesa_cabeca  # Flag despesa da cabeça
+            id_fornecedor=fornecedor_id,
+            comprovante=comprovante_filename
         )
         
         db.session.add(nova_despesa)
@@ -2574,12 +2607,13 @@ def salvar_despesa_individual(id_evento):
             'despesa_nome': despesa.nome,
             'fornecedor_nome': fornecedor.nome if fornecedor else None,
             'valor_salvo': valor_float,
+            'comprovante': comprovante_filename,
             'action': 'created'
         })
         
     except Exception as e:
         db.session.rollback()
-        print(f"âŒ ERRO ao salvar despesa: {e}")
+        print(f"❌ ERRO ao salvar despesa: {e}")
         return jsonify({'success': False, 'message': f'Erro ao salvar despesa: {str(e)}'})
 
 @app.template_filter('date_br')
@@ -2965,14 +2999,12 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         if not despesa_evento:
             return jsonify({'success': False, 'message': 'Despesa não encontrada neste evento'})
         
-        # Obter dados do request
-        data = request.get_json()
+        # Obter dados do FormData
+        despesa_id = request.form.get('despesa_id')
+        valor_str = request.form.get('valor', '')
+        data_despesa = request.form.get('data')
         
         # Validar dados obrigatórios
-        despesa_id = data.get('despesa_id')
-        valor_str = data.get('valor', '')
-        data_despesa = data.get('data')
-        
         if not despesa_id or not valor_str:
             return jsonify({'success': False, 'message': 'Despesa e valor são obrigatórios'})
         
@@ -2993,7 +3025,7 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
                 return jsonify({'success': False, 'message': 'Valor deve ser maior que zero'})
                 
         except (ValueError, TypeError) as e:
-            print(f"Erro ao converter valor '{data.get('valor')}': {e}")
+            print(f"Erro ao converter valor '{valor_str}': {e}")
             return jsonify({'success': False, 'message': 'Valor inválido'})
         
         # Converter data
@@ -3006,14 +3038,47 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         despesa_evento.id_despesa = int(despesa_id)
         despesa_evento.data = data_obj
         despesa_evento.valor = valor
-        despesa_evento.status_pagamento = data.get('status_pagamento', 'pendente')
-        despesa_evento.forma_pagamento = data.get('forma_pagamento', 'débito')
-        despesa_evento.pago_por = data.get('pago_por', '')
-        despesa_evento.observacoes = data.get('observacoes', '')
-        despesa_evento.despesa_cabeca = data.get('despesa_cabeca', False)
+        despesa_evento.status_pagamento = request.form.get('status_pagamento', 'pendente')
+        despesa_evento.forma_pagamento = request.form.get('forma_pagamento', 'débito')
+        despesa_evento.pago_por = request.form.get('pago_por', '')
+        despesa_evento.observacoes = request.form.get('observacoes', '')
+        
+        # Processar upload de comprovante se fornecido
+        comprovante = request.files.get('comprovante')
+        if comprovante and comprovante.filename:
+            if allowed_file(comprovante.filename):
+                # Remover arquivo anterior se existir
+                if despesa_evento.comprovante:
+                    try:
+                        old_file_path = os.path.join(app.config['UPLOAD_FOLDER'], despesa_evento.comprovante)
+                        if os.path.exists(old_file_path):
+                            os.remove(old_file_path)
+                            print(f"✅ Arquivo antigo substituído: {despesa_evento.comprovante}")
+                    except Exception as e:
+                        print(f"⚠️ Erro ao remover arquivo antigo: {e}")
+                
+                # Gerar nome único para o arquivo (mais simples)
+                filename = secure_filename(comprovante.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                name_part, ext_part = os.path.splitext(filename)
+                # Usar apenas os primeiros 8 caracteres do nome + timestamp + extensão
+                unique_filename = f"{name_part[:8]}_{timestamp}{ext_part}"
+                
+                # Criar diretório se não existir
+                upload_path = os.path.join(app.config['UPLOAD_FOLDER'])
+                os.makedirs(upload_path, exist_ok=True)
+                
+                # Salvar arquivo
+                file_path = os.path.join(upload_path, unique_filename)
+                comprovante.save(file_path)
+                
+                # Atualizar campo no banco
+                despesa_evento.comprovante = unique_filename
+                
+                print(f"✅ Comprovante editado e salvo: {unique_filename}")
         
         # Atualizar fornecedor se informado
-        id_fornecedor = data.get('id_fornecedor')
+        id_fornecedor = request.form.get('id_fornecedor')
         if id_fornecedor and id_fornecedor != '0':
             despesa_evento.id_fornecedor = int(id_fornecedor)
             
@@ -3027,7 +3092,7 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
                 novo_fornecedor_evento = FornecedorEvento(
                     id_evento=id_evento,
                     id_fornecedor=int(id_fornecedor),
-                    observacoes=data.get('observacoes', '')
+                    observacoes=request.form.get('observacoes', '')
                 )
                 db.session.add(novo_fornecedor_evento)
         else:
@@ -3218,6 +3283,71 @@ def atualizar_despesa_cabeca(id_evento, despesa_evento_id):
             'message': f'Erro ao atualizar: {str(e)}'
         }), 500
 
-# Rota para servir os arquivos
+# Rota para excluir comprovante de despesa
+@app.route('/eventos/<int:id_evento>/excluir-comprovante/<int:despesa_evento_id>', methods=['DELETE'])
+def excluir_comprovante_despesa(id_evento, despesa_evento_id):
+    """Exclui o comprovante de uma despesa específica do evento"""
+    try:
+        # Buscar a despesa do evento
+        despesa_evento = DespesaEvento.query.filter_by(
+            id_despesa_evento=despesa_evento_id,
+            id_evento=id_evento
+        ).first()
+        
+        if not despesa_evento:
+            return jsonify({
+                'success': False, 
+                'message': 'Despesa não encontrada'
+            }), 404
+        
+        # Verificar se há comprovante para excluir
+        if not despesa_evento.comprovante:
+            return jsonify({
+                'success': False, 
+                'message': 'Nenhum comprovante encontrado para esta despesa'
+            }), 400
+        
+        # Tentar remover o arquivo físico
+        try:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], despesa_evento.comprovante)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"✅ Arquivo removido: {file_path}")
+            else:
+                print(f"⚠️ Arquivo não encontrado: {file_path}")
+        except Exception as e:
+            print(f"⚠️ Erro ao remover arquivo: {e}")
+            # Continua mesmo se não conseguir remover o arquivo físico
+        
+        # Limpar o campo comprovante no banco
+        despesa_evento.comprovante = None
+        db.session.commit()
+        
+        print(f"✅ Comprovante excluído da despesa ID: {despesa_evento_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Comprovante excluído com sucesso'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao excluir comprovante: {e}")
+        return jsonify({
+            'success': False, 
+            'message': f'Erro ao excluir comprovante: {str(e)}'
+        }), 500
+
+# Rota para servir arquivos de comprovante
+@app.route('/uploads/comprovantes/<filename>')
+def uploaded_file(filename):
+    # Verificar se o usuário está logado
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    from flask import send_from_directory
+    import os
+    return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER']), filename)
+
 if __name__ == '__main__':
     app.run(debug=True)

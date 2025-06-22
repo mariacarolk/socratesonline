@@ -16,6 +16,10 @@ class Config:
     
     # Chave secreta para sessions
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'sua-chave-secreta-aqui'
+    
+    # Configurações de upload
+    UPLOAD_FOLDER = 'uploads/comprovantes'
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB máximo por arquivo
 
 class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///database.db'
