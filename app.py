@@ -92,7 +92,7 @@ def calcular_lucro_evento(id_evento):
     ).filter(
         DespesaEvento.id_evento == id_evento,
         DespesaEvento.despesa_cabeca == True,
-        CategoriaDespesa.nome != 'PAGAS PELO CIRCO'
+        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
     ).scalar() or 0
     
     # Repasse total = 50% show + reembolso mídias
@@ -105,7 +105,7 @@ def calcular_lucro_evento(id_evento):
         CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
     ).filter(
         DespesaEvento.id_evento == id_evento,
-        CategoriaDespesa.nome != 'PAGAS PELO CIRCO'
+        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
     ).scalar() or 0
     
     # Resultado do show = repasse total - total despesas sócrates (LUCRO REAL)
@@ -200,13 +200,17 @@ def dashboard():
 
     # Filtro de eventos baseado no tipo de usuÃ¡rio
     if is_admin:
-        # Administrador vÃª todos os eventos
+        # Administrador vê todos os eventos - excluir categoria "PAGAS PELO CIRCO"
         eventos_base_query = db.session.query(ReceitaEvento.data, 
                                             func.sum(ReceitaEvento.valor).label('receitas'),
                                             func.sum(DespesaEvento.valor).label('despesas'))\
-                           .outerjoin(DespesaEvento, ReceitaEvento.data == DespesaEvento.data)
+                           .outerjoin(DespesaEvento, ReceitaEvento.data == DespesaEvento.data)\
+                           .outerjoin(Despesa, DespesaEvento.id_despesa == Despesa.id_despesa)\
+                           .outerjoin(CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa)\
+                           .filter(db.or_(CategoriaDespesa.nome == None, 
+                                        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])))
     else:
-        # Produtor vÃª apenas seus eventos
+        # Produtor vê apenas seus eventos - excluir categoria "PAGAS PELO CIRCO"
         eventos_do_produtor = db.session.query(Evento.id_evento)\
                              .filter_by(id_produtor=usuario.colaborador.id_colaborador)\
                              .subquery()
@@ -217,7 +221,11 @@ def dashboard():
                            .filter(ReceitaEvento.id_evento.in_(eventos_do_produtor))\
                            .outerjoin(DespesaEvento, 
                                     db.and_(DespesaEvento.data == ReceitaEvento.data,
-                                          DespesaEvento.id_evento.in_(eventos_do_produtor)))
+                                          DespesaEvento.id_evento.in_(eventos_do_produtor)))\
+                           .outerjoin(Despesa, DespesaEvento.id_despesa == Despesa.id_despesa)\
+                           .outerjoin(CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa)\
+                           .filter(db.or_(CategoriaDespesa.nome == None, 
+                                        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])))
 
     # Lucro por dia no perÃ­odo
     lucro_por_dia = []
@@ -226,7 +234,15 @@ def dashboard():
     while current <= data_fim:
         if is_admin:
             receitas = db.session.query(func.sum(ReceitaEvento.valor)).filter(ReceitaEvento.data == current).scalar() or 0
-            despesas = db.session.query(func.sum(DespesaEvento.valor)).filter(DespesaEvento.data == current).scalar() or 0
+            # Excluir categoria "PAGAS PELO CIRCO" do cálculo de despesas
+            despesas = db.session.query(func.sum(DespesaEvento.valor)).join(
+                Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+            ).join(
+                CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+            ).filter(
+                DespesaEvento.data == current,
+                CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
+            ).scalar() or 0
         else:
             # Filtrar por eventos do produtor
             eventos_do_produtor = db.session.query(Evento.id_evento)\
@@ -236,9 +252,16 @@ def dashboard():
                       .filter(ReceitaEvento.data == current,
                              ReceitaEvento.id_evento.in_(eventos_do_produtor)).scalar() or 0
             
-            despesas = db.session.query(func.sum(DespesaEvento.valor))\
-                      .filter(DespesaEvento.data == current,
-                             DespesaEvento.id_evento.in_(eventos_do_produtor)).scalar() or 0
+            # Excluir categoria "PAGAS PELO CIRCO" do cálculo de despesas
+            despesas = db.session.query(func.sum(DespesaEvento.valor)).join(
+                Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+            ).join(
+                CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+            ).filter(
+                DespesaEvento.data == current,
+                DespesaEvento.id_evento.in_(eventos_do_produtor),
+                CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
+            ).scalar() or 0
         
         lucro = receitas - despesas
         lucro_por_dia.append(lucro)
@@ -889,6 +912,11 @@ def editar_categoria_despesa(id):
 @app.route('/cadastros/categorias-despesa/excluir/<int:id>')
 def excluir_categoria_despesa(id):
     categoria = CategoriaDespesa.query.get_or_404(id)
+    
+    # Proteger categoria "PAGAS PELO CIRCO" e "PAGO PELO CIRCO"
+    if categoria.nome.upper() in ['PAGAS PELO CIRCO', 'PAGO PELO CIRCO']:
+        flash('Não é possível excluir esta categoria pois ela é protegida pelo sistema.', 'danger')
+        return redirect(url_for('cadastrar_categoria_despesa'))
     
     # Verificar se existem despesas usando esta categoria
     despesas_usando = Despesa.query.filter_by(id_categoria_despesa=id).count()
@@ -1851,9 +1879,15 @@ def relatorios_lucratividade_periodo():
             ReceitaEvento.data <= ultimo_dia
         ).scalar() or 0
         
-        despesas = db.session.query(func.sum(DespesaEvento.valor)).filter(
+        # Excluir categoria "PAGAS PELO CIRCO" do cálculo de despesas
+        despesas = db.session.query(func.sum(DespesaEvento.valor)).join(
+            Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+        ).join(
+            CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+        ).filter(
             DespesaEvento.data >= primeiro_dia,
-            DespesaEvento.data <= ultimo_dia
+            DespesaEvento.data <= ultimo_dia,
+            CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
         ).scalar() or 0
         
         lucro = receitas - despesas
@@ -2089,8 +2123,9 @@ def relatorio_fechamento_evento(id_evento):
     # Verificar se é administrador
     is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
 
-    # Buscar o evento
-    evento = Evento.query.get_or_404(id_evento)
+    # Usar a função unificada para obter dados
+    dados = obter_dados_completos_evento(id_evento)
+    evento = dados['evento']
     
     # Verificar se o usuário tem permissão para ver este evento
     if not is_admin:
@@ -2105,129 +2140,19 @@ def relatorio_fechamento_evento(id_evento):
             flash('Você só pode visualizar relatórios dos seus próprios eventos.', 'danger')
             return redirect(url_for('relatorios_fechamento_evento'))
     
-    # Buscar despesas de cabeça agrupadas por categoria COM DETALHES
-    despesas_cabeca_detalhadas = db.session.query(
-        CategoriaDespesa.nome.label('categoria_nome'),
-        Despesa.nome.label('despesa_nome'),
-        DespesaEvento.valor,
-        DespesaEvento.data,
-        Fornecedor.nome.label('fornecedor_nome')
-    ).join(
-        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
-    ).join(
-        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
-    ).outerjoin(
-        Fornecedor, DespesaEvento.id_fornecedor == Fornecedor.id_fornecedor
-    ).filter(
-        DespesaEvento.id_evento == id_evento,
-        DespesaEvento.despesa_cabeca == True
-    ).all()
-    
-    # Agrupar despesas de cabeça por categoria
-    despesas_cabeca_agrupadas = {}
-    for item in despesas_cabeca_detalhadas:
-        if item.categoria_nome not in despesas_cabeca_agrupadas:
-            despesas_cabeca_agrupadas[item.categoria_nome] = {
-                'categoria_nome': item.categoria_nome,
-                'total_categoria': 0,
-                'itens': []
-            }
-        
-        despesas_cabeca_agrupadas[item.categoria_nome]['total_categoria'] += item.valor
-        despesas_cabeca_agrupadas[item.categoria_nome]['itens'].append({
-            'despesa_nome': item.despesa_nome,
-            'valor': item.valor,
-            'data': item.data,
-            'fornecedor_nome': item.fornecedor_nome
-        })
-    
-    despesas_cabeca = list(despesas_cabeca_agrupadas.values())
-    
-    # Usar função unificada para calcular valores financeiros
-    calculo = calcular_lucro_evento(id_evento)
-    
-    # Manter cálculos locais para compatibilidade com o template
-    total_despesas_bruto = sum(item['total_categoria'] for item in despesas_cabeca)
-    reembolso_midias = sum(item['total_categoria'] for item in despesas_cabeca 
-                          if item['categoria_nome'].upper() != 'PAGAS PELO CIRCO')
-    
-    # Buscar todas as receitas do evento COM AGRUPAMENTO POR CATEGORIA
-    receitas_detalhadas = db.session.query(
-        Receita.nome.label('receita_nome'),
-        CategoriaReceita.nome.label('categoria_nome'),
-        ReceitaEvento.valor,
-        ReceitaEvento.data
-    ).join(
-        Receita, ReceitaEvento.id_receita == Receita.id_receita
-    ).join(
-        CategoriaReceita, Receita.id_categoria_receita == CategoriaReceita.id_categoria_receita
-    ).filter(
-        ReceitaEvento.id_evento == id_evento
-    ).all()
-    
-    # Agrupar receitas por categoria
-    receitas_agrupadas = {}
-    for item in receitas_detalhadas:
-        if item.categoria_nome not in receitas_agrupadas:
-            receitas_agrupadas[item.categoria_nome] = {
-                'categoria_nome': item.categoria_nome,
-                'total_categoria': 0,
-                'itens': []
-            }
-        
-        receitas_agrupadas[item.categoria_nome]['total_categoria'] += item.valor
-        receitas_agrupadas[item.categoria_nome]['itens'].append({
-            'receita_nome': item.receita_nome,
-            'valor': item.valor,
-            'data': item.data
-        })
-    
-    receitas_evento = list(receitas_agrupadas.values())
+    # Obter dados da função unificada
+    despesas_cabeca = dados['despesas_cabeca_agrupadas']
+    receitas_evento = dados['receitas_agrupadas']
+    todas_despesas = dados['despesas_agrupadas']
     
     # Usar valores da função unificada para garantir consistência
+    calculo = dados['calculo_financeiro']
+    total_despesas_bruto = dados['totais_calculados']['despesas_cabeca_total']
+    reembolso_midias = dados['totais_calculados']['reembolso_midias']
     total_receitas = calculo['total_receitas']
     total_liquido = calculo['total_liquido']
     cinquenta_porcento_show = calculo['cinquenta_porcento_show']
     repasse_total = calculo['repasse_total']
-    
-    # Buscar todas as despesas do evento agrupadas por categoria COM DETALHES
-    todas_despesas_detalhadas = db.session.query(
-        CategoriaDespesa.nome.label('categoria_nome'),
-        Despesa.nome.label('despesa_nome'),
-        DespesaEvento.valor,
-        DespesaEvento.data,
-        Fornecedor.nome.label('fornecedor_nome')
-    ).join(
-        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
-    ).join(
-        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
-    ).outerjoin(
-        Fornecedor, DespesaEvento.id_fornecedor == Fornecedor.id_fornecedor
-    ).filter(
-        DespesaEvento.id_evento == id_evento
-    ).all()
-    
-    # Agrupar todas as despesas por categoria
-    todas_despesas_agrupadas = {}
-    for item in todas_despesas_detalhadas:
-        if item.categoria_nome not in todas_despesas_agrupadas:
-            todas_despesas_agrupadas[item.categoria_nome] = {
-                'categoria_nome': item.categoria_nome,
-                'total_categoria': 0,
-                'itens': []
-            }
-        
-        todas_despesas_agrupadas[item.categoria_nome]['total_categoria'] += item.valor
-        todas_despesas_agrupadas[item.categoria_nome]['itens'].append({
-            'despesa_nome': item.despesa_nome,
-            'valor': item.valor,
-            'data': item.data,
-            'fornecedor_nome': item.fornecedor_nome
-        })
-    
-    todas_despesas = list(todas_despesas_agrupadas.values())
-    
-    # Usar valores da função unificada para garantir consistência
     total_despesas_socrates = calculo['total_despesas_socrates']
     resultado_show = calculo['resultado_show']
     
@@ -2493,20 +2418,37 @@ def salvar_despesa_individual(id_evento):
     evento = Evento.query.get_or_404(id_evento)
     
     try:
-        # Processar dados do FormData
-        despesa_id = request.form.get('despesa_id')
-        valor_str = request.form.get('valor', '')
-        data_despesa = request.form.get('data')
-        status_pagamento = request.form.get('status_pagamento', 'pendente')
-        forma_pagamento = request.form.get('forma_pagamento', 'débito')
-        pago_por = request.form.get('pago_por', '')
-        observacoes = request.form.get('observacoes', '')
-        id_fornecedor = request.form.get('id_fornecedor', None)
+        # Verificar se é JSON ou FormData
+        if request.content_type and 'application/json' in request.content_type:
+            # Processar dados JSON (vindo do modal rápido)
+            data = request.get_json()
+            despesa_id = data.get('despesa_id')
+            valor_str = data.get('valor', '')
+            data_despesa = data.get('data')
+            status_pagamento = data.get('status_pagamento', 'pendente')
+            forma_pagamento = data.get('forma_pagamento', 'débito')
+            pago_por = data.get('pago_por', '')
+            observacoes = data.get('observacoes', '')
+            id_fornecedor = data.get('id_fornecedor', None)
+            despesa_cabeca = data.get('despesa_cabeca', False)
+        else:
+            # Processar dados do FormData (upload com arquivo)
+            despesa_id = request.form.get('despesa_id')
+            valor_str = request.form.get('valor', '')
+            data_despesa = request.form.get('data')
+            status_pagamento = request.form.get('status_pagamento', 'pendente')
+            forma_pagamento = request.form.get('forma_pagamento', 'débito')
+            pago_por = request.form.get('pago_por', '')
+            observacoes = request.form.get('observacoes', '')
+            id_fornecedor = request.form.get('id_fornecedor', None)
+            despesa_cabeca = request.form.get('despesa_cabeca') == '1'
         
-        print(f"=== SALVAMENTO INDIVIDUAL VIA FORMDATA ===")
+        print(f"=== SALVAMENTO INDIVIDUAL ===")
+        print(f"Tipo de dados: {'JSON' if request.content_type and 'application/json' in request.content_type else 'FormData'}")
         print(f"Despesa ID: {despesa_id}")
         print(f"Valor recebido: '{valor_str}'")
         print(f"Fornecedor ID: {id_fornecedor}")
+        print(f"Despesa cabeça: {despesa_cabeca}")
         
         if not despesa_id or not valor_str:
             return jsonify({'success': False, 'message': 'Despesa e valor são obrigatórios'})
@@ -2571,7 +2513,8 @@ def salvar_despesa_individual(id_evento):
             pago_por=pago_por,
             observacoes=observacoes,
             id_fornecedor=fornecedor_id,
-            comprovante=comprovante_filename
+            comprovante=comprovante_filename,
+            despesa_cabeca=despesa_cabeca
         )
         
         db.session.add(nova_despesa)
@@ -3348,6 +3291,216 @@ def uploaded_file(filename):
     from flask import send_from_directory
     import os
     return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER']), filename)
+
+@app.route('/api/evento/<int:id_evento>/detalhes-completos')
+def api_evento_detalhes_completos(id_evento):
+    """API para buscar detalhes completos do evento para o modal"""
+    # Verificar se o usuário está logado
+    if 'user_id' not in session:
+        return jsonify({
+            'success': False,
+            'message': 'Usuário não autenticado'
+        }), 401
+        
+    try:
+        app.logger.info(f"Buscando detalhes completos para evento ID: {id_evento}")
+        
+        # Verificar se o evento existe
+        evento = Evento.query.get(id_evento)
+        if not evento:
+            app.logger.error(f"Evento não encontrado: {id_evento}")
+            return jsonify({
+                'success': False,
+                'message': 'Evento não encontrado'
+            }), 404
+        
+        app.logger.info(f"Evento encontrado: {evento.nome}")
+        
+        # Usar a função unificada para obter dados
+        dados = obter_dados_completos_evento(id_evento)
+        app.logger.info("Dados obtidos com sucesso")
+        
+        # Preparar receitas formatadas para JSON
+        receitas_formatadas = []
+        for categoria in dados['receitas_agrupadas']:
+            categoria_formatada = {
+                'categoria_nome': categoria['categoria_nome'],
+                'total_categoria': categoria['total_categoria'],
+                'itens': []
+            }
+            for item in categoria['itens']:
+                categoria_formatada['itens'].append({
+                    'receita_nome': item['receita_nome'],
+                    'valor': item['valor'],
+                    'data': item['data'].strftime('%d/%m/%Y') if item['data'] else '',
+                    'observacoes': item['observacoes']
+                })
+            receitas_formatadas.append(categoria_formatada)
+        
+        # Preparar despesas formatadas para JSON
+        despesas_formatadas = []
+        for categoria in dados['despesas_agrupadas']:
+            categoria_formatada = {
+                'categoria_nome': categoria['categoria_nome'],
+                'total_categoria': categoria['total_categoria'],
+                'itens': []
+            }
+            for item in categoria['itens']:
+                categoria_formatada['itens'].append({
+                    'despesa_nome': item['despesa_nome'],
+                    'valor': item['valor'],
+                    'data': item['data'].strftime('%d/%m/%Y') if item['data'] else '',
+                    'status_pagamento': item['status_pagamento'],
+                    'despesa_cabeca': item['despesa_cabeca'],
+                    'fornecedor_nome': item['fornecedor_nome'],
+                    'observacoes': item['observacoes']
+                })
+            despesas_formatadas.append(categoria_formatada)
+        
+        return jsonify({
+            'success': True,
+            'evento': {
+                'nome': dados['evento'].nome,
+                'data_inicio': dados['evento'].data_inicio.strftime('%d/%m/%Y'),
+                'data_fim': dados['evento'].data_fim.strftime('%d/%m/%Y'),
+                'cidade': dados['evento'].cidade,
+                'estado': dados['evento'].estado,
+                'endereco': dados['evento'].endereco or '',
+                'status': dados['evento'].status,
+                'circo_nome': dados['evento'].circo.nome if dados['evento'].circo else '',
+                'produtor_nome': dados['evento'].produtor.nome if dados['evento'].produtor else '',
+                'observacoes': dados['evento'].observacoes or ''
+            },
+            'receitas': {
+                'categorias': receitas_formatadas,
+                'total': dados['totais_calculados']['total_receitas']
+            },
+            'despesas': {
+                'categorias': despesas_formatadas,
+                'total': dados['totais_calculados']['total_despesas'],
+                'despesas_cabeca_total': dados['totais_calculados']['despesas_cabeca_total']
+            },
+            'financeiro': {
+                'total_receitas': dados['calculo_financeiro']['total_receitas'],
+                'total_despesas': dados['calculo_financeiro']['total_despesas'],
+                'despesas_cabeca': dados['calculo_financeiro']['despesas_cabeca'],
+                'total_liquido': dados['calculo_financeiro']['total_liquido'],
+                'cinquenta_porcento_show': dados['calculo_financeiro']['cinquenta_porcento_show'],
+                'reembolso_midias': dados['calculo_financeiro']['reembolso_midias'],
+                'repasse_total': dados['calculo_financeiro']['repasse_total'],
+                'total_despesas_socrates': dados['calculo_financeiro']['total_despesas_socrates'],
+                'resultado_show': dados['calculo_financeiro']['resultado_show']
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Erro ao buscar detalhes do evento {id_evento}: {str(e)}")
+        app.logger.error(f"Traceback: {e.__class__.__name__}: {str(e)}")
+        import traceback
+        app.logger.error(f"Stack trace: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao buscar detalhes do evento: {str(e)}'
+        }), 500
+
+def obter_dados_completos_evento(id_evento):
+    """
+    Função unificada para obter dados completos de um evento
+    Retorna: dicionário com evento, receitas agrupadas, despesas agrupadas e cálculos financeiros
+    """
+    evento = Evento.query.get_or_404(id_evento)
+    
+    # Buscar receitas do evento agrupadas por categoria
+    receitas_query = db.session.query(
+        CategoriaReceita.nome.label('categoria_nome'),
+        Receita.nome.label('receita_nome'),
+        ReceitaEvento.valor,
+        ReceitaEvento.data,
+        ReceitaEvento.observacoes
+    ).join(
+        ReceitaEvento, ReceitaEvento.id_receita == Receita.id_receita
+    ).join(
+        CategoriaReceita, Receita.id_categoria_receita == CategoriaReceita.id_categoria_receita
+    ).filter(
+        ReceitaEvento.id_evento == id_evento
+    ).order_by(CategoriaReceita.nome, Receita.nome).all()
+    
+    # Agrupar receitas por categoria
+    receitas_agrupadas = {}
+    for item in receitas_query:
+        if item.categoria_nome not in receitas_agrupadas:
+            receitas_agrupadas[item.categoria_nome] = {
+                'categoria_nome': item.categoria_nome,
+                'total_categoria': 0,
+                'itens': []
+            }
+        
+        receitas_agrupadas[item.categoria_nome]['total_categoria'] += float(item.valor)
+        receitas_agrupadas[item.categoria_nome]['itens'].append({
+            'receita_nome': item.receita_nome,
+            'valor': float(item.valor),
+            'data': item.data,
+            'observacoes': item.observacoes or ''
+        })
+    
+    # Buscar despesas do evento agrupadas por categoria
+    despesas_query = db.session.query(
+        CategoriaDespesa.nome.label('categoria_nome'),
+        Despesa.nome.label('despesa_nome'),
+        DespesaEvento.valor,
+        DespesaEvento.data,
+        DespesaEvento.status_pagamento,
+        DespesaEvento.despesa_cabeca,
+        Fornecedor.nome.label('fornecedor_nome'),
+        DespesaEvento.observacoes
+    ).join(
+        DespesaEvento, DespesaEvento.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).outerjoin(
+        Fornecedor, DespesaEvento.id_fornecedor == Fornecedor.id_fornecedor
+    ).filter(
+        DespesaEvento.id_evento == id_evento
+    ).order_by(CategoriaDespesa.nome, Despesa.nome).all()
+    
+    # Agrupar despesas por categoria
+    despesas_agrupadas = {}
+    for item in despesas_query:
+        if item.categoria_nome not in despesas_agrupadas:
+            despesas_agrupadas[item.categoria_nome] = {
+                'categoria_nome': item.categoria_nome,
+                'total_categoria': 0,
+                'itens': []
+            }
+        
+        despesas_agrupadas[item.categoria_nome]['total_categoria'] += float(item.valor)
+        despesas_agrupadas[item.categoria_nome]['itens'].append({
+            'despesa_nome': item.despesa_nome,
+            'valor': float(item.valor),
+            'data': item.data,
+            'status_pagamento': item.status_pagamento or 'pendente',
+            'despesa_cabeca': bool(item.despesa_cabeca),
+            'fornecedor_nome': item.fornecedor_nome or '',
+            'observacoes': item.observacoes or ''
+        })
+    
+    # Calcular valores usando a função unificada (única fonte de verdade)
+    calculo = calcular_lucro_evento(id_evento)
+    
+    return {
+        'evento': evento,
+        'receitas_agrupadas': list(receitas_agrupadas.values()),
+        'despesas_agrupadas': list(despesas_agrupadas.values()),
+        'despesas_cabeca_agrupadas': [cat for cat in despesas_agrupadas.values() 
+                                     if any(item['despesa_cabeca'] for item in cat['itens'])],
+        'totais_calculados': {
+            'total_receitas': calculo['total_receitas'],      # Usar valores da função unificada
+            'total_despesas': calculo['total_despesas'],      # para garantir consistência
+            'despesas_cabeca_total': calculo['despesas_cabeca'],
+            'reembolso_midias': calculo['reembolso_midias']
+        },
+        'calculo_financeiro': calculo
+    }
 
 if __name__ == '__main__':
     app.run(debug=True)
