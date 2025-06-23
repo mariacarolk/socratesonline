@@ -178,7 +178,256 @@
   transform: scale(1.1);
 }
 
-/* Botões de ação redesenhados */
+/* ========================================
+   BOTÕES MOBILE-FIRST - Nova UX
+   ======================================== */
+
+/* Grid para ações principais - mobile-first */
+.action-grid-primary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Botões de ação principais otimizados para mobile */
+.btn-action-mobile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  border-radius: var(--radius-xl);
+  border: none;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-base);
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-action-mobile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  position: relative;
+}
+
+.btn-action-mobile i {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+.btn-action-mobile-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.125rem;
+}
+
+.btn-action-mobile-subtitle {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Ripple effect */
+.btn-action-mobile-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  transition: transform 0.6s ease-out;
+  pointer-events: none;
+}
+
+/* Estados de interação mobile */
+.btn-action-mobile:active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-action-mobile:active .btn-action-mobile-ripple {
+  transform: scale(1);
+}
+
+/* Variantes de cor para botões principais */
+.btn-danger-mobile {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-danger-mobile:hover,
+.btn-danger-mobile:focus {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success-mobile {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.btn-success-mobile:hover,
+.btn-success-mobile:focus {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Grid para ações secundárias */
+.action-grid-secondary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+/* Botões secundários compactos */
+.btn-action-secondary-mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  background: white;
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-600);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.btn-action-secondary-mobile i {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.btn-action-secondary-mobile:active {
+  transform: scale(0.96);
+  background: var(--gray-50);
+}
+
+.btn-action-secondary-mobile:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--gray-300);
+}
+
+/* Variantes de cor para botões secundários */
+.btn-primary-secondary {
+  border-color: var(--accent-200);
+  color: var(--accent-700);
+}
+
+.btn-primary-secondary:hover,
+.btn-primary-secondary:focus {
+  border-color: var(--accent-300);
+  background: var(--accent-50);
+  color: var(--accent-800);
+}
+
+.btn-warning-secondary {
+  border-color: var(--warning-light);
+  color: var(--warning-dark);
+}
+
+.btn-warning-secondary:hover,
+.btn-warning-secondary:focus {
+  border-color: var(--warning);
+  background: #fef3c7;
+  color: var(--warning-dark);
+}
+
+.btn-info-secondary {
+  border-color: var(--info-light);
+  color: var(--info-dark);
+}
+
+.btn-info-secondary:hover,
+.btn-info-secondary:focus {
+  border-color: var(--info);
+  background: var(--info-light);
+  color: var(--info-dark);
+}
+
+/* Footer com botões mobile */
+.evento-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+.btn-mobile-secondary,
+.btn-mobile-primary,
+.btn-mobile-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  min-width: 60px;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  color: var(--gray-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.btn-mobile-secondary i,
+.btn-mobile-primary i,
+.btn-mobile-menu i {
+  font-size: 1rem;
+  margin-bottom: 0.125rem;
+}
+
+.btn-mobile-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-mobile-primary:hover,
+.btn-mobile-primary:focus {
+  background: var(--accent-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  color: white;
+}
+
+.btn-mobile-secondary:hover,
+.btn-mobile-secondary:focus {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.btn-mobile-menu:hover,
+.btn-mobile-menu:focus {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+/* Botões de ação redesenhados (legado - manter para compatibilidade) */
 .btn-action-primary {
   height: 60px;
   border-radius: var(--radius-lg);
@@ -363,7 +612,12 @@
 }
 
 /* Responsividade para cards */
+/* ========================================
+   RESPONSIVIDADE MOBILE-FIRST
+   ======================================== */
+
 @media (max-width: 768px) {
+  /* Cards de evento otimizados para mobile */
   .evento-card .card-body {
     padding: var(--spacing-lg);
   }
@@ -371,7 +625,92 @@
   .evento-header {
     padding: var(--spacing-lg);
   }
+
+  /* Aumentar tamanho dos botões principais em mobile */
+  .btn-action-mobile {
+    height: 80px;
+    border-radius: var(--radius-2xl);
+  }
+
+  .btn-action-mobile i {
+    font-size: 1.75rem;
+    margin-bottom: 0.375rem;
+  }
+
+  .btn-action-mobile-text {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .btn-action-mobile-subtitle {
+    font-size: 0.75rem;
+  }
+
+  /* Aumentar espaçamento entre botões em mobile */
+  .action-grid-primary {
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .action-grid-secondary {
+    gap: 0.75rem;
+  }
+
+  /* Melhorar área de toque em botões secundários */
+  .btn-action-secondary-mobile {
+    height: 56px;
+    font-size: 0.8rem;
+  }
+
+  .btn-action-secondary-mobile i {
+    font-size: 1.25rem;
+    margin-bottom: 0.375rem;
+  }
+
+  /* Footer mobile otimizado */
+  .btn-mobile-secondary,
+  .btn-mobile-primary,
+  .btn-mobile-menu {
+    height: 48px;
+    min-width: 68px;
+    font-size: 0.8rem;
+  }
+
+  .btn-mobile-secondary i,
+  .btn-mobile-primary i,
+  .btn-mobile-menu i {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Melhorar feedback tátil em mobile */
+  .btn-action-mobile:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease-out;
+  }
+
+  .btn-action-secondary-mobile:active {
+    transform: scale(0.93);
+    transition: transform 0.1s ease-out;
+  }
+
+  /* Melhorar legibilidade em telas pequenas */
+  .btn-action-mobile-content {
+    padding: 0.25rem;
+  }
+
+  /* Ajustes para ícones de informação */
+  .evento-info .info-icon {
+    width: 28px;
+    height: 28px;
+  }
   
+  .evento-card .evento-actions {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+  }
+
+  /* Manter compatibilidade com botões legados */
   .btn-action-primary {
     height: 50px;
     font-size: var(--font-size-xs);
@@ -389,16 +728,231 @@
   .btn-action-secondary i {
     font-size: 0.9rem;
   }
-  
-  .evento-info .info-icon {
-    width: 28px;
-    height: 28px;
+}
+
+/* Otimizações para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .action-grid-primary {
+    gap: 0.875rem;
   }
-  
-  .evento-card .evento-actions {
-    margin-top: var(--spacing-md);
-    padding-top: var(--spacing-md);
+
+  .btn-action-mobile {
+    height: 76px;
   }
+
+  .btn-action-mobile i {
+    font-size: 1.6rem;
+  }
+
+  .btn-action-mobile-text {
+    font-size: 0.95rem;
+  }
+}
+
+/* Ajustes para dispositivos touch */
+@media (hover: none) and (pointer: coarse) {
+  /* Remover efeitos hover em dispositivos touch */
+  .btn-action-mobile:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-action-secondary-mobile:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-mobile-primary:hover,
+  .btn-mobile-secondary:hover,
+  .btn-mobile-menu:hover {
+    transform: none;
+  }
+
+  /* Melhorar feedback tátil */
+  .btn-action-mobile:active,
+  .btn-action-secondary-mobile:active,
+  .btn-mobile-primary:active,
+  .btn-mobile-secondary:active,
+  .btn-mobile-menu:active {
+    opacity: 0.8;
+    transform: scale(0.96);
+  }
+
+  /* Garantir área mínima de toque (44px) */
+  .btn-action-mobile,
+  .btn-action-secondary-mobile,
+  .btn-mobile-primary,
+  .btn-mobile-secondary,
+  .btn-mobile-menu {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ========================================
+   MELHORIAS ESPECÍFICAS PARA DISPOSITIVOS
+   ======================================== */
+
+/* Estilos específicos para dispositivos móveis detectados via JS */
+.mobile-device .btn-action-mobile {
+  /* Botões ainda maiores em dispositivos mobile reais */
+  height: 84px;
+  font-weight: 700;
+}
+
+.mobile-device .btn-action-mobile i {
+  font-size: 2rem;
+}
+
+.mobile-device .btn-action-mobile-text {
+  font-size: 1.1rem;
+}
+
+.mobile-device .btn-action-secondary-mobile {
+  height: 60px;
+  font-size: 0.85rem;
+}
+
+.mobile-device .btn-action-secondary-mobile i {
+  font-size: 1.3rem;
+}
+
+/* Melhorar contraste em dispositivos móveis */
+.mobile-device .btn-danger-mobile {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.mobile-device .btn-success-mobile {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+/* Estados focus melhorados para acessibilidade */
+.btn-action-mobile:focus,
+.btn-action-secondary-mobile:focus,
+.btn-mobile-primary:focus,
+.btn-mobile-secondary:focus,
+.btn-mobile-menu:focus {
+  outline: 3px solid var(--accent-200);
+  outline-offset: 2px;
+}
+
+/* Prevenir seleção de texto em botões */
+.btn-action-mobile,
+.btn-action-secondary-mobile,
+.btn-mobile-primary,
+.btn-mobile-secondary,
+.btn-mobile-menu {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Melhorar performance de animações em mobile */
+.btn-action-mobile,
+.btn-action-secondary-mobile,
+.btn-mobile-primary,
+.btn-mobile-secondary,
+.btn-mobile-menu {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Adicionar indicadores visuais para ações swipe */
+.evento-card {
+  position: relative;
+}
+
+.evento-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, var(--accent-200), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+}
+
+.mobile-device .evento-card:hover::after {
+  opacity: 0.6;
+}
+
+/* Melhorar loading states */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: button-loading-spinner 1s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Estilos para notificações toast mobile */
+.mobile-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gray-900);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  opacity: 0;
+  transition: all var(--transition-base);
+  font-size: 0.9rem;
+  font-weight: 500;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.mobile-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+.mobile-toast.success {
+  background: var(--success);
+}
+
+.mobile-toast.error {
+  background: var(--danger);
+}
+
+.mobile-toast.warning {
+  background: var(--warning);
+}
+
+.mobile-toast.info {
+  background: var(--info);
 }
 
 /* ========================================
