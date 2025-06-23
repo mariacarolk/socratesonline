@@ -1,6 +1,7 @@
 ﻿from datetime import date, timedelta, datetime
 import os
-from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify
+import io
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, make_response, send_file
 from models import (
     Usuario, Circo, CategoriaColaborador, Colaborador, ColaboradorCategoria,
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
@@ -21,6 +22,13 @@ from flask_migrate import Migrate
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import uuid
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
 
 load_dotenv()  # Carrega variáveis do .env
 
@@ -3501,6 +3509,149 @@ def obter_dados_completos_evento(id_evento):
         },
         'calculo_financeiro': calculo
     }
+
+# Funções utilitárias para exportação
+def criar_excel_response(headers, data, filename):
+    """Cria um arquivo Excel e retorna como response Flask"""
+    wb = Workbook()
+    ws = wb.active
+    
+    # Configurar cabeçalho
+    header_fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+    header_font = Font(bold=True)
+    
+    # Adicionar cabeçalhos
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Adicionar dados
+    for row_idx, row_data in enumerate(data, 2):
+        for col_idx, value in enumerate(row_data, 1):
+            ws.cell(row=row_idx, column=col_idx, value=value)
+    
+    # Ajustar largura das colunas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Salvar em buffer
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    response = make_response(output.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}.xlsx'
+    
+    return response
+
+def criar_pdf_response(headers, data, title, filename):
+    """Cria um arquivo PDF e retorna como response Flask"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=30,
+        alignment=1  # Center
+    )
+    
+    # Título
+    elements.append(Paragraph(title, title_style))
+    elements.append(Spacer(1, 12))
+    
+    # Preparar dados da tabela
+    table_data = [headers] + data
+    
+    # Criar tabela
+    table = Table(table_data)
+    
+    # Estilo da tabela
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(table)
+    
+    # Construir PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    response = make_response(buffer.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}.pdf'
+    
+    return response
+
+# Rotas de exportação
+@app.route('/exportar/<string:table_name>/<string:format>', methods=['POST'])
+def exportar_dados(table_name, format):
+    """Rota genérica para exportação de dados"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    try:
+        # Receber dados do frontend
+        data = request.get_json()
+        headers = data.get('headers', [])
+        rows = data.get('data', [])
+        
+        # Gerar nome do arquivo
+        today = datetime.now().strftime('%Y-%m-%d')
+        filename = f"{table_name}_{today}"
+        
+        # Mapear nomes de tabelas para títulos amigáveis
+        table_titles = {
+            'colaboradores': 'Colaboradores',
+            'fornecedores': 'Fornecedores',
+            'veiculos': 'Veículos',
+            'despesas': 'Despesas',
+            'receitas': 'Receitas',
+            'elenco': 'Elenco',
+            'categorias_colaborador': 'Categorias de Colaborador',
+            'categorias_fornecedor': 'Categorias de Fornecedor',
+            'categorias_receita': 'Categorias de Receita',
+            'categorias_despesa': 'Categorias de Despesa',
+            'categorias_veiculo': 'Categorias de Veículo',
+            'circos': 'Circos'
+        }
+        
+        title = table_titles.get(table_name, table_name.title())
+        
+        if format == 'excel':
+            return criar_excel_response(headers, rows, filename)
+        elif format == 'pdf':
+            return criar_pdf_response(headers, rows, title, filename)
+        else:
+            return jsonify({'error': 'Formato não suportado'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

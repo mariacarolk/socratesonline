@@ -153,9 +153,17 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Script de filtros avançados -->
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+
 <script>
-    // Validação de formulário
     document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar sistema de filtros avançados
+        if (document.getElementById('despesasTable')) {
+            initializeAdvancedFilters('despesasTable', 'Despesas');
+        }
+        
+        // Validação de formulário
         const forms = document.querySelectorAll('.needs-validation');
         const tipoSelect = document.getElementById('id_tipo_despesa');
         const valorInput = document.getElementById('valor_medio_despesa');

@@ -4,3 +4,7 @@ flask_sqlalchemy
 flask_wtf
 python-dotenv
 werkzeug
+openpyxl
+reportlab
+flask-login
+alembic

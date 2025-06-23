@@ -155,9 +155,18 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Script de filtros avançados -->
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+
 <script>
-    // Validação de formulário
+    // Inicializar filtros avançados
     document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar sistema de filtros avançados
+        if (document.getElementById('colaboradoresTable')) {
+            initializeAdvancedFilters('colaboradoresTable', 'Colaboradores');
+        }
+        
+        // Validação de formulário
         const forms = document.querySelectorAll('.needs-validation');
         
         Array.from(forms).forEach(form => {
