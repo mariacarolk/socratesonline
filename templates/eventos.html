@@ -154,64 +154,75 @@
               </div>
             </div>
             
-            <!-- Ações rápidas redesenhadas -->
+            <!-- Ações rápidas otimizadas para mobile -->
             <div class="evento-actions mb-3">
-              <div class="row g-2 mb-3">
-                <!-- Ações principais (maiores) -->
-                <div class="col-6">
-                  <button type="button" class="btn btn-outline-danger w-100 btn-action" 
-                          data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}">
-                    <i class="bi bi-credit-card d-block mb-1"></i>
-                    <span class="small fw-medium">Despesa</span>
-                  </button>
-                </div>
-                <div class="col-6">
-                  <button type="button" class="btn btn-outline-info w-100 btn-action" 
-                          data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}">
-                    <i class="bi bi-cash-coin d-block mb-1"></i>
-                    <span class="small fw-medium">Receita</span>
-                  </button>
-                </div>
+              <!-- Ações principais com foco mobile -->
+              <div class="action-grid-primary mb-3">
+                <button type="button" class="btn-action-mobile btn-danger-mobile" 
+                        data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}"
+                        data-action="despesa" data-evento="{{ evento.id_evento }}">
+                  <div class="btn-action-mobile-content">
+                    <i class="bi bi-credit-card"></i>
+                    <span class="btn-action-mobile-text">Despesa</span>
+                    <div class="btn-action-mobile-subtitle">Adicionar gasto</div>
+                  </div>
+                  <div class="btn-action-mobile-ripple"></div>
+                </button>
+                
+                <button type="button" class="btn-action-mobile btn-success-mobile" 
+                        data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}"
+                        data-action="receita" data-evento="{{ evento.id_evento }}">
+                  <div class="btn-action-mobile-content">
+                    <i class="bi bi-cash-coin"></i>
+                    <span class="btn-action-mobile-text">Receita</span>
+                    <div class="btn-action-mobile-subtitle">Adicionar entrada</div>
+                  </div>
+                  <div class="btn-action-mobile-ripple"></div>
+                </button>
               </div>
               
-              <!-- Ações secundárias (menores) -->
-              <div class="row g-1">
-                <div class="col-4">
-                  <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
-                     class="btn btn-outline-primary btn-sm w-100 btn-action-sm">
-                    <i class="bi bi-people d-block mb-1" style="font-size: 0.9rem;"></i>
-                    <span style="font-size: 0.7rem;">Equipe</span>
-                  </a>
-                </div>
-                <div class="col-4">
-                  <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
-                     class="btn btn-outline-warning btn-sm w-100 btn-action-sm">
-                    <i class="bi bi-person-video d-block mb-1" style="font-size: 0.9rem;"></i>
-                    <span style="font-size: 0.7rem;">Elenco</span>
-                  </a>
-                </div>
-                <div class="col-4">
-                  <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
-                     class="btn btn-outline-success btn-sm w-100 btn-action-sm">
-                    <i class="bi bi-shop d-block mb-1" style="font-size: 0.9rem;"></i>
-                    <span style="font-size: 0.7rem;">Fornecedores</span>
-                  </a>
-                </div>
+              <!-- Ações secundárias com design simplificado -->
+              <div class="action-grid-secondary">
+                <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-primary-secondary">
+                  <i class="bi bi-people"></i>
+                  <span>Equipe</span>
+                </a>
+                
+                <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-warning-secondary">
+                  <i class="bi bi-person-video"></i>
+                  <span>Elenco</span>
+                </a>
+                
+                <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-info-secondary">
+                  <i class="bi bi-shop"></i>
+                  <span>Fornecedores</span>
+                </a>
               </div>
             </div>
             
-            <!-- Footer com menu de ações -->
-            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-              <button class="btn btn-outline-primary btn-sm" 
-                      data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
-                <i class="bi bi-eye me-1"></i>Ver Detalhes
-              </button>
-              
-              <div class="dropdown">
-                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
-                        data-bs-toggle="dropdown" aria-expanded="false" id="dropdownMenuButton{{ evento.id_evento }}">
-                  <i class="bi bi-three-dots"></i>
+            <!-- Footer com menu de ações mobile-friendly -->
+            <div class="evento-footer pt-3 border-top">
+              <div class="d-flex justify-content-between align-items-center">
+                <button class="btn-mobile-secondary" 
+                        data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
+                  <i class="bi bi-eye"></i>
+                  <span>Detalhes</span>
                 </button>
+                
+                <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="btn-mobile-primary">
+                  <i class="bi bi-pencil-square"></i>
+                  <span>Editar</span>
+                </a>
+                
+                <div class="dropdown">
+                  <button class="btn-mobile-menu" type="button" 
+                          data-bs-toggle="dropdown" aria-expanded="false" id="dropdownMenuButton{{ evento.id_evento }}">
+                    <i class="bi bi-three-dots-vertical"></i>
+                    <span>Menu</span>
+                  </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
                   <li>
                     <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item">
@@ -262,6 +273,7 @@
                     </a>
                   </li>
                 </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -1231,6 +1243,180 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// JavaScript para UX Mobile
+document.addEventListener('DOMContentLoaded', function() {
+    // Melhorar UX dos botões mobile
+    function initMobileButtons() {
+        // Adicionar efeito ripple aos botões principais
+        const mobileButtons = document.querySelectorAll('.btn-action-mobile');
+        
+        mobileButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                // Criar efeito ripple
+                const ripple = this.querySelector('.btn-action-mobile-ripple');
+                if (ripple) {
+                    ripple.style.transform = 'scale(0)';
+                    ripple.style.transition = 'none';
+                    
+                    setTimeout(() => {
+                        ripple.style.transition = 'transform 0.6s ease-out';
+                        ripple.style.transform = 'scale(1)';
+                    }, 10);
+                    
+                    // Reset após animação
+                    setTimeout(() => {
+                        ripple.style.transform = 'scale(0)';
+                    }, 600);
+                }
+                
+                // Haptic feedback para dispositivos compatíveis
+                if (navigator.vibrate) {
+                    navigator.vibrate(10);
+                }
+            });
+
+            // Melhorar feedback tátil
+            button.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.98)';
+            });
+
+            button.addEventListener('touchend', function() {
+                this.style.transform = '';
+            });
+        });
+
+        // Adicionar feedback aos botões secundários
+        const secondaryButtons = document.querySelectorAll('.btn-action-secondary-mobile');
+        
+        secondaryButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Haptic feedback mais suave
+                if (navigator.vibrate) {
+                    navigator.vibrate(5);
+                }
+            });
+
+            button.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.96)';
+                this.style.backgroundColor = 'var(--gray-50)';
+            });
+
+            button.addEventListener('touchend', function() {
+                this.style.transform = '';
+                this.style.backgroundColor = '';
+            });
+        });
+
+        // Melhorar botões do footer
+        const footerButtons = document.querySelectorAll('.btn-mobile-secondary, .btn-mobile-primary, .btn-mobile-menu');
+        
+        footerButtons.forEach(button => {
+            button.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.96)';
+                this.style.opacity = '0.8';
+            });
+
+            button.addEventListener('touchend', function() {
+                this.style.transform = '';
+                this.style.opacity = '';
+            });
+        });
+    }
+
+    // Melhorar carregamento de modais com loading state
+    function initModalLoadingStates() {
+        const modalTriggers = document.querySelectorAll('[data-bs-toggle="modal"]');
+        
+        modalTriggers.forEach(trigger => {
+            trigger.addEventListener('click', function() {
+                // Adicionar estado de loading ao botão
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Carregando...';
+                this.disabled = true;
+                
+                // Restaurar depois de 1 segundo (tempo típico para o modal abrir)
+                setTimeout(() => {
+                    this.innerHTML = originalContent;
+                    this.disabled = false;
+                }, 1000);
+            });
+        });
+    }
+
+    // Adicionar swipe gesture para cards de evento (opcional)
+    function initSwipeGestures() {
+        const eventoCards = document.querySelectorAll('.evento-card');
+        
+        eventoCards.forEach(card => {
+            let startX = 0;
+            let startY = 0;
+            let currentX = 0;
+            let currentY = 0;
+
+            card.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            });
+
+            card.addEventListener('touchmove', function(e) {
+                if (!startX || !startY) return;
+                
+                currentX = e.touches[0].clientX;
+                currentY = e.touches[0].clientY;
+                
+                const diffX = startX - currentX;
+                const diffY = startY - currentY;
+                
+                // Se o swipe horizontal for maior que o vertical e maior que 50px
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                    // Adicionar indicação visual sutil
+                    if (diffX > 0) {
+                        // Swipe left - mostrar ações
+                        card.style.transform = 'translateX(-5px)';
+                        card.style.boxShadow = 'var(--shadow-lg)';
+                    } else {
+                        // Swipe right - voltar
+                        card.style.transform = 'translateX(5px)';
+                    }
+                }
+            });
+
+            card.addEventListener('touchend', function() {
+                // Reset
+                card.style.transform = '';
+                card.style.boxShadow = '';
+                startX = 0;
+                startY = 0;
+            });
+        });
+    }
+
+    // Inicializar todas as melhorias
+    initMobileButtons();
+    initModalLoadingStates();
+    initSwipeGestures();
+
+    // Debugging para desenvolvedores (remover em produção)
+    console.log('🎨 UX Mobile melhorada carregada com sucesso!');
+    console.log('📱 Recursos disponíveis:', {
+        hapticFeedback: !!navigator.vibrate,
+        touchDevice: 'ontouchstart' in window,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`
+    });
+});
+
+// Utility function para detectar dispositivos móveis
+function isMobileDevice() {
+    return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+}
+
+// Adicionar classe CSS baseada no tipo de dispositivo
+if (isMobileDevice()) {
+    document.documentElement.classList.add('mobile-device');
+} else {
+    document.documentElement.classList.add('desktop-device');
+}
 </script>
 
 {% endblock %}
