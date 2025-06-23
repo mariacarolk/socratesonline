@@ -625,7 +625,7 @@
   .evento-header {
     padding: var(--spacing-lg);
   }
-
+  
   /* Aumentar tamanho dos botões principais em mobile */
   .btn-action-mobile {
     height: 80px;

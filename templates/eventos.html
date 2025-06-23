@@ -76,19 +76,23 @@
   <div class="row g-4">
     {% for evento in eventos %}
       <div class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100 border-0 shadow-sm evento-card" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
-          <!-- Header do card com gradiente baseado no status -->
-          <div class="card-header border-0 p-0 position-relative">
-            <div class="evento-header 
-              {% if evento.status == 'a realizar' %}bg-warning-gradient
-              {% elif evento.status == 'em andamento' %}bg-info-gradient
-              {% elif evento.status == 'realizado' %}bg-success-gradient
-              {% else %}bg-secondary-gradient{% endif %} 
-              text-white p-4 rounded-top">
+        <div class="card evento-card h-100 border-0 shadow-sm" 
+             data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
+          
+          <!-- Header do card com gradiente padronizado (CLICÁVEL) -->
+          <div class="card-header border-0 p-0 position-relative clickable-zone" 
+               data-bs-toggle="modal" 
+               data-bs-target="#modalDetalhes{{ evento.id_evento }}"
+               style="cursor: pointer;">
+            <div class="evento-header bg-primary-gradient text-white p-4 rounded-top">
               
               <!-- Status badge no canto superior direito -->
               <div class="position-absolute top-0 end-0 mt-2 me-2">
-                <span class="badge bg-white bg-opacity-90 text-dark fw-medium px-2 py-1">
+                <span class="badge 
+                  {% if evento.status == 'a realizar' %}bg-warning text-dark
+                  {% elif evento.status == 'em andamento' %}bg-info
+                  {% elif evento.status == 'realizado' %}bg-success
+                  {% else %}bg-secondary{% endif %} fw-medium px-2 py-1">
                   {% if evento.status == 'a realizar' %}
                     <i class="bi bi-clock me-1"></i>A Realizar
                   {% elif evento.status == 'em andamento' %}
@@ -119,8 +123,11 @@
           </div>
           
           <div class="card-body p-4">
-            <!-- Informações básicas com ícones -->
-            <div class="evento-info mb-4">
+            <!-- Informações básicas com ícones (CLICÁVEL) -->
+            <div class="evento-info mb-4 clickable-zone" 
+                 data-bs-toggle="modal" 
+                 data-bs-target="#modalDetalhes{{ evento.id_evento }}"
+                 style="cursor: pointer;">
               <div class="info-item d-flex align-items-center mb-2">
                 <div class="info-icon bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
                   <i class="bi bi-geo-alt"></i>
@@ -154,75 +161,85 @@
               </div>
             </div>
             
-            <!-- Ações rápidas otimizadas para mobile -->
-            <div class="evento-actions mb-3">
+            <!-- Ações rápidas otimizadas para mobile (NÃO CLICÁVEL) -->
+            <div class="evento-actions mb-3 non-clickable-zone">
               <!-- Ações principais com foco mobile -->
               <div class="action-grid-primary mb-3">
                 <button type="button" class="btn-action-mobile btn-danger-mobile" 
                         data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}"
-                        data-action="despesa" data-evento="{{ evento.id_evento }}">
+                        data-action="despesa" data-evento="{{ evento.id_evento }}"
+                        onclick="event.stopPropagation();">
                   <div class="btn-action-mobile-content">
                     <i class="bi bi-credit-card"></i>
                     <span class="btn-action-mobile-text">Despesa</span>
                     <div class="btn-action-mobile-subtitle">Adicionar gasto</div>
                   </div>
                   <div class="btn-action-mobile-ripple"></div>
-                </button>
+                  </button>
                 
                 <button type="button" class="btn-action-mobile btn-success-mobile" 
                         data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}"
-                        data-action="receita" data-evento="{{ evento.id_evento }}">
+                        data-action="receita" data-evento="{{ evento.id_evento }}"
+                        onclick="event.stopPropagation();">
                   <div class="btn-action-mobile-content">
                     <i class="bi bi-cash-coin"></i>
                     <span class="btn-action-mobile-text">Receita</span>
                     <div class="btn-action-mobile-subtitle">Adicionar entrada</div>
-                  </div>
+                </div>
                   <div class="btn-action-mobile-ripple"></div>
-                </button>
+                  </button>
               </div>
               
               <!-- Ações secundárias com design simplificado -->
               <div class="action-grid-secondary">
-                <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-primary-secondary">
+                  <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-primary-secondary"
+                   onclick="event.stopPropagation();">
                   <i class="bi bi-people"></i>
                   <span>Equipe</span>
                 </a>
                 
-                <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-warning-secondary">
+                  <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-warning-secondary"
+                   onclick="event.stopPropagation();">
                   <i class="bi bi-person-video"></i>
                   <span>Elenco</span>
                 </a>
                 
-                <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-info-secondary">
+                  <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-info-secondary"
+                   onclick="event.stopPropagation();">
                   <i class="bi bi-shop"></i>
                   <span>Fornecedores</span>
                 </a>
               </div>
             </div>
             
-            <!-- Footer com menu de ações mobile-friendly -->
-            <div class="evento-footer pt-3 border-top">
+            <!-- Footer com menu de ações mobile-friendly (NÃO CLICÁVEL) -->
+            <div class="evento-footer pt-3 border-top non-clickable-zone">
               <div class="d-flex justify-content-between align-items-center">
                 <button class="btn-mobile-secondary" 
-                        data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}">
+                        data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}"
+                        onclick="event.stopPropagation();">
                   <i class="bi bi-eye"></i>
                   <span>Detalhes</span>
-                </button>
+              </button>
                 
-                <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="btn-mobile-primary">
+                <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" 
+                   class="btn-mobile-primary"
+                   onclick="event.stopPropagation();">
                   <i class="bi bi-pencil-square"></i>
                   <span>Editar</span>
                 </a>
-                
-                <div class="dropdown">
+              
+              <div class="dropdown">
                   <button class="btn-mobile-menu" type="button" 
-                          data-bs-toggle="dropdown" aria-expanded="false" id="dropdownMenuButton{{ evento.id_evento }}">
+                          data-bs-toggle="dropdown" aria-expanded="false" 
+                          id="dropdownMenuButton{{ evento.id_evento }}"
+                          onclick="event.stopPropagation();">
                     <i class="bi bi-three-dots-vertical"></i>
                     <span>Menu</span>
-                  </button>
+                </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
                   <li>
                     <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item">
@@ -290,7 +307,7 @@
               </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form onsubmit="adicionarDespesaRapida(event, '{{ evento.id_evento }}')">
+            <form onsubmit="adicionarDespesaCompleta(event, '{{ evento.id_evento }}')" enctype="multipart/form-data">
               <div class="modal-body p-4">
                 <div class="alert alert-light border-start border-danger border-4 mb-4">
                   <div class="d-flex align-items-center">
@@ -363,6 +380,36 @@
                   <div class="col-12">
                     <label class="form-label fw-medium">Pago por</label>
                     <input type="text" name="pago_por" class="form-control">
+                  </div>
+                  
+                  <div class="col-12">
+                    <label class="form-label fw-medium">Comprovante</label>
+                    <!-- Comprovante atual (se existir) -->
+                    <div id="comprovante_atual_info_{{ evento.id_evento }}" class="mb-3 d-none">
+                      <div class="alert alert-info d-flex align-items-center">
+                        <i class="bi bi-file-earmark-text text-info me-2"></i>
+                        <div class="flex-grow-1">
+                          <small class="text-muted d-block">Comprovante anexado:</small>
+                          <span class="fw-medium" id="comprovante_atual_nome_{{ evento.id_evento }}">arquivo_atual.pdf</span>
+                        </div>
+                        <div class="btn-group">
+                          <button type="button" class="btn btn-sm btn-outline-primary" onclick="visualizarComprovante('{{ evento.id_evento }}')" title="Visualizar arquivo">
+                            <i class="bi bi-eye"></i>
+                          </button>
+                          <button type="button" class="btn btn-sm btn-outline-danger" onclick="excluirComprovanteAtual('{{ evento.id_evento }}')" title="Remover arquivo">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Input para novo comprovante -->
+                    <input type="file" name="comprovante" class="form-control" id="modal_despesa_comprovante_{{ evento.id_evento }}"
+                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                    <input type="hidden" id="comprovante_atual_arquivo_{{ evento.id_evento }}" name="comprovante_atual">
+                    <div class="form-text">
+                      <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
+                    </div>
                   </div>
                   
                   <div class="col-12">
@@ -464,26 +511,72 @@
         </div>
       </div>
 
-      <!-- Modal Detalhes aprimorado -->
+      <!-- Modal Detalhes Completo -->
       <div class="modal fade" id="modalDetalhes{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-fullscreen-lg-down modal-xl">
           <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-gradient-primary text-white border-0">
+            <div class="modal-header bg-primary text-white border-0">
               <h5 class="modal-title fw-bold">
-                <i class="bi bi-eye me-2"></i>Detalhes do Evento
+                <i class="bi bi-eye me-2"></i>Detalhes Completos do Evento
               </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-              <!-- Header do evento -->
-              <div class="text-center mb-4 p-4 bg-light rounded-3">
-                <h4 class="text-primary fw-bold mb-2">{{ evento.nome }}</h4>
-                <div class="d-flex justify-content-center align-items-center gap-3 text-muted">
-                  <span><i class="bi bi-calendar3 me-1"></i>{{ evento.data_inicio.strftime('%d/%m/%Y') }} - {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
-                  <span><i class="bi bi-geo-alt me-1"></i>{{ evento.cidade }}/{{ evento.estado }}</span>
+            <div class="modal-body p-0" style="max-height: 80vh; overflow-y: auto;">
+              <!-- Loading State -->
+              <div id="loadingDetalhes{{ evento.id_evento }}" class="text-center p-5">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Carregando...</span>
                 </div>
+                <p class="mt-3 text-muted">Carregando detalhes do evento...</p>
               </div>
               
+              <!-- Content Container -->
+              <div id="contentDetalhes{{ evento.id_evento }}" class="d-none">
+                <!-- Header do evento -->
+                <div class="bg-light p-4 border-bottom">
+                  <div class="text-center">
+                    <h4 class="text-primary fw-bold mb-2" id="eventoNome{{ evento.id_evento }}">{{ evento.nome }}</h4>
+                    <div class="d-flex justify-content-center align-items-center gap-3 text-muted flex-wrap">
+                      <span id="eventoDatas{{ evento.id_evento }}"><i class="bi bi-calendar3 me-1"></i>{{ evento.data_inicio.strftime('%d/%m/%Y') }} - {{ evento.data_fim.strftime('%d/%m/%Y') }}</span>
+                      <span id="eventoLocal{{ evento.id_evento }}"><i class="bi bi-geo-alt me-1"></i>{{ evento.cidade }}/{{ evento.estado }}</span>
+                      <span id="eventoStatus{{ evento.id_evento }}"></span>
+                    </div>
+                  </div>
+                </div>
+              
+                <div class="container-fluid p-4">
+                  <!-- Tabs de navegação -->
+                  <ul class="nav nav-pills nav-fill mb-4" id="detalhesTab{{ evento.id_evento }}" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link active" id="info-tab{{ evento.id_evento }}" data-bs-toggle="pill" 
+                              data-bs-target="#info{{ evento.id_evento }}" type="button" role="tab">
+                        <i class="bi bi-info-circle me-2"></i>Informações
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="receitas-tab{{ evento.id_evento }}" data-bs-toggle="pill" 
+                              data-bs-target="#receitas{{ evento.id_evento }}" type="button" role="tab">
+                        <i class="bi bi-cash-coin me-2"></i>Receitas
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="despesas-tab{{ evento.id_evento }}" data-bs-toggle="pill" 
+                              data-bs-target="#despesas{{ evento.id_evento }}" type="button" role="tab">
+                        <i class="bi bi-credit-card me-2"></i>Despesas
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" id="financeiro-tab{{ evento.id_evento }}" data-bs-toggle="pill" 
+                              data-bs-target="#financeiro{{ evento.id_evento }}" type="button" role="tab">
+                        <i class="bi bi-calculator me-2"></i>Resumo Financeiro
+                      </button>
+                    </li>
+                  </ul>
+
+                  <!-- Tab content -->
+                  <div class="tab-content" id="detalhesTabContent{{ evento.id_evento }}">
+                    <!-- Tab Informações -->
+                    <div class="tab-pane fade show active" id="info{{ evento.id_evento }}" role="tabpanel">
               <div class="row g-4">
                 <!-- Informações Gerais -->
                 <div class="col-md-6">
@@ -492,21 +585,15 @@
                       <h6 class="text-primary fw-bold mb-3">
                         <i class="bi bi-info-circle me-2"></i>Informações Gerais
                       </h6>
-                      <div class="mb-2">
+                              <div class="info-item mb-2">
                         <strong>Status:</strong> 
-                        <span class="badge 
-                          {% if evento.status == 'a realizar' %}bg-warning text-dark
-                          {% elif evento.status == 'em andamento' %}bg-info
-                          {% elif evento.status == 'realizado' %}bg-success
-                          {% else %}bg-secondary{% endif %} ms-1">
-                          {{ evento.status.capitalize() }}
-                        </span>
+                                <span id="statusBadge{{ evento.id_evento }}" class="badge ms-1"></span>
                       </div>
-                      <div class="mb-2">
-                        <strong>Data Início:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }}
+                              <div class="info-item mb-2">
+                                <strong>Data Início:</strong> <span id="dataInicio{{ evento.id_evento }}"></span>
                       </div>
-                      <div class="mb-2">
-                        <strong>Data Fim:</strong> {{ evento.data_fim.strftime('%d/%m/%Y') }}
+                              <div class="info-item mb-2">
+                                <strong>Data Fim:</strong> <span id="dataFim{{ evento.id_evento }}"></span>
                       </div>
                     </div>
                   </div>
@@ -519,14 +606,14 @@
                       <h6 class="text-primary fw-bold mb-3">
                         <i class="bi bi-geo-alt me-2"></i>Localização
                       </h6>
-                      <div class="mb-2">
-                        <strong>Cidade:</strong> {{ evento.cidade or '—' }}
+                              <div class="info-item mb-2">
+                                <strong>Cidade:</strong> <span id="cidade{{ evento.id_evento }}"></span>
                       </div>
-                      <div class="mb-2">
-                        <strong>Estado:</strong> {{ evento.estado or '—' }}
+                              <div class="info-item mb-2">
+                                <strong>Estado:</strong> <span id="estado{{ evento.id_evento }}"></span>
                       </div>
-                      <div class="mb-2">
-                        <strong>Endereço:</strong> {{ evento.endereco or '—' }}
+                              <div class="info-item mb-2">
+                                <strong>Endereço:</strong> <span id="endereco{{ evento.id_evento }}"></span>
                       </div>
                     </div>
                   </div>
@@ -541,28 +628,150 @@
                       </h6>
                       <div class="row">
                         <div class="col-md-6 mb-2">
-                          <strong>Circo:</strong> {{ evento.circo.nome if evento.circo else '—' }}
+                                  <strong>Circo:</strong> <span id="circoNome{{ evento.id_evento }}"></span>
                         </div>
                         <div class="col-md-6 mb-2">
-                          <strong>Produtor:</strong> {{ evento.produtor.nome if evento.produtor else '—' }}
+                                  <strong>Produtor:</strong> <span id="produtorNome{{ evento.id_evento }}"></span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                {% if evento.observacoes %}
-                <div class="col-12">
+                        <!-- Observações -->
+                        <div class="col-12" id="observacoesContainer{{ evento.id_evento }}" style="display: none;">
                   <div class="card border-0 bg-light">
                     <div class="card-body">
                       <h6 class="text-primary fw-bold mb-3">
                         <i class="bi bi-chat-left-text me-2"></i>Observações
                       </h6>
-                      <p class="mb-0">{{ evento.observacoes }}</p>
+                              <p class="mb-0" id="observacoes{{ evento.id_evento }}"></p>
                     </div>
                   </div>
                 </div>
-                {% endif %}
+                      </div>
+                    </div>
+
+                    <!-- Tab Receitas -->
+                    <div class="tab-pane fade" id="receitas{{ evento.id_evento }}" role="tabpanel">
+                      <div class="row">
+                        <div class="col-12">
+                          <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="bi bi-cash-coin me-2"></i>Receitas do Evento</h5>
+                            <span class="badge bg-success fs-6" id="totalReceitas{{ evento.id_evento }}">R$ 0,00</span>
+                          </div>
+                          <div id="receitasContainer{{ evento.id_evento }}">
+                            <!-- Receitas serão carregadas aqui -->
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Tab Despesas -->
+                    <div class="tab-pane fade" id="despesas{{ evento.id_evento }}" role="tabpanel">
+                      <div class="row">
+                        <div class="col-12">
+                          <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="bi bi-credit-card me-2"></i>Despesas do Evento</h5>
+                            <span class="badge bg-danger fs-6" id="totalDespesas{{ evento.id_evento }}">R$ 0,00</span>
+                          </div>
+                          <div id="despesasContainer{{ evento.id_evento }}">
+                            <!-- Despesas serão carregadas aqui -->
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Tab Resumo Financeiro -->
+                    <div class="tab-pane fade" id="financeiro{{ evento.id_evento }}" role="tabpanel">
+                      <div class="row g-4">
+                        <!-- Card Receitas -->
+                        <div class="col-md-4">
+                          <div class="card border-0 bg-success bg-opacity-10 h-100">
+                            <div class="card-body text-center">
+                              <i class="bi bi-cash-coin text-success mb-3" style="font-size: 2.5rem;"></i>
+                              <h6 class="text-success fw-bold">Total Receitas</h6>
+                              <h4 class="text-success fw-bold" id="financeiroReceitas{{ evento.id_evento }}">R$ 0,00</h4>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Card Despesas -->
+                        <div class="col-md-4">
+                          <div class="card border-0 bg-danger bg-opacity-10 h-100">
+                            <div class="card-body text-center">
+                              <i class="bi bi-credit-card text-danger mb-3" style="font-size: 2.5rem;"></i>
+                              <h6 class="text-danger fw-bold">Total Despesas</h6>
+                              <h4 class="text-danger fw-bold" id="financeiroDespesas{{ evento.id_evento }}">R$ 0,00</h4>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Card Resultado -->
+                        <div class="col-md-4">
+                          <div class="card border-0 bg-primary bg-opacity-10 h-100">
+                            <div class="card-body text-center">
+                              <i class="bi bi-graph-up text-primary mb-3" style="font-size: 2.5rem;"></i>
+                              <h6 class="text-primary fw-bold">Resultado (Lucro)</h6>
+                              <h4 class="fw-bold" id="financeiroResultado{{ evento.id_evento }}">R$ 0,00</h4>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Detalhamento do Fechamento -->
+                        <div class="col-12">
+                          <div class="card border-0 bg-light">
+                            <div class="card-header bg-transparent border-0">
+                              <h6 class="text-primary fw-bold mb-0">
+                                <i class="bi bi-calculator me-2"></i>Detalhamento do Fechamento
+                              </h6>
+                            </div>
+                            <div class="card-body">
+                              <div class="row g-3">
+                                <div class="col-md-6">
+                                  <div class="d-flex justify-content-between">
+                                    <span>Despesas de Cabeça:</span>
+                                    <span class="fw-bold" id="despesasCabeca{{ evento.id_evento }}">R$ 0,00</span>
+                                  </div>
+                                </div>
+                                <div class="col-md-6">
+                                  <div class="d-flex justify-content-between">
+                                    <span>Total Líquido:</span>
+                                    <span class="fw-bold" id="totalLiquido{{ evento.id_evento }}">R$ 0,00</span>
+                                  </div>
+                                </div>
+                                <div class="col-md-6">
+                                  <div class="d-flex justify-content-between">
+                                    <span>50% Show:</span>
+                                    <span class="fw-bold" id="cinquentaPorcento{{ evento.id_evento }}">R$ 0,00</span>
+                                  </div>
+                                </div>
+                                <div class="col-md-6">
+                                  <div class="d-flex justify-content-between">
+                                    <span>Reembolso Mídias:</span>
+                                    <span class="fw-bold" id="reembolsoMidias{{ evento.id_evento }}">R$ 0,00</span>
+                                  </div>
+                                </div>
+                                <div class="col-md-6">
+                                  <div class="d-flex justify-content-between">
+                                    <span>Repasse Total:</span>
+                                    <span class="fw-bold text-info" id="repasseTotal{{ evento.id_evento }}">R$ 0,00</span>
+                                  </div>
+                                </div>
+                                <div class="col-md-6">
+                                  <div class="d-flex justify-content-between">
+                                    <span>Despesas Sócrates:</span>
+                                    <span class="fw-bold" id="despesasSocrates{{ evento.id_evento }}">R$ 0,00</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="modal-footer border-0 bg-light">
@@ -571,6 +780,9 @@
               </button>
               <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="btn btn-primary">
                 <i class="bi bi-pencil me-2"></i>Editar Evento
+              </a>
+              <a href="{{ url_for('relatorio_fechamento_evento', id_evento=evento.id_evento) }}" class="btn btn-info">
+                <i class="bi bi-file-text me-2"></i>Relatório Completo
               </a>
             </div>
           </div>
@@ -640,18 +852,30 @@
 
 <!-- Estilos específicos da página -->
 <style>
-/* Gradientes para headers dos cards */
-.bg-warning-gradient {
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+/* Gradiente padronizado para headers dos cards */
+.bg-primary-gradient {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
 }
-.bg-info-gradient {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+
+/* Zonas clicáveis e não-clicáveis */
+.clickable-zone {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
 }
-.bg-success-gradient {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+.clickable-zone:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
-.bg-secondary-gradient {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+
+.clickable-zone:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.non-clickable-zone {
+  position: relative;
+  z-index: 10;
+  cursor: default;
 }
 
 /* Animações e transições */
@@ -966,8 +1190,8 @@ function carregarReceitasPorCategoria(selectCategoria, eventoId) {
         });
 }
 
-// Função para adicionar despesa rápida
-function adicionarDespesaRapida(event, eventoId) {
+// Função para adicionar despesa completa (com upload)
+function adicionarDespesaCompleta(event, eventoId) {
     event.preventDefault();
     
     const form = event.target;
@@ -980,19 +1204,16 @@ function adicionarDespesaRapida(event, eventoId) {
     const valorFormatado = formData.get('valor');
     const valorNumerico = converterMoedaParaNumero(valorFormatado);
     
-    // Criar objeto JSON com os dados
-    const dados = {
-        despesa_id: parseInt(formData.get('despesa_id')),
-        data: formData.get('data'),
-        valor: valorNumerico.toString(),
-        id_fornecedor: formData.get('id_fornecedor') || null,
-        status_pagamento: formData.get('status_pagamento') || 'pendente',
-        forma_pagamento: formData.get('forma_pagamento') || 'débito',
-        pago_por: formData.get('pago_por') || '',
-        observacoes: formData.get('observacoes') || '',
-        despesa_cabeca: formData.get('despesa_cabeca') === '1',
-        is_fixa: false  // Despesas do popup são sempre variáveis
-    };
+    // Atualizar o valor no FormData
+    formData.set('valor', valorNumerico.toString());
+    
+    // Garantir que o despesa_id seja um número
+    formData.set('despesa_id', parseInt(formData.get('despesa_id')));
+    
+    // Adicionar fornecedor_id com o nome correto para o backend
+    if (formData.get('fornecedor_id')) {
+        formData.set('id_fornecedor', formData.get('fornecedor_id'));
+    }
     
     // Desabilitar botão durante envio
     const submitBtn = form.querySelector('button[type="submit"]');
@@ -1000,13 +1221,10 @@ function adicionarDespesaRapida(event, eventoId) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
     
-    // Enviar dados como JSON
+    // Enviar dados como FormData (suporta upload de arquivo)
     fetch(`/eventos/${eventoIdNum}/salvar-despesa`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dados)
+        body: formData  // FormData não precisa de Content-Type manual
     })
     .then(response => response.json())
     .then(result => {
@@ -1024,6 +1242,21 @@ function adicionarDespesaRapida(event, eventoId) {
             // Resetar dropdowns
             const selectDespesa = form.querySelector('[name="despesa_id"]');
             selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+            
+            // Limpar campo de comprovante e esconder info do comprovante atual
+            const comprovanteField = document.getElementById(`modal_despesa_comprovante_${eventoId}`);
+            if (comprovanteField) {
+                comprovanteField.value = '';
+            }
+            const comprovanteInfo = document.getElementById(`comprovante_atual_info_${eventoId}`);
+            if (comprovanteInfo) {
+                comprovanteInfo.classList.add('d-none');
+            }
+            
+            // Se foi informado um comprovante, mostrar na notificação
+            if (result.comprovante) {
+                mostrarNotificacao('✅ Despesa e comprovante adicionados com sucesso!', 'success');
+            }
         } else {
             mostrarNotificacao('❌ Erro: ' + result.message, 'danger');
         }
@@ -1128,6 +1361,32 @@ function mostrarNotificacao(mensagem, tipo) {
             alertDiv.parentNode.removeChild(alertDiv);
         }
     }, 5000);
+}
+
+// Função para visualizar comprovante atual
+function visualizarComprovante(eventoId) {
+    const nomeArquivo = document.getElementById(`comprovante_atual_arquivo_${eventoId}`).value;
+    if (nomeArquivo) {
+        window.open(`/uploads/comprovantes/${nomeArquivo}`, '_blank');
+    }
+}
+
+// Função para excluir comprovante atual
+function excluirComprovanteAtual(eventoId) {
+    if (!confirm('Tem certeza que deseja excluir o comprovante atual? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    // Buscar ID da despesa evento (seria necessário para implementar a exclusão)
+    // Por enquanto, apenas esconder a interface do comprovante
+    const comprovanteInfo = document.getElementById(`comprovante_atual_info_${eventoId}`);
+    const comprovanteArquivo = document.getElementById(`comprovante_atual_arquivo_${eventoId}`);
+    
+    if (comprovanteInfo && comprovanteArquivo) {
+        comprovanteInfo.classList.add('d-none');
+        comprovanteArquivo.value = '';
+        mostrarNotificacao('✅ Comprovante marcado para exclusão', 'success');
+    }
 }
 
 // Função simples para garantir que os dropdowns funcionem
@@ -1404,6 +1663,235 @@ document.addEventListener('DOMContentLoaded', function() {
         touchDevice: 'ontouchstart' in window,
         screenSize: `${window.innerWidth}x${window.innerHeight}`
     });
+});
+
+// Função para carregar detalhes completos do evento
+function carregarDetalhesEvento(eventoId) {
+  // Mostrar loading
+  document.getElementById('loadingDetalhes' + eventoId).classList.remove('d-none');
+  document.getElementById('contentDetalhes' + eventoId).classList.add('d-none');
+  
+  // Fazer requisição para buscar detalhes
+  fetch(`/api/evento/${eventoId}/detalhes-completos`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        preencherDetalhesEvento(eventoId, data);
+        // Esconder loading e mostrar conteúdo
+        document.getElementById('loadingDetalhes' + eventoId).classList.add('d-none');
+        document.getElementById('contentDetalhes' + eventoId).classList.remove('d-none');
+      } else {
+        console.error('Erro ao carregar detalhes:', data.message);
+        alert('Erro ao carregar detalhes do evento: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Erro na requisição:', error);
+      alert('Erro ao carregar detalhes do evento');
+      document.getElementById('loadingDetalhes' + eventoId).classList.add('d-none');
+    });
+}
+
+// Função para preencher os detalhes do evento
+function preencherDetalhesEvento(eventoId, data) {
+  const evento = data.evento;
+  const receitas = data.receitas;
+  const despesas = data.despesas;
+  const financeiro = data.financeiro;
+  
+  // Preencher informações básicas
+  document.getElementById('eventoNome' + eventoId).textContent = evento.nome;
+  document.getElementById('eventoDatas' + eventoId).innerHTML = `<i class="bi bi-calendar3 me-1"></i>${evento.data_inicio} - ${evento.data_fim}`;
+  document.getElementById('eventoLocal' + eventoId).innerHTML = `<i class="bi bi-geo-alt me-1"></i>${evento.cidade}/${evento.estado}`;
+  
+  // Status badge
+  const statusBadge = document.getElementById('statusBadge' + eventoId);
+  let statusClass = 'bg-secondary';
+  if (evento.status === 'a realizar') statusClass = 'bg-warning text-dark';
+  else if (evento.status === 'em andamento') statusClass = 'bg-info';
+  else if (evento.status === 'realizado') statusClass = 'bg-success';
+  
+  statusBadge.className = `badge ms-1 ${statusClass}`;
+  statusBadge.textContent = evento.status.charAt(0).toUpperCase() + evento.status.slice(1);
+  
+  // Informações detalhadas
+  document.getElementById('dataInicio' + eventoId).textContent = evento.data_inicio;
+  document.getElementById('dataFim' + eventoId).textContent = evento.data_fim;
+  document.getElementById('cidade' + eventoId).textContent = evento.cidade || '—';
+  document.getElementById('estado' + eventoId).textContent = evento.estado || '—';
+  document.getElementById('endereco' + eventoId).textContent = evento.endereco || '—';
+  document.getElementById('circoNome' + eventoId).textContent = evento.circo_nome || '—';
+  document.getElementById('produtorNome' + eventoId).textContent = evento.produtor_nome || '—';
+  
+  // Observações
+  const obsContainer = document.getElementById('observacoesContainer' + eventoId);
+  if (evento.observacoes) {
+    document.getElementById('observacoes' + eventoId).textContent = evento.observacoes;
+    obsContainer.style.display = 'block';
+  } else {
+    obsContainer.style.display = 'none';
+  }
+  
+  // Receitas
+  document.getElementById('totalReceitas' + eventoId).textContent = formatarMoeda(receitas.total);
+  preencherReceitas(eventoId, receitas.categorias);
+  
+  // Despesas
+  document.getElementById('totalDespesas' + eventoId).textContent = formatarMoeda(despesas.total);
+  preencherDespesas(eventoId, despesas.categorias);
+  
+  // Resumo financeiro
+  document.getElementById('financeiroReceitas' + eventoId).textContent = formatarMoeda(financeiro.total_receitas);
+  document.getElementById('financeiroDespesas' + eventoId).textContent = formatarMoeda(financeiro.total_despesas);
+  
+  const resultado = financeiro.resultado_show;
+  const resultadoElement = document.getElementById('financeiroResultado' + eventoId);
+  resultadoElement.textContent = formatarMoeda(resultado);
+  resultadoElement.className = `fw-bold ${resultado >= 0 ? 'text-success' : 'text-danger'}`;
+  
+  // Detalhamento do fechamento
+  document.getElementById('despesasCabeca' + eventoId).textContent = formatarMoeda(financeiro.despesas_cabeca);
+  document.getElementById('totalLiquido' + eventoId).textContent = formatarMoeda(financeiro.total_liquido);
+  document.getElementById('cinquentaPorcento' + eventoId).textContent = formatarMoeda(financeiro.cinquenta_porcento_show);
+  document.getElementById('reembolsoMidias' + eventoId).textContent = formatarMoeda(financeiro.reembolso_midias);
+  document.getElementById('repasseTotal' + eventoId).textContent = formatarMoeda(financeiro.repasse_total);
+  document.getElementById('despesasSocrates' + eventoId).textContent = formatarMoeda(financeiro.total_despesas_socrates);
+}
+
+// Função para preencher receitas por categoria
+function preencherReceitas(eventoId, categorias) {
+  const container = document.getElementById('receitasContainer' + eventoId);
+  
+  if (categorias.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center py-4">Nenhuma receita encontrada para este evento.</p>';
+    return;
+  }
+  
+  let html = '';
+  categorias.forEach(categoria => {
+    html += `
+      <div class="card mb-3 border-0 bg-light">
+        <div class="card-header bg-success bg-opacity-10 border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 text-success fw-bold">${categoria.categoria_nome}</h6>
+            <span class="badge bg-success">${formatarMoeda(categoria.total_categoria)}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Receita</th>
+                  <th>Data</th>
+                  <th class="text-end">Valor</th>
+                </tr>
+              </thead>
+              <tbody>`;
+    
+    categoria.itens.forEach(item => {
+      html += `
+        <tr>
+          <td>${item.receita_nome}</td>
+          <td>${item.data}</td>
+          <td class="text-end fw-bold text-success">${formatarMoeda(item.valor)}</td>
+        </tr>`;
+    });
+    
+    html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+// Função para preencher despesas por categoria
+function preencherDespesas(eventoId, categorias) {
+  const container = document.getElementById('despesasContainer' + eventoId);
+  
+  if (categorias.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center py-4">Nenhuma despesa encontrada para este evento.</p>';
+    return;
+  }
+  
+  let html = '';
+  categorias.forEach(categoria => {
+    html += `
+      <div class="card mb-3 border-0 bg-light">
+        <div class="card-header bg-danger bg-opacity-10 border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 text-danger fw-bold">${categoria.categoria_nome}</h6>
+            <span class="badge bg-danger">${formatarMoeda(categoria.total_categoria)}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Despesa</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                  <th>Fornecedor</th>
+                  <th>Cabeça</th>
+                  <th class="text-end">Valor</th>
+                </tr>
+              </thead>
+              <tbody>`;
+    
+    categoria.itens.forEach(item => {
+      const statusBadge = item.status_pagamento === 'pago' ? 'bg-success' : 
+                         item.status_pagamento === 'pendente' ? 'bg-warning text-dark' : 'bg-secondary';
+      
+      html += `
+        <tr>
+          <td>${item.despesa_nome}</td>
+          <td>${item.data}</td>
+          <td><span class="badge ${statusBadge}">${item.status_pagamento}</span></td>
+          <td>${item.fornecedor_nome || '—'}</td>
+          <td>${item.despesa_cabeca ? '<i class="bi bi-check-circle text-success"></i>' : '—'}</td>
+          <td class="text-end fw-bold text-danger">${formatarMoeda(item.valor)}</td>
+        </tr>`;
+    });
+    
+    html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+// Função auxiliar para formatar moeda
+function formatarMoeda(valor) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(valor);
+}
+
+// Event listener para quando o modal for aberto
+document.addEventListener('DOMContentLoaded', function() {
+  // Adicionar event listeners para todos os modais de detalhes
+  const modais = document.querySelectorAll('[id^="modalDetalhes"]');
+  
+  modais.forEach(modal => {
+    modal.addEventListener('show.bs.modal', function(event) {
+      const eventoId = event.relatedTarget?.getAttribute('data-evento-id') || 
+                      modal.id.replace('modalDetalhes', '');
+      
+      if (eventoId) {
+        carregarDetalhesEvento(eventoId);
+      }
+    });
+  });
 });
 
 // Utility function para detectar dispositivos móveis
