@@ -1,0 +1,666 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-credit-card-2-back me-2"></i>Despesas da Empresa</h4>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+
+    {% if not form.categoria_despesa.choices or form.categoria_despesa.choices|length <= 1 %}
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>
+            <strong>Atenção!</strong> É necessário cadastrar pelo menos uma categoria de despesa antes de poder cadastrar despesas da empresa.
+            <a href="{{ url_for('cadastrar_categoria_despesa') }}" class="btn btn-sm btn-outline-warning ms-2">
+                <i class="bi bi-plus me-1"></i>Cadastrar Categoria
+            </a>
+        </div>
+    </div>
+    {% else %}
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Nova Despesa da Empresa</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.categoria_despesa.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.categoria_despesa(class="form-select", required=true, id="categoria_despesa") }}
+                            <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma categoria.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.despesa_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.despesa_id(class="form-select", required=true, id="despesa_id") }}
+                            <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma despesa.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.data.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.valor.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor(class="form-control", placeholder="0,00", required=true, id="valor_input", oninput="formatarMoedaBrasil(this)") }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor no formato 0,00.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Use vírgula para separar decimais (ex: 10,50)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.fornecedor_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.fornecedor_id(class="form-select") }}
+                            <span class="input-group-text"><i class="bi bi-shop"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.status_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.status_pagamento(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-check-circle"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione o status.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.forma_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.forma_pagamento(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione a forma de pagamento.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.pago_por.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.pago_por(class="form-control", placeholder="Nome de quem pagou") }}
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.comprovante.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.comprovante(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-paperclip"></i></span>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Formatos permitidos: JPG, PNG, PDF, DOC, DOCX (máx. 16MB)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.observacoes.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre a despesa") }}
+                            <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Salvar Despesa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Despesas da Empresa Cadastradas</h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarDados('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarDados('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if despesas %}
+            <!-- Campo de Busca e Filtros -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar despesas..." onkeyup="aplicarFiltros()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+                        <select class="form-select" id="statusFilter" onchange="aplicarFiltros()">
+                            <option value="">Todos os Status</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                        <input type="date" class="form-control" id="dataInicio" onchange="aplicarFiltros()" title="Data início">
+                    </div>
+                    <small class="text-muted">Data início</small>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                        <input type="date" class="form-control" id="dataFim" onchange="aplicarFiltros()" title="Data fim">
+                    </div>
+                    <small class="text-muted">Data fim</small>
+                </div>
+            </div>
+            
+            <!-- Botões de filtros rápidos -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="btn-group me-3" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="filtroRapido('hoje')">
+                            <i class="bi bi-calendar-day me-1"></i>Hoje
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="filtroRapido('mes')">
+                            <i class="bi bi-calendar-month me-1"></i>Este Mês
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="filtroRapido('30dias')">
+                            <i class="bi bi-calendar-range me-1"></i>Últimos 30 Dias
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparFiltros()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Limpar Filtros
+                    </button>
+                    <span class="ms-3 text-muted" id="filtroInfo">Mostrando todas as despesas</span>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="dataTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTable(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(1)">Despesa <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(2)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(3)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(4)">Fornecedor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(5)">Status <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(6)">Forma Pagamento <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th class="text-center" style="width: 150px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in despesas %}
+                        <tr>
+                            <td>{{ d.data.strftime('%d/%m/%Y') if d.data else '—' }}</td>
+                            <td>{{ d.despesa.nome if d.despesa else '—' }}</td>
+                            <td>{{ d.despesa.categoria.nome if d.despesa and d.despesa.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-danger">
+                                    R$ {{ "%.2f"|format(d.valor)|replace('.', ',') if d.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>{{ d.fornecedor.nome if d.fornecedor else '—' }}</td>
+                            <td>
+                                {% if d.status_pagamento == 'pago' %}
+                                    <span class="badge bg-success">Pago</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ d.forma_pagamento.title() if d.forma_pagamento else '—' }}</td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('editar_despesa_empresa', id=d.id_despesa_empresa) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% if d.comprovante %}
+                                    <a href="{{ url_for('uploaded_file', filename=d.comprovante) }}" 
+                                       target="_blank" class="btn btn-sm btn-outline-info" title="Ver Comprovante">
+                                        <i class="bi bi-file-earmark"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('excluir_despesa_empresa', id=d.id_despesa_empresa) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir esta despesa?')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumo -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-calculator me-2"></i>Resumo Financeiro <small class="text-muted" id="periodoResumo">(Período filtrado)</small></h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Total de Despesas:</small>
+                                    <h5 class="text-danger" id="totalDespesas">{{ despesas|length }}</h5>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Valor Total:</small>
+                                    <h5 class="text-danger" id="valorTotal">
+                                        R$ {{ "%.2f"|format(despesas|sum(attribute='valor'))|replace('.', ',') }}
+                                    </h5>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Pagas:</small>
+                                    <h5 class="text-success" id="totalPagas">
+                                        {{ despesas|selectattr('status_pagamento', 'equalto', 'pago')|list|length }}
+                                    </h5>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Pendentes:</small>
+                                    <h5 class="text-warning" id="totalPendentes">
+                                        {{ despesas|selectattr('status_pagamento', 'equalto', 'pendente')|list|length }}
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Nenhuma despesa da empresa cadastrada.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+<script>
+    // Filtro dinâmico de despesas por categoria
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoriaSelect = document.getElementById('categoria_despesa');
+        const despesaSelect = document.getElementById('despesa_id');
+        
+        // Inicializar filtros de data com valores úteis
+        const hoje = new Date();
+        const primeiroDiaDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        
+        // Definir data início como primeiro dia do mês atual (opcional)
+        // document.getElementById('dataInicio').value = primeiroDiaDoMes.toISOString().split('T')[0];
+        
+        // Aplicar filtros iniciais
+        aplicarFiltros();
+        
+        if (categoriaSelect && despesaSelect) {
+            categoriaSelect.addEventListener('change', function() {
+                const categoriaId = this.value;
+                
+                // Limpar despesas
+                despesaSelect.innerHTML = '<option value="0">Carregando...</option>';
+                
+                if (categoriaId && categoriaId != '0') {
+                    fetch(`/api/despesas-empresa-por-categoria/${categoriaId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            despesaSelect.innerHTML = '<option value="0">Selecione uma despesa</option>';
+                            
+                            data.forEach(despesa => {
+                                const option = document.createElement('option');
+                                option.value = despesa.id_despesa;
+                                option.textContent = despesa.nome;
+                                despesaSelect.appendChild(option);
+                            });
+                            
+                            if (data.length === 0) {
+                                despesaSelect.innerHTML = '<option value="0">Nenhuma despesa de empresa encontrada</option>';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            despesaSelect.innerHTML = '<option value="0">Erro ao carregar despesas</option>';
+                        });
+                } else {
+                    despesaSelect.innerHTML = '<option value="0">Selecione uma categoria primeiro</option>';
+                }
+            });
+        }
+    });
+
+    // Função para converter data do formato brasileiro para objeto Date
+    function parseDataBrasil(dataStr) {
+        if (!dataStr) return null;
+        const partes = dataStr.split('/');
+        if (partes.length === 3) {
+            // formato dd/mm/yyyy para yyyy-mm-dd
+            return new Date(partes[2], partes[1] - 1, partes[0]);
+        }
+        return null;
+    }
+
+    // Função para formatar valor monetário brasileiro
+    function formatarValor(valor) {
+        return valor.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+    }
+
+    // Função principal para aplicar todos os filtros
+    function aplicarFiltros() {
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+        const dataInicio = document.getElementById('dataInicio').value;
+        const dataFim = document.getElementById('dataFim').value;
+        
+        const table = document.getElementById('dataTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        
+        let despesasVisiveis = 0;
+        let valorTotal = 0;
+        let despesasPagas = 0;
+        let despesasPendentes = 0;
+        
+        let filtroAtivo = false;
+        let descricaoFiltro = 'Mostrando todas as despesas';
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('td');
+            
+            let mostrarLinha = true;
+            
+            // Filtro de busca por texto
+            if (searchText) {
+                filtroAtivo = true;
+                const textoLinha = row.textContent.toLowerCase();
+                if (!textoLinha.includes(searchText)) {
+                    mostrarLinha = false;
+                }
+            }
+            
+            // Filtro por status
+            if (statusFilter && mostrarLinha) {
+                filtroAtivo = true;
+                const statusCell = cells[5];
+                if (statusCell) {
+                    const statusText = statusCell.textContent.toLowerCase();
+                    if (!statusText.includes(statusFilter)) {
+                        mostrarLinha = false;
+                    }
+                }
+            }
+            
+            // Filtro por data
+            if ((dataInicio || dataFim) && mostrarLinha) {
+                filtroAtivo = true;
+                const dataCell = cells[0];
+                if (dataCell) {
+                    const dataLinha = parseDataBrasil(dataCell.textContent.trim());
+                    if (dataLinha) {
+                        if (dataInicio) {
+                            const inicio = new Date(dataInicio);
+                            if (dataLinha < inicio) {
+                                mostrarLinha = false;
+                            }
+                        }
+                        if (dataFim && mostrarLinha) {
+                            const fim = new Date(dataFim);
+                            if (dataLinha > fim) {
+                                mostrarLinha = false;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Mostrar/ocultar linha
+            if (mostrarLinha) {
+                row.style.display = '';
+                despesasVisiveis++;
+                
+                // Somar valores para o resumo
+                const valorCell = cells[3];
+                if (valorCell) {
+                    let valorTexto = valorCell.textContent.trim();
+                    // Remover R$ e espaços
+                    valorTexto = valorTexto.replace(/R\$\s*/g, '');
+                    
+                    // Se contém ponto e vírgula, formato brasileiro (1.000,50)
+                    if (valorTexto.includes('.') && valorTexto.includes(',')) {
+                        valorTexto = valorTexto.replace(/\./g, '').replace(',', '.');
+                    }
+                    // Se contém apenas vírgula, trocar por ponto
+                    else if (valorTexto.includes(',') && !valorTexto.includes('.')) {
+                        valorTexto = valorTexto.replace(',', '.');
+                    }
+                    
+                    const valor = parseFloat(valorTexto);
+                    if (!isNaN(valor)) {
+                        valorTotal += valor;
+                    }
+                }
+                
+                // Contar status
+                const statusCell = cells[5];
+                if (statusCell) {
+                    const statusText = statusCell.textContent.toLowerCase();
+                    if (statusText.includes('pago')) {
+                        despesasPagas++;
+                    } else if (statusText.includes('pendente')) {
+                        despesasPendentes++;
+                    }
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        }
+        
+        // Atualizar resumo financeiro
+        document.getElementById('totalDespesas').textContent = despesasVisiveis;
+        document.getElementById('valorTotal').textContent = formatarValor(valorTotal);
+        document.getElementById('totalPagas').textContent = despesasPagas;
+        document.getElementById('totalPendentes').textContent = despesasPendentes;
+        
+        // Atualizar informação do filtro
+        if (filtroAtivo) {
+            let partesFiltro = [];
+            if (searchText) partesFiltro.push(`texto: "${searchText}"`);
+            if (statusFilter) partesFiltro.push(`status: ${statusFilter}`);
+            if (dataInicio || dataFim) {
+                let periodo = 'período: ';
+                if (dataInicio && dataFim) {
+                    periodo += `${dataInicio} até ${dataFim}`;
+                } else if (dataInicio) {
+                    periodo += `a partir de ${dataInicio}`;
+                } else if (dataFim) {
+                    periodo += `até ${dataFim}`;
+                }
+                partesFiltro.push(periodo);
+            }
+            descricaoFiltro = `Filtrado por ${partesFiltro.join(', ')} • ${despesasVisiveis} despesa(s) encontrada(s)`;
+        }
+        
+        document.getElementById('filtroInfo').textContent = descricaoFiltro;
+        document.getElementById('periodoResumo').textContent = filtroAtivo ? '(Dados filtrados)' : '(Todas as despesas)';
+    }
+
+    // Função para limpar filtros
+    function limparFiltros() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('dataInicio').value = '';
+        document.getElementById('dataFim').value = '';
+        aplicarFiltros();
+    }
+
+    // Compatibilidade com função searchTable existente
+    function searchTable() {
+        aplicarFiltros();
+    }
+
+    // Função para filtros rápidos de data
+    function filtroRapido(tipo) {
+        const hoje = new Date();
+        let dataInicio = '';
+        let dataFim = '';
+        
+        switch (tipo) {
+            case 'hoje':
+                dataInicio = hoje.toISOString().split('T')[0];
+                dataFim = hoje.toISOString().split('T')[0];
+                break;
+            case 'mes':
+                const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+                dataInicio = primeiroDiaMes.toISOString().split('T')[0];
+                dataFim = ultimoDiaMes.toISOString().split('T')[0];
+                break;
+            case '30dias':
+                const trinta = new Date(hoje);
+                trinta.setDate(hoje.getDate() - 30);
+                dataInicio = trinta.toISOString().split('T')[0];
+                dataFim = hoje.toISOString().split('T')[0];
+                break;
+        }
+        
+        document.getElementById('dataInicio').value = dataInicio;
+        document.getElementById('dataFim').value = dataFim;
+        aplicarFiltros();
+    }
+
+    // Função de exportação
+    function exportarDados(formato) {
+        const table = document.getElementById('dataTable');
+        const headers = [];
+        const data = [];
+        
+        // Capturar cabeçalhos (excluindo coluna de ações)
+        const headerCells = table.querySelector('thead tr').cells;
+        for (let i = 0; i < headerCells.length - 1; i++) {
+            headers.push(headerCells[i].textContent.replace(' ↕', '').trim());
+        }
+        
+        // Capturar dados visíveis (excluindo coluna de ações)
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const rowData = [];
+                const cells = row.cells;
+                for (let i = 0; i < cells.length - 1; i++) {
+                    rowData.push(cells[i].textContent.trim());
+                }
+                data.push(rowData);
+            }
+        });
+        
+        // Enviar para exportação
+        fetch(`/exportar/despesas_empresa/${formato}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                headers: headers,
+                data: data
+            })
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `despesas_empresa_${new Date().toISOString().split('T')[0]}.${formato === 'excel' ? 'xlsx' : 'pdf'}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Erro na exportação:', error);
+            alert('Erro ao exportar dados. Tente novamente.');
+        });
+    }
+
+    // Função para formatar moeda no padrão brasileiro
+    function formatarMoedaBrasil(input) {
+        let valor = input.value;
+        
+        // Remove tudo que não é dígito ou vírgula
+        valor = valor.replace(/[^\d,]/g, '');
+        
+        // Remove vírgulas extras, mantendo só a última
+        const partes = valor.split(',');
+        if (partes.length > 2) {
+            valor = partes.slice(0, -1).join('') + ',' + partes[partes.length - 1];
+        }
+        
+        // Limita a duas casas decimais após a vírgula
+        if (valor.includes(',')) {
+            const [inteira, decimal] = valor.split(',');
+            valor = inteira + ',' + decimal.slice(0, 2);
+        }
+        
+        input.value = valor;
+    }
+
+    // Validação de formulário
+    (function() {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.prototype.slice.call(forms)
+            .forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    
+                    form.classList.add('was-validated');
+                }, false);
+            });
+    })();
+</script>
+{% endblock %} 

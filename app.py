@@ -6,13 +6,15 @@ from models import (
     Usuario, Circo, CategoriaColaborador, Colaborador, ColaboradorCategoria,
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
     CategoriaDespesa, Despesa, Evento, DespesaEvento, ReceitaEvento,
-    CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, TIPOS_DESPESA
+    CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, 
+    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA
 )
 from forms import (
     UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
-    EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm
+    EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
+    DespesaEmpresaForm, ReceitaEmpresaForm
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -171,110 +173,15 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    # Obter informaÃ§Ãµes do usuÃ¡rio logado
+    # Obter informações do usuário logado
     usuario = Usuario.query.get(session['user_id'])
     if not usuario or not usuario.colaborador:
-        flash('Erro ao carregar informaÃ§Ãµes do usuÃ¡rio.', 'danger')
+        flash('Erro ao carregar informações do usuário.', 'danger')
         return redirect(url_for('login'))
     
-    # Verificar se Ã© administrador ou produtor
+    # Verificar se é administrador ou produtor
     is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
     is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
-
-    # Filtro de datas do grÃ¡fico
-    period = request.args.get('period', '7dias')
-    if period == 'hoje':
-        data_inicio = data_fim = date.today()
-    elif period == 'ontem':
-        data_inicio = data_fim = date.today() - timedelta(days=1)
-    elif period == '7dias':
-        data_fim = date.today()
-        data_inicio = data_fim - timedelta(days=6)
-    elif period == 'mes':
-        data_fim = date.today()
-        data_inicio = data_fim.replace(day=1)
-    elif period == 'custom':
-        data_inicio = request.args.get('data_inicio')
-        data_fim = request.args.get('data_fim')
-        if data_inicio and data_fim:
-            data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-        else:
-            data_fim = date.today()
-            data_inicio = data_fim - timedelta(days=6)
-    else:
-        data_fim = date.today()
-        data_inicio = data_fim - timedelta(days=6)
-
-    # Filtro de eventos baseado no tipo de usuÃ¡rio
-    if is_admin:
-        # Administrador vê todos os eventos - excluir categoria "PAGAS PELO CIRCO"
-        eventos_base_query = db.session.query(ReceitaEvento.data, 
-                                            func.sum(ReceitaEvento.valor).label('receitas'),
-                                            func.sum(DespesaEvento.valor).label('despesas'))\
-                           .outerjoin(DespesaEvento, ReceitaEvento.data == DespesaEvento.data)\
-                           .outerjoin(Despesa, DespesaEvento.id_despesa == Despesa.id_despesa)\
-                           .outerjoin(CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa)\
-                           .filter(db.or_(CategoriaDespesa.nome == None, 
-                                        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])))
-    else:
-        # Produtor vê apenas seus eventos - excluir categoria "PAGAS PELO CIRCO"
-        eventos_do_produtor = db.session.query(Evento.id_evento)\
-                             .filter_by(id_produtor=usuario.colaborador.id_colaborador)\
-                             .subquery()
-        
-        eventos_base_query = db.session.query(ReceitaEvento.data,
-                                            func.sum(ReceitaEvento.valor).label('receitas'),
-                                            func.sum(DespesaEvento.valor).label('despesas'))\
-                           .filter(ReceitaEvento.id_evento.in_(eventos_do_produtor))\
-                           .outerjoin(DespesaEvento, 
-                                    db.and_(DespesaEvento.data == ReceitaEvento.data,
-                                          DespesaEvento.id_evento.in_(eventos_do_produtor)))\
-                           .outerjoin(Despesa, DespesaEvento.id_despesa == Despesa.id_despesa)\
-                           .outerjoin(CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa)\
-                           .filter(db.or_(CategoriaDespesa.nome == None, 
-                                        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])))
-
-    # Lucro por dia no perÃ­odo
-    lucro_por_dia = []
-    dias = []
-    current = data_inicio
-    while current <= data_fim:
-        if is_admin:
-            receitas = db.session.query(func.sum(ReceitaEvento.valor)).filter(ReceitaEvento.data == current).scalar() or 0
-            # Excluir categoria "PAGAS PELO CIRCO" do cálculo de despesas
-            despesas = db.session.query(func.sum(DespesaEvento.valor)).join(
-                Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
-            ).join(
-                CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
-            ).filter(
-                DespesaEvento.data == current,
-                CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
-            ).scalar() or 0
-        else:
-            # Filtrar por eventos do produtor
-            eventos_do_produtor = db.session.query(Evento.id_evento)\
-                                 .filter_by(id_produtor=usuario.colaborador.id_colaborador)
-            
-            receitas = db.session.query(func.sum(ReceitaEvento.valor))\
-                      .filter(ReceitaEvento.data == current,
-                             ReceitaEvento.id_evento.in_(eventos_do_produtor)).scalar() or 0
-            
-            # Excluir categoria "PAGAS PELO CIRCO" do cálculo de despesas
-            despesas = db.session.query(func.sum(DespesaEvento.valor)).join(
-                Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
-            ).join(
-                CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
-            ).filter(
-                DespesaEvento.data == current,
-                DespesaEvento.id_evento.in_(eventos_do_produtor),
-                CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
-            ).scalar() or 0
-        
-        lucro = receitas - despesas
-        lucro_por_dia.append(lucro)
-        dias.append(current.strftime('%d/%m'))
-        current += timedelta(days=1)
 
     # Filtro de datas da lista de eventos do dashboard
     eventos_period = request.args.get('eventos_period', '90dias')  # Mudança: padrão para 90 dias
@@ -310,7 +217,7 @@ def dashboard():
         eventos_data_fim = date.today() + timedelta(days=365)
         eventos_data_inicio = date.today() - timedelta(days=90)
 
-    # Filtrar eventos baseado no tipo de usuÃ¡rio
+    # Filtrar eventos baseado no tipo de usuário
     eventos_query = Evento.query.filter(Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado']))
     
     if not is_admin:
@@ -326,11 +233,6 @@ def dashboard():
 
     return render_template(
         'dashboard.html',
-        lucro_por_dia=lucro_por_dia,
-        dias=dias,
-        data_inicio=data_inicio.strftime('%Y-%m-%d'),
-        data_fim=data_fim.strftime('%Y-%m-%d'),
-        period=period,
         eventos=eventos,
         eventos_data_inicio=eventos_data_inicio,
         eventos_data_fim=eventos_data_fim,
@@ -1059,12 +961,31 @@ def api_despesas_por_categoria(categoria_id):
                 'id_despesa': despesa.id_despesa,
                 'nome': despesa.nome,
                 'valor_medio': float(valor_medio) if valor_medio else None,
-                'tipo_despesa': despesa.id_tipo_despesa
+                'id_tipo_despesa': despesa.id_tipo_despesa
             })
         
         return jsonify(despesas_data)
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/api/despesas-empresa-por-categoria/<int:categoria_id>')
+def api_despesas_empresa_por_categoria(categoria_id):
+    try:
+        # Filtrar apenas despesas da empresa (tipos 3 e 4)
+        despesas = Despesa.query.filter_by(id_categoria_despesa=categoria_id).filter(
+            Despesa.id_tipo_despesa.in_([3, 4])
+        ).all()
+        despesas_data = []
+        
+        for despesa in despesas:
+            despesas_data.append({
+                'id_despesa': despesa.id_despesa,
+                'nome': despesa.nome,
+                'id_tipo_despesa': despesa.id_tipo_despesa
+            })
+        
+        return jsonify(despesas_data)
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/receitas-por-categoria/<int:categoria_id>')
@@ -3609,6 +3530,145 @@ def criar_pdf_response(headers, data, title, filename):
     return response
 
 # Rotas de exportação
+# Rotas API para listar eventos por entidade
+@app.route('/api/colaborador/<int:colaborador_id>/eventos')
+def api_colaborador_eventos(colaborador_id):
+    """API para listar eventos onde um colaborador participou da equipe"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    try:
+        colaborador = Colaborador.query.get_or_404(colaborador_id)
+        
+        # Buscar eventos onde o colaborador participou da equipe
+        equipes_evento = EquipeEvento.query.filter_by(id_colaborador=colaborador_id).all()
+        
+        eventos = []
+        for equipe in equipes_evento:
+            evento = Evento.query.get(equipe.id_evento)
+            if evento:
+                eventos.append({
+                    'id_evento': evento.id_evento,
+                    'nome': evento.nome,
+                    'circo': evento.circo.nome if evento.circo else 'Sem circo',
+                    'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else '',
+                    'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                    'cidade': evento.cidade or '',
+                    'estado': evento.estado or '',
+                    'funcao': equipe.funcao or 'Não informado',
+                    'observacoes': equipe.observacoes or ''
+                })
+        
+        # Ordenar por data mais recente primeiro
+        eventos.sort(key=lambda x: x['data_inicio'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'colaborador': colaborador.nome,
+            'eventos': eventos,
+            'total': len(eventos)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/fornecedor/<int:fornecedor_id>/eventos')
+def api_fornecedor_eventos(fornecedor_id):
+    """API para listar eventos onde um fornecedor prestou serviços"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    try:
+        fornecedor = Fornecedor.query.get_or_404(fornecedor_id)
+        
+        # Buscar eventos onde o fornecedor foi usado (via FornecedorEvento ou DespesaEvento)
+        eventos_ids = set()
+        
+        # Via tabela fornecedor_evento
+        fornecedores_evento = FornecedorEvento.query.filter_by(id_fornecedor=fornecedor_id).all()
+        for fe in fornecedores_evento:
+            eventos_ids.add(fe.id_evento)
+        
+        # Via despesas que usaram esse fornecedor
+        despesas_evento = DespesaEvento.query.filter_by(id_fornecedor=fornecedor_id).all()
+        for de in despesas_evento:
+            eventos_ids.add(de.id_evento)
+        
+        # Buscar dados dos eventos
+        eventos = []
+        for evento_id in eventos_ids:
+            evento = Evento.query.get(evento_id)
+            if evento:
+                # Calcular valor total gasto com este fornecedor no evento
+                valor_total = db.session.query(func.sum(DespesaEvento.valor)).filter_by(
+                    id_evento=evento_id,
+                    id_fornecedor=fornecedor_id
+                ).scalar() or 0
+                
+                eventos.append({
+                    'id_evento': evento.id_evento,
+                    'nome': evento.nome,
+                    'circo': evento.circo.nome if evento.circo else 'Sem circo',
+                    'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else '',
+                    'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                    'cidade': evento.cidade or '',
+                    'estado': evento.estado or '',
+                    'valor_total': float(valor_total)
+                })
+        
+        # Ordenar por data mais recente primeiro
+        eventos.sort(key=lambda x: x['data_inicio'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'fornecedor': fornecedor.nome,
+            'eventos': eventos,
+            'total': len(eventos)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/elenco/<int:elenco_id>/eventos')
+def api_elenco_eventos(elenco_id):
+    """API para listar eventos onde um membro do elenco participou"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    try:
+        membro_elenco = Elenco.query.get_or_404(elenco_id)
+        
+        # Buscar eventos onde o membro do elenco participou
+        elencos_evento = ElencoEvento.query.filter_by(id_elenco=elenco_id).all()
+        
+        eventos = []
+        for elenco_evt in elencos_evento:
+            evento = Evento.query.get(elenco_evt.id_evento)
+            if evento:
+                eventos.append({
+                    'id_evento': evento.id_evento,
+                    'nome': evento.nome,
+                    'circo': evento.circo.nome if evento.circo else 'Sem circo',
+                    'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else '',
+                    'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                    'cidade': evento.cidade or '',
+                    'estado': evento.estado or '',
+                    'observacoes': elenco_evt.observacoes or ''
+                })
+        
+        # Ordenar por data mais recente primeiro
+        eventos.sort(key=lambda x: x['data_inicio'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'membro_elenco': membro_elenco.nome,
+            'eventos': eventos,
+            'total': len(eventos)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/exportar/<string:table_name>/<string:format>', methods=['POST'])
 def exportar_dados(table_name, format):
     """Rota genérica para exportação de dados"""
@@ -3652,6 +3712,367 @@ def exportar_dados(table_name, format):
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/relatorios/despesas-fixas')
+def relatorio_despesas_fixas():
+    """Relatório de todas as despesas fixas da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        # Buscar todas as despesas fixas (tipos 1 e 3)
+        # Tipo 1: Fixas - Evento
+        # Tipo 3: Fixas - SócratesOnline
+        despesas_fixas = db.session.query(Despesa).filter(
+            Despesa.id_tipo_despesa.in_([1, 3])
+        ).join(CategoriaDespesa).order_by(
+            Despesa.id_tipo_despesa,
+            CategoriaDespesa.nome,
+            Despesa.nome
+        ).all()
+        
+        # Organizar despesas por tipo
+        despesas_por_tipo = {
+            1: [],  # Fixas - Evento
+            3: []   # Fixas - SócratesOnline
+        }
+        
+        total_valor_medio = 0
+        
+        for despesa in despesas_fixas:
+            despesa_data = {
+                'id_despesa': despesa.id_despesa,
+                'nome': despesa.nome,
+                'categoria': despesa.categoria.nome if despesa.categoria else 'Sem categoria',
+                'valor_medio': float(despesa.valor_medio_despesa) if despesa.valor_medio_despesa else 0,
+                'tipo_nome': despesa.tipo_nome
+            }
+            
+            despesas_por_tipo[despesa.id_tipo_despesa].append(despesa_data)
+            total_valor_medio += despesa_data['valor_medio']
+        
+        # Calcular totais por tipo
+        total_fixas_evento = sum(d['valor_medio'] for d in despesas_por_tipo[1])
+        total_fixas_socrates = sum(d['valor_medio'] for d in despesas_por_tipo[3])
+        
+        estatisticas = {
+            'total_despesas': len(despesas_fixas),
+            'total_fixas_evento': len(despesas_por_tipo[1]),
+            'total_fixas_socrates': len(despesas_por_tipo[3]),
+            'valor_total_fixas_evento': total_fixas_evento,
+            'valor_total_fixas_socrates': total_fixas_socrates,
+            'valor_total_geral': total_valor_medio
+        }
+        
+        return render_template('relatorio_despesas_fixas.html',
+                             despesas_por_tipo=despesas_por_tipo,
+                             estatisticas=estatisticas,
+                             tipos_despesa=TIPOS_DESPESA)
+        
+    except Exception as e:
+        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+@app.route('/relatorios/despesas-fixas/exportar/<string:formato>')
+def exportar_despesas_fixas(formato):
+    """Exportar relatório de despesas fixas"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    try:
+        # Buscar dados das despesas fixas
+        despesas_fixas = db.session.query(Despesa).filter(
+            Despesa.id_tipo_despesa.in_([1, 3])
+        ).join(CategoriaDespesa).order_by(
+            Despesa.id_tipo_despesa,
+            CategoriaDespesa.nome,
+            Despesa.nome
+        ).all()
+        
+        # Preparar dados para exportação
+        headers = ['Tipo', 'Nome', 'Categoria', 'Valor Médio']
+        data = []
+        
+        for despesa in despesas_fixas:
+            data.append([
+                despesa.tipo_nome,
+                despesa.nome,
+                despesa.categoria.nome if despesa.categoria else 'Sem categoria',
+                f"R$ {float(despesa.valor_medio_despesa):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') if despesa.valor_medio_despesa else 'R$ 0,00'
+            ])
+        
+        # Adicionar linha de total
+        total_valor = sum(float(d.valor_medio_despesa) if d.valor_medio_despesa else 0 for d in despesas_fixas)
+        data.append(['', '', 'TOTAL GERAL:', f"R$ {total_valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')])
+        
+        today = datetime.now().strftime('%Y-%m-%d')
+        filename = f"despesas_fixas_{today}"
+        
+        if formato == 'excel':
+            return criar_excel_response(headers, data, filename)
+        elif formato == 'pdf':
+            return criar_pdf_response(headers, data, 'Relatório de Despesas Fixas', filename)
+        else:
+            return jsonify({'error': 'Formato não suportado'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== GESTÃO FINANCEIRA EMPRESA ====================
+
+@app.route('/empresa/despesas', methods=['GET', 'POST'])
+def despesas_empresa():
+    """Gestão de despesas da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se usuário é administrativo
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    form = DespesaEmpresaForm()
+    
+    # Carregar opções dos selects - apenas categorias que possuem despesas da empresa (tipos 3 e 4)
+    categorias = db.session.query(CategoriaDespesa).join(Despesa).filter(
+        Despesa.id_tipo_despesa.in_([3, 4])
+    ).distinct().all()
+    form.categoria_despesa.choices = [(0, 'Selecione uma categoria')] + [(c.id_categoria_despesa, c.nome) for c in categorias]
+    
+    # Filtrar apenas despesas da empresa (tipos 3 e 4)
+    despesas_opcoes = Despesa.query.filter(Despesa.id_tipo_despesa.in_([3, 4])).all()
+    form.despesa_id.choices = [(0, 'Selecione uma categoria primeiro')] + [(d.id_despesa, d.nome) for d in despesas_opcoes]
+    
+    fornecedores = Fornecedor.query.all()
+    form.fornecedor_id.choices = [(0, 'Selecione um fornecedor (opcional)')] + [(f.id_fornecedor, f.nome) for f in fornecedores]
+    
+    if form.validate_on_submit():
+        try:
+            # Upload do comprovante se houver
+            filename = None
+            if form.comprovante.data:
+                file = form.comprovante.data
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Adicionar timestamp para evitar conflitos
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                    filename = timestamp + filename
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'comprovantes', filename))
+            
+            despesa_empresa = DespesaEmpresa(
+                id_despesa=form.despesa_id.data,
+                data=form.data.data,
+                valor=form.valor.data,
+                id_fornecedor=form.fornecedor_id.data if form.fornecedor_id.data != 0 else None,
+                status_pagamento=form.status_pagamento.data,
+                forma_pagamento=form.forma_pagamento.data,
+                pago_por=form.pago_por.data,
+                observacoes=form.observacoes.data,
+                comprovante=filename
+            )
+            
+            db.session.add(despesa_empresa)
+            db.session.commit()
+            flash('Despesa da empresa cadastrada com sucesso!', 'success')
+            return redirect(url_for('despesas_empresa'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar despesa: {str(e)}', 'danger')
+    
+    # Listar despesas cadastradas
+    despesas = db.session.query(DespesaEmpresa).join(Despesa).join(CategoriaDespesa).order_by(DespesaEmpresa.data.desc()).all()
+    
+    return render_template('despesas_empresa.html', form=form, despesas=despesas)
+
+@app.route('/empresa/receitas', methods=['GET', 'POST'])
+def receitas_empresa():
+    """Gestão de receitas da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se usuário é administrativo
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    form = ReceitaEmpresaForm()
+    
+    # Carregar opções dos selects
+    categorias = CategoriaReceita.query.all()
+    form.categoria_receita.choices = [(0, 'Selecione uma categoria')] + [(c.id_categoria_receita, c.nome) for c in categorias]
+    
+    receitas_opcoes = Receita.query.all()
+    form.receita_id.choices = [(0, 'Selecione uma categoria primeiro')] + [(r.id_receita, r.nome) for r in receitas_opcoes]
+    
+    if form.validate_on_submit():
+        try:
+            receita_empresa = ReceitaEmpresa(
+                id_receita=form.receita_id.data,
+                data=form.data.data,
+                valor=form.valor.data,
+                observacoes=form.observacoes.data
+            )
+            
+            db.session.add(receita_empresa)
+            db.session.commit()
+            flash('Receita da empresa cadastrada com sucesso!', 'success')
+            return redirect(url_for('receitas_empresa'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar receita: {str(e)}', 'danger')
+    
+    # Listar receitas cadastradas
+    receitas = db.session.query(ReceitaEmpresa).join(Receita).join(CategoriaReceita).order_by(ReceitaEmpresa.data.desc()).all()
+    
+    return render_template('receitas_empresa.html', form=form, receitas=receitas)
+
+@app.route('/empresa/despesas/editar/<int:id>', methods=['GET', 'POST'])
+def editar_despesa_empresa(id):
+    """Editar despesa da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    despesa_empresa = DespesaEmpresa.query.get_or_404(id)
+    form = DespesaEmpresaForm(obj=despesa_empresa)
+    
+    # Carregar opções dos selects - apenas categorias que possuem despesas da empresa (tipos 3 e 4)
+    categorias = db.session.query(CategoriaDespesa).join(Despesa).filter(
+        Despesa.id_tipo_despesa.in_([3, 4])
+    ).distinct().all()
+    form.categoria_despesa.choices = [(0, 'Selecione uma categoria')] + [(c.id_categoria_despesa, c.nome) for c in categorias]
+    form.categoria_despesa.data = despesa_empresa.despesa.id_categoria_despesa
+    
+    despesas_opcoes = Despesa.query.filter(Despesa.id_tipo_despesa.in_([3, 4])).all()
+    form.despesa_id.choices = [(d.id_despesa, d.nome) for d in despesas_opcoes]
+    
+    fornecedores = Fornecedor.query.all()
+    form.fornecedor_id.choices = [(0, 'Selecione um fornecedor (opcional)')] + [(f.id_fornecedor, f.nome) for f in fornecedores]
+    
+    if form.validate_on_submit():
+        try:
+            # Upload do comprovante se houver
+            if form.comprovante.data:
+                file = form.comprovante.data
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                    filename = timestamp + filename
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'comprovantes', filename))
+                    despesa_empresa.comprovante = filename
+            
+            despesa_empresa.id_despesa = form.despesa_id.data
+            despesa_empresa.data = form.data.data
+            despesa_empresa.valor = form.valor.data
+            despesa_empresa.id_fornecedor = form.fornecedor_id.data if form.fornecedor_id.data != 0 else None
+            despesa_empresa.status_pagamento = form.status_pagamento.data
+            despesa_empresa.forma_pagamento = form.forma_pagamento.data
+            despesa_empresa.pago_por = form.pago_por.data
+            despesa_empresa.observacoes = form.observacoes.data
+            
+            db.session.commit()
+            flash('Despesa da empresa atualizada com sucesso!', 'success')
+            return redirect(url_for('despesas_empresa'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar despesa: {str(e)}', 'danger')
+    
+    return render_template('editar_despesa_empresa.html', form=form, despesa_empresa=despesa_empresa)
+
+@app.route('/empresa/receitas/editar/<int:id>', methods=['GET', 'POST'])
+def editar_receita_empresa(id):
+    """Editar receita da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    receita_empresa = ReceitaEmpresa.query.get_or_404(id)
+    form = ReceitaEmpresaForm(obj=receita_empresa)
+    
+    # Carregar opções dos selects
+    categorias = CategoriaReceita.query.all()
+    form.categoria_receita.choices = [(c.id_categoria_receita, c.nome) for c in categorias]
+    form.categoria_receita.data = receita_empresa.receita.id_categoria_receita
+    
+    receitas_opcoes = Receita.query.all()
+    form.receita_id.choices = [(r.id_receita, r.nome) for r in receitas_opcoes]
+    
+    if form.validate_on_submit():
+        try:
+            receita_empresa.id_receita = form.receita_id.data
+            receita_empresa.data = form.data.data
+            receita_empresa.valor = form.valor.data
+            receita_empresa.observacoes = form.observacoes.data
+            
+            db.session.commit()
+            flash('Receita da empresa atualizada com sucesso!', 'success')
+            return redirect(url_for('receitas_empresa'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar receita: {str(e)}', 'danger')
+    
+    return render_template('editar_receita_empresa.html', form=form, receita_empresa=receita_empresa)
+
+@app.route('/empresa/despesas/excluir/<int:id>')
+def excluir_despesa_empresa(id):
+    """Excluir despesa da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        despesa_empresa = DespesaEmpresa.query.get_or_404(id)
+        
+        # Excluir arquivo de comprovante se existir
+        if despesa_empresa.comprovante:
+            arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], 'comprovantes', despesa_empresa.comprovante)
+            if os.path.exists(arquivo_path):
+                os.remove(arquivo_path)
+        
+        db.session.delete(despesa_empresa)
+        db.session.commit()
+        flash('Despesa da empresa excluída com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir despesa: {str(e)}', 'danger')
+    
+    return redirect(url_for('despesas_empresa'))
+
+@app.route('/empresa/receitas/excluir/<int:id>')
+def excluir_receita_empresa(id):
+    """Excluir receita da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        receita_empresa = ReceitaEmpresa.query.get_or_404(id)
+        db.session.delete(receita_empresa)
+        db.session.commit()
+        flash('Receita da empresa excluída com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir receita: {str(e)}', 'danger')
+    
+    return redirect(url_for('receitas_empresa'))
 
 if __name__ == '__main__':
     app.run(debug=True)

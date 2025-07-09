@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-pencil-square me-2"></i>Editar Despesa da Empresa</h4>
+        <a href="{{ url_for('despesas_empresa') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-credit-card-2-back me-2"></i>Dados da Despesa</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.categoria_despesa.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.categoria_despesa(class="form-select", required=true, id="categoria_despesa") }}
+                            <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma categoria.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.despesa_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.despesa_id(class="form-select", required=true, id="despesa_id") }}
+                            <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma despesa.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.data.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.valor.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor(class="form-control", placeholder="0,00", required=true, step="0.01") }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.fornecedor_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.fornecedor_id(class="form-select") }}
+                            <span class="input-group-text"><i class="bi bi-shop"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.status_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.status_pagamento(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-check-circle"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione o status.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.forma_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.forma_pagamento(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione a forma de pagamento.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.pago_por.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.pago_por(class="form-control", placeholder="Nome de quem pagou") }}
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.comprovante.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.comprovante(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-paperclip"></i></span>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Formatos permitidos: JPG, PNG, PDF, DOC, DOCX (máx. 16MB)</small>
+                        </div>
+                        {% if despesa_empresa.comprovante %}
+                        <div class="mt-2">
+                            <small class="text-info">
+                                <i class="bi bi-file-earmark me-1"></i>
+                                Arquivo atual: {{ despesa_empresa.comprovante }}
+                                <a href="{{ url_for('uploaded_file', filename=despesa_empresa.comprovante) }}" 
+                                   target="_blank" class="ms-2">
+                                    <i class="bi bi-eye"></i> Visualizar
+                                </a>
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.observacoes.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre a despesa") }}
+                            <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('despesas_empresa') }}" class="btn btn-secondary">
+                        <i class="bi bi-x me-2"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Filtro dinâmico de despesas por categoria
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoriaSelect = document.getElementById('categoria_despesa');
+        const despesaSelect = document.getElementById('despesa_id');
+        
+        if (categoriaSelect && despesaSelect) {
+            categoriaSelect.addEventListener('change', function() {
+                const categoriaId = this.value;
+                
+                // Limpar despesas
+                despesaSelect.innerHTML = '<option value="0">Carregando...</option>';
+                
+                if (categoriaId && categoriaId != '0') {
+                    fetch(`/api/despesas-empresa-por-categoria/${categoriaId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            despesaSelect.innerHTML = '<option value="0">Selecione uma despesa</option>';
+                            
+                            data.forEach(despesa => {
+                                const option = document.createElement('option');
+                                option.value = despesa.id_despesa;
+                                option.textContent = despesa.nome;
+                                despesaSelect.appendChild(option);
+                            });
+                            
+                            if (data.length === 0) {
+                                despesaSelect.innerHTML = '<option value="0">Nenhuma despesa de empresa encontrada</option>';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            despesaSelect.innerHTML = '<option value="0">Erro ao carregar despesas</option>';
+                        });
+                } else {
+                    despesaSelect.innerHTML = '<option value="0">Selecione uma categoria primeiro</option>';
+                }
+            });
+        }
+    });
+
+    // Validação de formulário
+    (function() {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.prototype.slice.call(forms)
+            .forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    
+                    form.classList.add('was-validated');
+                }, false);
+            });
+    })();
+</script>
+{% endblock %} 

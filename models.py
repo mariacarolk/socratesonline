@@ -251,3 +251,31 @@ class FornecedorEvento(db.Model):
     
     # Relacionamentos
     fornecedor = db.relationship('Fornecedor', backref='fornecedor_eventos')
+
+class DespesaEmpresa(db.Model):
+    __tablename__ = 'despesas_empresa'
+    id_despesa_empresa = db.Column(db.Integer, primary_key=True)
+    id_despesa = db.Column(db.Integer, db.ForeignKey('despesa.id_despesa'), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    id_fornecedor = db.Column(db.Integer, db.ForeignKey('fornecedor.id_fornecedor'))
+    status_pagamento = db.Column(db.String(20), nullable=False)
+    forma_pagamento = db.Column(db.String(20), nullable=False)
+    pago_por = db.Column(db.String(100))
+    observacoes = db.Column(db.Text)
+    comprovante = db.Column(db.String(255))
+    
+    # Relacionamentos
+    despesa = db.relationship('Despesa', backref='despesas_empresa')
+    fornecedor = db.relationship('Fornecedor', backref='despesas_empresa')
+
+class ReceitaEmpresa(db.Model):
+    __tablename__ = 'receitas_empresa'
+    id_receita_empresa = db.Column(db.Integer, primary_key=True)
+    id_receita = db.Column(db.Integer, db.ForeignKey('receita.id_receita'), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    observacoes = db.Column(db.Text)
+    
+    # Relacionamentos
+    receita = db.relationship('Receita', backref='receitas_empresa')

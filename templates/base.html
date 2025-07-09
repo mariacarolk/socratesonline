@@ -102,6 +102,23 @@
 
             {% if session['categoria'] == 'administrativo' %}
             <div class="w-100">
+                <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuGestaoFinanceira" role="button" aria-expanded="false" aria-controls="submenuGestaoFinanceira">
+                    <span><i class="bi bi-bank"></i> Gestão Financeira Empresa</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </a>
+                <div class="collapse ps-3" id="submenuGestaoFinanceira">
+                    <a class="nav-link {% if request.endpoint == 'despesas_empresa' %}active{% endif %}" href="{{ url_for('despesas_empresa') }}">
+                        <i class="bi bi-credit-card-2-back"></i> Despesas da Empresa
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'receitas_empresa' %}active{% endif %}" href="{{ url_for('receitas_empresa') }}">
+                        <i class="bi bi-cash-coin"></i> Receitas da Empresa
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if session['categoria'] == 'administrativo' %}
+            <div class="w-100">
                 <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuRelatorios" role="button" aria-expanded="false" aria-controls="submenuRelatorios">
                     <span><i class="bi bi-bar-chart"></i> Relatórios</span>
                     <i class="bi bi-chevron-down small"></i>
@@ -115,6 +132,9 @@
                     </a>
                     <a class="nav-link {% if request.endpoint == 'relatorios_fechamento_evento' %}active{% endif %}" href="{{ url_for('relatorios_fechamento_evento') }}">
                         <i class="bi bi-clipboard-check"></i> Fechamento por Evento
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'relatorio_despesas_fixas' %}active{% endif %}" href="{{ url_for('relatorio_despesas_fixas') }}">
+                        <i class="bi bi-receipt"></i> Despesas Fixas
                     </a>
                 </div>
             </div>

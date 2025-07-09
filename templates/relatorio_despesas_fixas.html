@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-file-earmark-text me-2"></i>Relatório de Despesas Fixas
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('exportar_despesas_fixas', formato='excel') }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
+            <a href="{{ url_for('exportar_despesas_fixas', formato='pdf') }}" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Resumo Estatístico -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    <i class="bi bi-calendar-event"></i>
+                </h5>
+                <h3 class="text-info">{{ estatisticas.total_fixas_evento }}</h3>
+                <p class="card-text text-muted">Fixas - Evento</p>
+                <small class="text-info fw-bold">
+                    R$ {{ "%.2f"|format(estatisticas.valor_total_fixas_evento)|replace('.', ',')|replace(',', '.', 1) }}
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="bi bi-building"></i>
+                </h5>
+                <h3 class="text-warning">{{ estatisticas.total_fixas_socrates }}</h3>
+                <p class="card-text text-muted">Fixas - SócratesOnline</p>
+                <small class="text-warning fw-bold">
+                    R$ {{ "%.2f"|format(estatisticas.valor_total_fixas_socrates)|replace('.', ',')|replace(',', '.', 1) }}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Despesas Fixas - Evento -->
+{% if despesas_por_tipo[1] %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-calendar-event me-2 text-info"></i>Fixas - Evento
+        </h5>
+        <span class="badge bg-info">
+            {{ estatisticas.total_fixas_evento }} despesas | 
+            R$ {{ "%.2f"|format(estatisticas.valor_total_fixas_evento)|replace('.', ',')|replace(',', '.', 1) }}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome da Despesa</th>
+                        <th>Categoria</th>
+                        <th class="text-end">Valor Médio</th>
+                        <th class="text-center" style="width: 100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for despesa in despesas_por_tipo[1] %}
+                    <tr>
+                        <td>
+                            <strong>{{ despesa.nome }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ despesa.categoria }}</span>
+                        </td>
+                        <td class="text-end">
+                            {% if despesa.valor_medio > 0 %}
+                                <span class="text-success fw-bold">
+                                    R$ {{ "%.2f"|format(despesa.valor_medio)|replace('.', ',')|replace(',', '.', 1) }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">R$ 0,00</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('editar_despesa', id=despesa.id_despesa) }}" 
+                               class="btn btn-sm btn-outline-primary" title="Editar Despesa">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Despesas Fixas - SócratesOnline -->
+{% if despesas_por_tipo[3] %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-building me-2 text-warning"></i>Fixas - SócratesOnline
+        </h5>
+        <span class="badge bg-warning text-dark">
+            {{ estatisticas.total_fixas_socrates }} despesas | 
+            R$ {{ "%.2f"|format(estatisticas.valor_total_fixas_socrates)|replace('.', ',')|replace(',', '.', 1) }}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome da Despesa</th>
+                        <th>Categoria</th>
+                        <th class="text-end">Valor Médio</th>
+                        <th class="text-center" style="width: 100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for despesa in despesas_por_tipo[3] %}
+                    <tr>
+                        <td>
+                            <strong>{{ despesa.nome }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ despesa.categoria }}</span>
+                        </td>
+                        <td class="text-end">
+                            {% if despesa.valor_medio > 0 %}
+                                <span class="text-success fw-bold">
+                                    R$ {{ "%.2f"|format(despesa.valor_medio)|replace('.', ',')|replace(',', '.', 1) }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">R$ 0,00</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('editar_despesa', id=despesa.id_despesa) }}" 
+                               class="btn btn-sm btn-outline-primary" title="Editar Despesa">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Ações Rápidas -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-gear me-2"></i>Gerenciar Despesas
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('cadastrar_despesa') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Cadastrar Nova Despesa
+            </a>
+            <a href="{{ url_for('cadastrar_categoria_despesa') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-tags me-1"></i>Gerenciar Categorias
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-house me-1"></i>Voltar ao Dashboard
+            </a>
+        </div>
+        
+        <div class="mt-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                <strong>Sobre este relatório:</strong> Este relatório mostra todas as despesas fixas cadastradas no sistema, 
+                separadas por tipo (Fixas - Evento e Fixas - SócratesOnline). Os valores mostrados são os valores médios cadastrados 
+                para cada despesa. Para editar uma despesa, clique no ícone de lápis na coluna "Ações".
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Mensagem quando não há despesas -->
+{% if estatisticas.total_despesas == 0 %}
+<div class="alert alert-info text-center">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Nenhuma despesa fixa encontrada!</strong><br>
+    <small>Cadastre despesas fixas para visualizar este relatório.</small>
+    <br><br>
+    <a href="{{ url_for('cadastrar_despesa') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>Cadastrar Primeira Despesa
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adicionar tooltips para melhor UX
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Efeito hover nas linhas da tabela
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+    });
+</script>
+{% endblock %} 
