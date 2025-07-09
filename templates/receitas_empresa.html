@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-cash-coin me-2"></i>Receitas da Empresa</h4>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+
+    {% if not form.categoria_receita.choices or form.categoria_receita.choices|length <= 1 %}
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>
+            <strong>Atenção!</strong> É necessário cadastrar pelo menos uma categoria de receita antes de poder cadastrar receitas da empresa.
+            <a href="{{ url_for('cadastrar_categoria_receita') }}" class="btn btn-sm btn-outline-warning ms-2">
+                <i class="bi bi-plus me-1"></i>Cadastrar Categoria
+            </a>
+        </div>
+    </div>
+    {% else %}
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Nova Receita da Empresa</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.categoria_receita.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.categoria_receita(class="form-select", required=true, id="categoria_receita") }}
+                            <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma categoria.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.receita_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.receita_id(class="form-select", required=true, id="receita_id") }}
+                            <span class="input-group-text"><i class="bi bi-cash-coin"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione uma receita.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.data.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.valor.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor(class="form-control", placeholder="0,00", required=true, step="0.01") }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        {{ form.observacoes.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre a receita") }}
+                            <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save me-2"></i>Salvar Receita
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Receitas da Empresa Cadastradas</h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarDados('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarDados('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if receitas %}
+            <!-- Campo de Busca e Filtros -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar receitas..." onkeyup="searchTable()">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+                        <select class="form-select" id="categoriaFilter" onchange="filterByCategoria()">
+                            <option value="">Todas as Categorias</option>
+                            {% for receita in receitas %}
+                                {% if receita.receita and receita.receita.categoria %}
+                                    <option value="{{ receita.receita.categoria.nome }}">{{ receita.receita.categoria.nome }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="dataTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTable(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(1)">Receita <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(2)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(3)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(4)">Observações <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th class="text-center" style="width: 120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in receitas %}
+                        <tr>
+                            <td>{{ r.data.strftime('%d/%m/%Y') if r.data else '—' }}</td>
+                            <td>{{ r.receita.nome if r.receita else '—' }}</td>
+                            <td>{{ r.receita.categoria.nome if r.receita and r.receita.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-success">
+                                    R$ {{ "%.2f"|format(r.valor)|replace('.', ',') if r.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if r.observacoes %}
+                                    {{ r.observacoes[:50] }}{% if r.observacoes|length > 50 %}...{% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('editar_receita_empresa', id=r.id_receita_empresa) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('excluir_receita_empresa', id=r.id_receita_empresa) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir esta receita?')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumo -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-calculator me-2"></i>Resumo Financeiro</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <small class="text-muted">Total de Receitas:</small>
+                                    <h5 class="text-success">{{ receitas|length }}</h5>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">Valor Total:</small>
+                                    <h5 class="text-success">
+                                        R$ {{ "%.2f"|format(receitas|sum(attribute='valor'))|replace('.', ',') }}
+                                    </h5>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">Valor Médio:</small>
+                                    <h5 class="text-info">
+                                        {% if receitas|length > 0 %}
+                                            R$ {{ "%.2f"|format((receitas|sum(attribute='valor')) / (receitas|length))|replace('.', ',') }}
+                                        {% else %}
+                                            R$ 0,00
+                                        {% endif %}
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Nenhuma receita da empresa cadastrada.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+<script>
+    // Filtro dinâmico de receitas por categoria
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoriaSelect = document.getElementById('categoria_receita');
+        const receitaSelect = document.getElementById('receita_id');
+        
+        if (categoriaSelect && receitaSelect) {
+            categoriaSelect.addEventListener('change', function() {
+                const categoriaId = this.value;
+                
+                // Limpar receitas
+                receitaSelect.innerHTML = '<option value="0">Carregando...</option>';
+                
+                if (categoriaId && categoriaId != '0') {
+                    fetch(`/api/receitas-por-categoria/${categoriaId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            receitaSelect.innerHTML = '<option value="0">Selecione uma receita</option>';
+                            
+                            data.forEach(receita => {
+                                const option = document.createElement('option');
+                                option.value = receita.id_receita;
+                                option.textContent = receita.nome;
+                                receitaSelect.appendChild(option);
+                            });
+                            
+                            if (data.length === 0) {
+                                receitaSelect.innerHTML = '<option value="0">Nenhuma receita encontrada</option>';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            receitaSelect.innerHTML = '<option value="0">Erro ao carregar receitas</option>';
+                        });
+                } else {
+                    receitaSelect.innerHTML = '<option value="0">Selecione uma categoria primeiro</option>';
+                }
+            });
+        }
+    });
+
+    // Filtro por categoria na tabela
+    function filterByCategoria() {
+        const filter = document.getElementById('categoriaFilter').value.toLowerCase();
+        const table = document.getElementById('dataTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        
+        for (let i = 0; i < rows.length; i++) {
+            const categoriaCell = rows[i].getElementsByTagName('td')[2];
+            if (categoriaCell) {
+                const categoriaText = categoriaCell.textContent.toLowerCase();
+                if (filter === '' || categoriaText.includes(filter)) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+    }
+
+    // Função de exportação
+    function exportarDados(formato) {
+        const table = document.getElementById('dataTable');
+        const headers = [];
+        const data = [];
+        
+        // Capturar cabeçalhos (excluindo coluna de ações)
+        const headerCells = table.querySelector('thead tr').cells;
+        for (let i = 0; i < headerCells.length - 1; i++) {
+            headers.push(headerCells[i].textContent.replace(' ↕', '').trim());
+        }
+        
+        // Capturar dados visíveis (excluindo coluna de ações)
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const rowData = [];
+                const cells = row.cells;
+                for (let i = 0; i < cells.length - 1; i++) {
+                    rowData.push(cells[i].textContent.trim());
+                }
+                data.push(rowData);
+            }
+        });
+        
+        // Enviar para exportação
+        fetch(`/exportar/receitas_empresa/${formato}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                headers: headers,
+                data: data
+            })
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receitas_empresa_${new Date().toISOString().split('T')[0]}.${formato === 'excel' ? 'xlsx' : 'pdf'}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Erro na exportação:', error);
+            alert('Erro ao exportar dados. Tente novamente.');
+        });
+    }
+
+    // Validação de formulário
+    (function() {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.prototype.slice.call(forms)
+            .forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    
+                    form.classList.add('was-validated');
+                }, false);
+            });
+    })();
+</script>
+{% endblock %} 

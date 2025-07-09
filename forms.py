@@ -262,3 +262,58 @@ class DespesaEventoForm(FlaskForm):
     pago_por = StringField('Pago por')
     observacoes = TextAreaField('Observações')
     comprovante = FileField('Comprovante', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 'Apenas arquivos de imagem, PDF ou documento são permitidos')])
+
+class DespesaEmpresaForm(FlaskForm):
+    categoria_despesa = SelectField('Categoria', coerce=int, validators=[DataRequired()])
+    despesa_id = SelectField('Despesa', coerce=int, validators=[DataRequired()])
+    data = DateField('Data', validators=[DataRequired()])
+    valor = StringField('Valor', validators=[DataRequired()])  # Mudou para StringField para aceitar formato brasileiro
+    fornecedor_id = SelectField('Fornecedor', coerce=int, validators=[Optional()])
+    status_pagamento = SelectField('Status', choices=[
+        ('pendente', 'Pendente'),
+        ('pago', 'Pago')
+    ], validators=[DataRequired()])
+    forma_pagamento = SelectField('Forma de Pagamento', choices=[
+        ('débito', 'Débito'),
+        ('crédito', 'Crédito'),
+        ('espécie', 'Espécie'),
+        ('pix', 'Pix')
+    ], validators=[DataRequired()])
+    pago_por = StringField('Pago por')
+    observacoes = TextAreaField('Observações')
+    comprovante = FileField('Comprovante', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 'Apenas arquivos de imagem, PDF ou documento são permitidos')])
+    
+    def validate_valor(form, field):
+        """Validar e converter valor do formato brasileiro para float"""
+        if not field.data or field.data.strip() == '':
+            raise ValidationError('Valor é obrigatório.')
+        
+        try:
+            # Converter formato brasileiro (1.000,50) para formato americano (1000.50)
+            valor_str = str(field.data).strip()
+            
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
+            if '.' in valor_str and ',' in valor_str:
+                # Remover pontos de milhares e trocar vírgula por ponto
+                valor_str = valor_str.replace('.', '').replace(',', '.')
+            # Se contém apenas vírgula, trocar por ponto
+            elif ',' in valor_str and '.' not in valor_str:
+                valor_str = valor_str.replace(',', '.')
+            
+            valor_float = float(valor_str)
+            
+            if valor_float <= 0:
+                raise ValidationError('Valor deve ser maior que zero.')
+                
+            # Armazenar o valor convertido para uso posterior
+            field.data = valor_float
+            
+        except (ValueError, TypeError):
+            raise ValidationError('Valor deve ser um número válido. Use vírgula para separar decimais (ex: 10,50).')
+
+class ReceitaEmpresaForm(FlaskForm):
+    categoria_receita = SelectField('Categoria', coerce=int, validators=[DataRequired()])
+    receita_id = SelectField('Receita', coerce=int, validators=[DataRequired()])
+    data = DateField('Data', validators=[DataRequired()])
+    valor = FloatField('Valor', validators=[DataRequired()])
+    observacoes = TextAreaField('Observações')

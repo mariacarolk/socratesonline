@@ -1,0 +1,62 @@
+# CONFIGURAÇÕES DE PRODUÇÃO - SOCRATES ONLINE
+
+# ==========================================
+# CONFIGURAÇÕES GERAIS
+# ==========================================
+FLASK_ENV=production
+FLASK_APP=app.py
+
+# ==========================================
+# SEGURANÇA
+# ==========================================
+# IMPORTANTE: Gere uma chave secreta forte e única
+# Use: python -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=sua_chave_secreta_super_forte_aqui_de_64_caracteres_min
+
+# ==========================================
+# BANCO DE DADOS
+# ==========================================
+# PostgreSQL para produção (recomendado)
+DATABASE_URL=postgresql://socrates_user:senha_super_segura_aqui@localhost/socrates_db
+
+# OU manter SQLite (apenas para testes)
+# DATABASE_URL=sqlite:///instance/database.db
+
+# ==========================================
+# CONFIGURAÇÕES DE UPLOAD
+# ==========================================
+UPLOAD_FOLDER=/home/socrates/socrates_online/uploads/comprovantes
+MAX_CONTENT_LENGTH=16777216
+
+# ==========================================
+# CONFIGURAÇÕES DE EMAIL (opcional)
+# ==========================================
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=seu_email@gmail.com
+MAIL_PASSWORD=sua_senha_app_gmail
+
+# ==========================================
+# CONFIGURAÇÕES DE LOGS
+# ==========================================
+LOG_LEVEL=INFO
+LOG_FILE=/home/socrates/socrates_online/logs/app.log
+
+# ==========================================
+# CONFIGURAÇÕES DO SERVIDOR
+# ==========================================
+HOST=0.0.0.0
+PORT=5000
+
+# ==========================================
+# CONFIGURAÇÕES DE BACKUP
+# ==========================================
+BACKUP_DIRECTORY=/home/socrates/backups
+BACKUP_RETENTION_DAYS=30
+
+# ==========================================
+# CONFIGURAÇÕES DE DOMÍNIO
+# ==========================================
+DOMAIN_NAME=seudominio.com.br
+ADMIN_EMAIL=admin@seudominio.com.br 

@@ -82,9 +82,24 @@
                     <td>{{ e.cpf }}</td>
                     <td>{{ e.telefone }}</td>
                     <td>{{ e.cidade }}/{{ e.estado }}</td>
-                    <td class="text-nowrap">
-                        <a href="{{ url_for('editar_elenco', id=e.id_elenco) }}" class="btn btn-sm btn-outline-primary">Editar</a>
-                        <a href="{{ url_for('excluir_elenco', id=e.id_elenco) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deseja excluir este integrante?')">Excluir</a>
+                    <td class="text-center">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-info btn-listar-eventos" 
+                                    data-id="{{ e.id_elenco }}" 
+                                    data-nome="{{ e.nome }}"
+                                    data-tipo="elenco"
+                                    title="Listar Eventos">
+                                <i class="bi bi-calendar-event"></i>
+                            </button>
+                            
+                            <a href="{{ url_for('editar_elenco', id=e.id_elenco) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{{ url_for('excluir_elenco', id=e.id_elenco) }}" class="btn btn-sm btn-outline-danger" 
+                               onclick="return confirm('Deseja excluir este integrante?')" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -105,6 +120,8 @@
 <script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
 <!-- Script de filtros avançados -->
 <script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+<!-- Script do modal de eventos -->
+<script src="{{ url_for('static', filename='js/eventos-modal.js') }}"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -112,6 +129,19 @@
         if (document.getElementById('elencoTable')) {
             initializeAdvancedFilters('elencoTable', 'Elenco');
         }
+        
+        // Inicializar eventos do modal
+        document.querySelectorAll('.btn-listar-eventos').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const nome = this.dataset.nome;
+                const tipo = this.dataset.tipo;
+                
+                if (tipo === 'elenco') {
+                    mostrarEventosElenco(id, nome);
+                }
+            });
+        });
     });
 
     // Função de busca em tempo real

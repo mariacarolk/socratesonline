@@ -11,3 +11,5 @@ alwaysApply: true
 - Sempre que criar uma nova entidade ou elaborar uma exclusão, analisar as dependências - proteção de dependências: PROTEGER registros que estão sendo usados (não permitir exclusão) / PERMITIR exclusão em cascata apenas de pai para filho;
 - Sempre pensar em código reutilizável ao escrever qualquer lógica, evitando código repetido (DRY);
 - Não reverter funcionalidades que já foram aprovadas pelo usuário sem perguntar antes.
+- Todos os relatórios devem ter opção de exportar para PDF e excel;
+- Todos os cadastros devem seguir o mesmo padrão, com listagemdos dados, filtro para busca livre, filtro avançado com todos os campos e ordenação por campos, além de exportação para pdf e excel;

@@ -119,6 +119,14 @@
                         <td>{{ f.categoria.nome if f.categoria else '—' }}</td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-info btn-listar-eventos" 
+                                        data-id="{{ f.id_fornecedor }}" 
+                                        data-nome="{{ f.nome }}"
+                                        data-tipo="fornecedor"
+                                        title="Listar Eventos">
+                                    <i class="bi bi-calendar-event"></i>
+                                </button>
+                                
                                 <a href="{{ url_for('editar_fornecedor', id=f.id_fornecedor) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
@@ -147,6 +155,8 @@
 <script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
 <!-- Script de filtros avançados -->
 <script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+<!-- Script do modal de eventos -->
+<script src="{{ url_for('static', filename='js/eventos-modal.js') }}"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -154,6 +164,19 @@
         if (document.getElementById('fornecedoresTable')) {
             initializeAdvancedFilters('fornecedoresTable', 'Fornecedores');
         }
+        
+        // Inicializar eventos do modal
+        document.querySelectorAll('.btn-listar-eventos').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const nome = this.dataset.nome;
+                const tipo = this.dataset.tipo;
+                
+                if (tipo === 'fornecedor') {
+                    mostrarEventosFornecedor(id, nome);
+                }
+            });
+        });
         
         // Validação de formulário
         const forms = document.querySelectorAll('.needs-validation');

@@ -112,6 +112,14 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-info btn-listar-eventos" 
+                                        data-id="{{ col.id_colaborador }}" 
+                                        data-nome="{{ col.nome }}"
+                                        data-tipo="colaborador"
+                                        title="Listar Eventos">
+                                    <i class="bi bi-calendar-event"></i>
+                                </button>
+                                
                                 <a href="{{ url_for('editar_colaborador', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-primary" title="Editar Colaborador">
                                     <i class="bi bi-pencil"></i>
                                 </a>
@@ -157,6 +165,8 @@
 {% block scripts %}
 <!-- Script de filtros avançados -->
 <script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+<!-- Script do modal de eventos -->
+<script src="{{ url_for('static', filename='js/eventos-modal.js') }}"></script>
 
 <script>
     // Inicializar filtros avançados
@@ -165,6 +175,19 @@
         if (document.getElementById('colaboradoresTable')) {
             initializeAdvancedFilters('colaboradoresTable', 'Colaboradores');
         }
+        
+        // Inicializar eventos do modal
+        document.querySelectorAll('.btn-listar-eventos').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const nome = this.dataset.nome;
+                const tipo = this.dataset.tipo;
+                
+                if (tipo === 'colaborador') {
+                    mostrarEventosColaborador(id, nome);
+                }
+            });
+        });
         
         // Validação de formulário
         const forms = document.querySelectorAll('.needs-validation');
