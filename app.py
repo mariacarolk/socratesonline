@@ -4074,5 +4074,152 @@ def excluir_receita_empresa(id):
     
     return redirect(url_for('receitas_empresa'))
 
+# ==================== PROGRAMAR MÊS ====================
+
+@app.route('/empresa/programar-mes', methods=['GET', 'POST'])
+def programar_mes():
+    """Programar despesas fixas da empresa para um mês específico"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        mes = request.form.get('mes')
+        ano = request.form.get('ano')
+        
+        if not mes or not ano:
+            flash('Por favor, selecione o mês e o ano.', 'danger')
+            return render_template('programar_mes.html')
+        
+        try:
+            mes_int = int(mes)
+            ano_int = int(ano)
+            
+            # Verificar se já existem despesas da empresa para este mês
+            despesas_existentes = verificar_despesas_empresa_mes(mes_int, ano_int)
+            
+            if despesas_existentes:
+                # Listar despesas existentes
+                despesas_mes = listar_despesas_empresa_mes(mes_int, ano_int)
+                flash(f'Já existem despesas cadastradas para {mes_int:02d}/{ano_int}. Exibindo despesas do mês.', 'info')
+                return render_template('programar_mes.html', 
+                                     despesas_mes=despesas_mes, 
+                                     mes_selecionado=mes_int, 
+                                     ano_selecionado=ano_int,
+                                     mostrar_listagem=True)
+            else:
+                # Criar despesas fixas automaticamente
+                despesas_criadas = criar_despesas_fixas_mes(mes_int, ano_int)
+                if despesas_criadas > 0:
+                    flash(f'{despesas_criadas} despesas fixas foram criadas automaticamente para {mes_int:02d}/{ano_int}.', 'success')
+                    # Listar despesas criadas
+                    despesas_mes = listar_despesas_empresa_mes(mes_int, ano_int)
+                    return render_template('programar_mes.html', 
+                                         despesas_mes=despesas_mes, 
+                                         mes_selecionado=mes_int, 
+                                         ano_selecionado=ano_int,
+                                         mostrar_listagem=True)
+                else:
+                    flash('Nenhuma despesa fixa foi encontrada para criar automaticamente.', 'warning')
+                    return render_template('programar_mes.html')
+        
+        except ValueError:
+            flash('Mês e ano devem ser números válidos.', 'danger')
+            return render_template('programar_mes.html')
+    
+    return render_template('programar_mes.html')
+
+def verificar_despesas_empresa_mes(mes, ano):
+    """Verificar se já existem despesas da empresa para o mês especificado"""
+    from datetime import date
+    
+    # Criar data de início e fim do mês
+    data_inicio = date(ano, mes, 1)
+    
+    # Calcular último dia do mês
+    if mes == 12:
+        data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+    
+    # Verificar se existem despesas da empresa no período
+    despesas_existentes = DespesaEmpresa.query.filter(
+        DespesaEmpresa.data >= data_inicio,
+        DespesaEmpresa.data <= data_fim
+    ).count()
+    
+    return despesas_existentes > 0
+
+def criar_despesas_fixas_mes(mes, ano):
+    """Criar despesas fixas da empresa para o mês especificado"""
+    from datetime import date
+    
+    # Buscar todas as despesas fixas da empresa (tipo 3)
+    despesas_fixas = Despesa.query.filter_by(id_tipo_despesa=3).all()
+    
+    despesas_criadas = 0
+    
+    # Data padrão: primeiro dia do mês
+    data_padrao = date(ano, mes, 1)
+    
+    for despesa_fixa in despesas_fixas:
+        try:
+            # Verificar se já existe uma despesa desta categoria neste mês
+            despesa_existente = DespesaEmpresa.query.join(Despesa).filter(
+                DespesaEmpresa.id_despesa == despesa_fixa.id_despesa,
+                DespesaEmpresa.data >= data_padrao,
+                DespesaEmpresa.data <= date(ano, mes, 28)  # Verificar até o dia 28 para evitar problemas com meses diferentes
+            ).first()
+            
+            if not despesa_existente:
+                # Criar nova despesa da empresa
+                nova_despesa = DespesaEmpresa(
+                    id_despesa=despesa_fixa.id_despesa,
+                    data=data_padrao,
+                    valor=float(despesa_fixa.valor_medio_despesa) if despesa_fixa.valor_medio_despesa else 0.0,
+                    status_pagamento='pendente',
+                    forma_pagamento='débito',
+                    observacoes=f'Despesa fixa criada automaticamente para {mes:02d}/{ano}'
+                )
+                
+                db.session.add(nova_despesa)
+                despesas_criadas += 1
+        
+        except Exception as e:
+            print(f"Erro ao criar despesa fixa {despesa_fixa.nome}: {str(e)}")
+            continue
+    
+    try:
+        db.session.commit()
+        return despesas_criadas
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao salvar despesas fixas: {str(e)}")
+        return 0
+
+def listar_despesas_empresa_mes(mes, ano):
+    """Listar despesas da empresa para o mês especificado"""
+    from datetime import date
+    
+    # Criar data de início e fim do mês
+    data_inicio = date(ano, mes, 1)
+    
+    # Calcular último dia do mês
+    if mes == 12:
+        data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+    
+    # Buscar despesas da empresa no período
+    despesas_mes = db.session.query(DespesaEmpresa).join(Despesa).join(CategoriaDespesa).filter(
+        DespesaEmpresa.data >= data_inicio,
+        DespesaEmpresa.data <= data_fim
+    ).order_by(DespesaEmpresa.data.desc()).all()
+    
+    return despesas_mes
+
 if __name__ == '__main__':
     app.run(debug=True)

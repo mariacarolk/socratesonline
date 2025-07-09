@@ -113,6 +113,9 @@
                     <a class="nav-link {% if request.endpoint == 'receitas_empresa' %}active{% endif %}" href="{{ url_for('receitas_empresa') }}">
                         <i class="bi bi-cash-coin"></i> Receitas da Empresa
                     </a>
+                    <a class="nav-link {% if request.endpoint == 'programar_mes' %}active{% endif %}" href="{{ url_for('programar_mes') }}">
+                        <i class="bi bi-calendar-plus"></i> Programar Mês
+                    </a>
                 </div>
             </div>
             {% endif %}

@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-calendar-plus me-2"></i>Programar Mês</h4>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Selecionar Mês e Ano</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="mes" class="form-label">Mês</label>
+                        <div class="input-group">
+                            <select class="form-select" id="mes" name="mes" required>
+                                <option value="">Selecione o mês</option>
+                                <option value="1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
+                                <option value="2" {% if mes_selecionado == 2 %}selected{% endif %}>Fevereiro</option>
+                                <option value="3" {% if mes_selecionado == 3 %}selected{% endif %}>Março</option>
+                                <option value="4" {% if mes_selecionado == 4 %}selected{% endif %}>Abril</option>
+                                <option value="5" {% if mes_selecionado == 5 %}selected{% endif %}>Maio</option>
+                                <option value="6" {% if mes_selecionado == 6 %}selected{% endif %}>Junho</option>
+                                <option value="7" {% if mes_selecionado == 7 %}selected{% endif %}>Julho</option>
+                                <option value="8" {% if mes_selecionado == 8 %}selected{% endif %}>Agosto</option>
+                                <option value="9" {% if mes_selecionado == 9 %}selected{% endif %}>Setembro</option>
+                                <option value="10" {% if mes_selecionado == 10 %}selected{% endif %}>Outubro</option>
+                                <option value="11" {% if mes_selecionado == 11 %}selected{% endif %}>Novembro</option>
+                                <option value="12" {% if mes_selecionado == 12 %}selected{% endif %}>Dezembro</option>
+                            </select>
+                            <span class="input-group-text"><i class="bi bi-calendar-month"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione um mês.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="ano" class="form-label">Ano</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="ano" name="ano" 
+                                   value="{{ ano_selecionado or 2024 }}" 
+                                   min="2020" max="2030" required>
+                            <span class="input-group-text"><i class="bi bi-calendar-year"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe um ano válido.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Confirmar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Informações explicativas -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <h6><i class="bi bi-info-circle me-2"></i>Como funciona:</h6>
+                <ul class="mb-0">
+                    <li><strong>Se já existem despesas:</strong> O sistema mostrará todas as despesas da empresa já cadastradas para o mês selecionado.</li>
+                    <li><strong>Se não existem despesas:</strong> O sistema criará automaticamente todas as despesas fixas da empresa para o mês, usando os valores médios cadastrados.</li>
+                    <li><strong>Despesas fixas:</strong> São despesas do tipo "Fixas - SócratesOnline" que se repetem mensalmente.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    {% if mostrar_listagem and despesas_mes %}
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul me-2"></i>Despesas da Empresa - 
+                {{ mes_selecionado|string|replace('1', 'Janeiro')|replace('2', 'Fevereiro')|replace('3', 'Março')|replace('4', 'Abril')|replace('5', 'Maio')|replace('6', 'Junho')|replace('7', 'Julho')|replace('8', 'Agosto')|replace('9', 'Setembro')|replace('10', 'Outubro')|replace('11', 'Novembro')|replace('12', 'Dezembro') }}/{{ ano_selecionado }}
+            </h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarDados('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarDados('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Campo de Busca -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar despesas..." onkeyup="aplicarFiltros()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+                        <select class="form-select" id="statusFilter" onchange="aplicarFiltros()">
+                            <option value="">Todos os Status</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <!-- Espaço removido do botão "Editar Despesas" -->
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="dataTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTable(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(1)">Despesa <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(2)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(3)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(4)">Fornecedor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(5)">Status <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(6)">Forma Pagamento <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(7)">Observações <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th class="text-center" style="width: 150px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in despesas_mes %}
+                        <tr>
+                            <td>{{ d.data.strftime('%d/%m/%Y') if d.data else '—' }}</td>
+                            <td>{{ d.despesa.nome if d.despesa else '—' }}</td>
+                            <td>{{ d.despesa.categoria.nome if d.despesa and d.despesa.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-danger">
+                                    R$ {{ "%.2f"|format(d.valor)|replace('.', ',') if d.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>{{ d.fornecedor.nome if d.fornecedor else '—' }}</td>
+                            <td>
+                                {% if d.status_pagamento == 'pago' %}
+                                    <span class="badge bg-success">Pago</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ d.forma_pagamento.title() if d.forma_pagamento else '—' }}</td>
+                            <td>
+                                <span class="text-muted" title="{{ d.observacoes or '' }}">
+                                    {{ (d.observacoes[:30] + '...') if d.observacoes and d.observacoes|length > 30 else (d.observacoes or '—') }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('editar_despesa_empresa', id=d.id_despesa_empresa) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% if d.comprovante %}
+                                    <a href="{{ url_for('uploaded_file', filename=d.comprovante) }}" 
+                                       target="_blank" class="btn btn-sm btn-outline-info" title="Ver Comprovante">
+                                        <i class="bi bi-file-earmark"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('excluir_despesa_empresa', id=d.id_despesa_empresa) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir esta despesa?')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumo -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="bi bi-calculator me-2"></i>Resumo Financeiro - 
+                                {{ mes_selecionado|string|replace('1', 'Janeiro')|replace('2', 'Fevereiro')|replace('3', 'Março')|replace('4', 'Abril')|replace('5', 'Maio')|replace('6', 'Junho')|replace('7', 'Julho')|replace('8', 'Agosto')|replace('9', 'Setembro')|replace('10', 'Outubro')|replace('11', 'Novembro')|replace('12', 'Dezembro') }}/{{ ano_selecionado }}
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Total de Despesas:</small>
+                                    <h5 class="text-danger" id="totalDespesas">{{ despesas_mes|length }}</h5>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Valor Total:</small>
+                                    <h5 class="text-danger" id="valorTotal">
+                                        R$ {{ "%.2f"|format(despesas_mes|sum(attribute='valor'))|replace('.', ',') }}
+                                    </h5>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Pagas:</small>
+                                    <h5 class="text-success" id="totalPagas">
+                                        {{ despesas_mes|selectattr('status_pagamento', 'equalto', 'pago')|list|length }}
+                                    </h5>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Pendentes:</small>
+                                    <h5 class="text-warning" id="totalPendentes">
+                                        {{ despesas_mes|selectattr('status_pagamento', 'equalto', 'pendente')|list|length }}
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if mostrar_listagem and not despesas_mes %}
+    <div class="alert alert-warning text-center">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Nenhuma despesa encontrada para o período selecionado.</strong>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Validação do formulário
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Filtros e busca
+function aplicarFiltros() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const table = document.getElementById('dataTable');
+    
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const statusTerm = statusFilter.value.toLowerCase();
+    
+    let despesasVisiveis = 0;
+    let valorTotal = 0;
+    let despesasPagas = 0;
+    let despesasPendentes = 0;
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length === 0) continue;
+        
+        let mostrarLinha = true;
+        
+        // Filtro de busca
+        if (searchTerm) {
+            const textoLinha = row.textContent.toLowerCase();
+            if (!textoLinha.includes(searchTerm)) {
+                mostrarLinha = false;
+            }
+        }
+        
+        // Filtro de status
+        if (statusTerm && mostrarLinha) {
+            const statusCell = cells[5];
+            if (statusCell) {
+                const statusText = statusCell.textContent.toLowerCase();
+                if (!statusText.includes(statusTerm)) {
+                    mostrarLinha = false;
+                }
+            }
+        }
+        
+        if (mostrarLinha) {
+            row.style.display = '';
+            despesasVisiveis++;
+            
+            // Somar valores para o resumo
+            const valorCell = cells[3];
+            if (valorCell) {
+                let valorTexto = valorCell.textContent.trim();
+                valorTexto = valorTexto.replace(/R\$\s*/g, '');
+                
+                if (valorTexto.includes('.') && valorTexto.includes(',')) {
+                    valorTexto = valorTexto.replace(/\./g, '').replace(',', '.');
+                } else if (valorTexto.includes(',') && !valorTexto.includes('.')) {
+                    valorTexto = valorTexto.replace(',', '.');
+                }
+                
+                const valor = parseFloat(valorTexto);
+                if (!isNaN(valor)) {
+                    valorTotal += valor;
+                }
+            }
+            
+            // Contar status
+            const statusCell = cells[5];
+            if (statusCell) {
+                const statusText = statusCell.textContent.toLowerCase();
+                if (statusText.includes('pago')) {
+                    despesasPagas++;
+                } else if (statusText.includes('pendente')) {
+                    despesasPendentes++;
+                }
+            }
+        } else {
+            row.style.display = 'none';
+        }
+    }
+    
+    // Atualizar resumo financeiro
+    const totalDespesasEl = document.getElementById('totalDespesas');
+    const valorTotalEl = document.getElementById('valorTotal');
+    const totalPagasEl = document.getElementById('totalPagas');
+    const totalPendentesEl = document.getElementById('totalPendentes');
+    
+    if (totalDespesasEl) totalDespesasEl.textContent = despesasVisiveis;
+    if (valorTotalEl) valorTotalEl.textContent = formatarValor(valorTotal);
+    if (totalPagasEl) totalPagasEl.textContent = despesasPagas;
+    if (totalPendentesEl) totalPendentesEl.textContent = despesasPendentes;
+}
+
+function formatarValor(valor) {
+    return 'R$ ' + valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Função para exportar dados
+function exportarDados(formato) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/exportar/despesas_empresa_mes/' + formato;
+    
+    // Adicionar dados do mês selecionado
+    const mesInput = document.createElement('input');
+    mesInput.type = 'hidden';
+    mesInput.name = 'mes';
+    mesInput.value = '{{ mes_selecionado or "" }}';
+    form.appendChild(mesInput);
+    
+    const anoInput = document.createElement('input');
+    anoInput.type = 'hidden';
+    anoInput.name = 'ano';
+    anoInput.value = '{{ ano_selecionado or "" }}';
+    form.appendChild(anoInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// Função de ordenação de tabela
+function sortTable(columnIndex) {
+    const table = document.getElementById('dataTable');
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    
+    // Determinar direção da ordenação
+    let isAsc = table.getAttribute('data-sort-dir') !== 'asc';
+    table.setAttribute('data-sort-dir', isAsc ? 'asc' : 'desc');
+    
+    // Ordenar linhas
+    rows.sort((a, b) => {
+        const aVal = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+        const bVal = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+        
+        // Tratamento especial para valores monetários
+        if (columnIndex === 3) {
+            const aNum = parseFloat(aVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            const bNum = parseFloat(bVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            return isAsc ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Tratamento especial para datas
+        if (columnIndex === 0) {
+            const aDate = new Date(aVal.split('/').reverse().join('/'));
+            const bDate = new Date(bVal.split('/').reverse().join('/'));
+            return isAsc ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Não ordenar a coluna de ações
+        if (columnIndex === 8) {
+            return 0;
+        }
+        
+        // Ordenação alfabética
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    
+    // Reordenar elementos no DOM
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Atualizar ícones de ordenação
+    const headers = table.querySelectorAll('th i.bi-arrow-down-up');
+    headers.forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up text-muted';
+    });
+    
+    const currentIcon = table.querySelectorAll('th')[columnIndex].querySelector('i');
+    currentIcon.className = isAsc ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+}
+</script>
+
+{% endblock %} 
