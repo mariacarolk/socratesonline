@@ -83,7 +83,7 @@
                                                 {% for item in categoria.itens %}
                                                 <tr>
                                                     <td>{{ item.despesa_nome }}</td>
-                                                    <td>{{ item.data.strftime('%d/%m/%Y') }}</td>
+                                                    <td>{{ item.data_vencimento.strftime('%d/%m/%Y') if item.data_vencimento else '—' }}</td>
                                                     <td>{{ item.fornecedor_nome or '-' }}</td>
                                                     <td class="text-end">R$ {{ "%.2f"|format(item.valor)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>
@@ -270,7 +270,7 @@
                                                 {% for item in categoria.itens %}
                                                 <tr>
                                                     <td>{{ item.despesa_nome }}</td>
-                                                    <td>{{ item.data.strftime('%d/%m/%Y') }}</td>
+                                                    <td>{{ item.data_vencimento.strftime('%d/%m/%Y') if item.data_vencimento else '—' }}</td>
                                                     <td>{{ item.fornecedor_nome or '-' }}</td>
                                                     <td class="text-end">R$ {{ "%.2f"|format(item.valor)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>

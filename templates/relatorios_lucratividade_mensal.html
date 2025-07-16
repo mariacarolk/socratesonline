@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('relatorios_lucratividade_mensal') }}">Relatórios</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Lucratividade Mensal</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-calendar-month me-2 text-success"></i>Relatório de Lucratividade Mensal
+    </h2>
+</div>
+
+<!-- Filtros de Mês/Ano -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-funnel text-primary me-2"></i>
+        <span class="fw-medium text-dark me-3">Selecionar período:</span>
+      </div>
+      
+      <div class="d-flex align-items-center gap-2">
+        <label class="text-muted small mb-0">Mês:</label>
+        <select name="mes" class="form-select form-select-sm" style="width: auto;">
+          {% for numero, nome in meses_opcoes %}
+            <option value="{{ numero }}" {% if numero == mes_selecionado %}selected{% endif %}>
+              {{ nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="d-flex align-items-center gap-2">
+        <label class="text-muted small mb-0">Ano:</label>
+        <select name="ano" class="form-select form-select-sm" style="width: auto;">
+          {% for ano in anos_opcoes %}
+            <option value="{{ ano }}" {% if ano == ano_selecionado %}selected{% endif %}>
+              {{ ano }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <button type="submit" class="btn btn-sm btn-primary">
+        <i class="bi bi-search me-1"></i>Consultar
+      </button>
+      
+             <!-- Navegação Rápida -->
+       <div class="ms-3 d-flex gap-1">
+         <a href="?mes={{ hoje.month }}&ano={{ hoje.year }}" 
+            class="btn btn-sm btn-outline-info">
+           Mês Atual
+         </a>
+         {% if mes_selecionado == 1 %}
+           {% set mes_ant = 12 %}
+           {% set ano_ant = ano_selecionado - 1 %}
+         {% else %}
+           {% set mes_ant = mes_selecionado - 1 %}
+           {% set ano_ant = ano_selecionado %}
+         {% endif %}
+         <a href="?mes={{ mes_ant }}&ano={{ ano_ant }}" 
+            class="btn btn-sm btn-outline-secondary">
+           ← Anterior
+         </a>
+         {% if mes_selecionado == 12 %}
+           {% set mes_prox = 1 %}
+           {% set ano_prox = ano_selecionado + 1 %}
+         {% else %}
+           {% set mes_prox = mes_selecionado + 1 %}
+           {% set ano_prox = ano_selecionado %}
+         {% endif %}
+         <a href="?mes={{ mes_prox }}&ano={{ ano_prox }}" 
+            class="btn btn-sm btn-outline-secondary">
+           Próximo →
+         </a>
+       </div>
+    </form>
+  </div>
+</div>
+
+<!-- Período Selecionado e Metodologia -->
+<div class="row mb-4">
+  <div class="col-md-8">
+    <div class="alert alert-info mb-0">
+      <i class="bi bi-info-circle me-2"></i>
+      <strong>Período:</strong> {{ primeiro_dia.strftime('%d/%m/%Y') }} a {{ ultimo_dia.strftime('%d/%m/%Y') }}
+      ({{ meses_opcoes[mes_selecionado-1][1] }} de {{ ano_selecionado }})
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="alert alert-primary mb-0">
+      <i class="bi bi-calculator me-2"></i>
+      <strong>Metodologia:</strong>
+      <button class="btn btn-sm btn-outline-primary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#metodologiaDetalhes" aria-expanded="false">
+        <i class="bi bi-info-circle"></i> Ver detalhes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Detalhes da Metodologia (Colapsível) -->
+<div class="collapse mb-4" id="metodologiaDetalhes">
+  <div class="card border-primary">
+    <div class="card-header bg-primary text-white">
+      <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Metodologia de Cálculo</h6>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="text-success"><i class="bi bi-plus-circle me-2"></i>Receitas Consideradas:</h6>
+          <ul class="mb-3">
+            <li><strong>Receitas de Eventos:</strong> Todas as receitas de eventos com data no período selecionado</li>
+            <li><strong>Receitas da Empresa:</strong> Todas as receitas da empresa com data no período selecionado</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+                     <h6 class="text-danger"><i class="bi bi-dash-circle me-2"></i>Despesas Consideradas:</h6>
+           <ul class="mb-3">
+             <li><strong>Despesas de Eventos:</strong> Despesas com status "PAGO" e data de pagamento no período <em>(usa data de vencimento como fallback se data de pagamento não estiver preenchida)</em></li>
+             <li><strong>Despesas da Empresa:</strong> Despesas com status "PAGO" e data de pagamento no período <em>(usa data de vencimento como fallback se data de pagamento não estiver preenchida)</em></li>
+           </ul>
+        </div>
+      </div>
+      <div class="alert alert-warning mb-0">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <small><strong>Importante:</strong> O relatório considera apenas os valores efetivamente recebidos (receitas) e pagos (despesas) no período, proporcionando uma visão real do fluxo de caixa.</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Receitas Recebidas</h6>
+                        <h3 class="mb-0">R$ {{ "{:,.2f}".format(receitas_mes).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+                        <small class="opacity-75">Eventos + Empresa</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-cash-coin fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Despesas Pagas</h6>
+                        <h3 class="mb-0">R$ {{ "{:,.2f}".format(despesas_mes).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+                        <small class="opacity-75">Eventos + Empresa</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-credit-card fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white {% if lucro_mes >= 0 %}bg-primary{% else %}bg-warning{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Resultado Líquido</h6>
+                        <h3 class="mb-0">R$ {{ "{:,.2f}".format(lucro_mes).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+                        <small class="opacity-75">Fluxo de Caixa</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-graph-{% if lucro_mes >= 0 %}up{% else %}down{% endif %} fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Eventos no Período</h6>
+                        <h3 class="mb-0">{{ total_eventos }}</h3>
+                        <small class="opacity-75">Registrados</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-calendar-event fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <!-- Gráfico de Receitas por Categoria -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Receitas Recebidas por Categoria</h5>
+                <small class="text-muted">Eventos + Empresa</small>
+            </div>
+            <div class="card-body">
+                {% if receitas_por_categoria %}
+                    <canvas id="receitasChart" style="height: 300px;"></canvas>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox display-4"></i>
+                        <p class="mb-0">Nenhuma receita encontrada neste período</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de Despesas por Categoria -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Despesas Pagas por Categoria</h5>
+                <small class="text-muted">Eventos + Empresa</small>
+            </div>
+            <div class="card-body">
+                {% if despesas_por_categoria %}
+                    <canvas id="despesasChart" style="height: 300px;"></canvas>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox display-4"></i>
+                        <p class="mb-0">Nenhuma despesa encontrada neste período</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Eventos do Mês -->
+{% if eventos_mes %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Eventos do Período ({{ total_eventos }})</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome do Evento</th>
+                        <th>Período</th>
+                        <th>Cidade/Estado</th>
+                        <th>Status</th>
+                        <th>Circo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for evento in eventos_mes %}
+                    <tr>
+                        <td>
+                            <strong>{{ evento.nome }}</strong>
+                        </td>
+                        <td>
+                            {{ evento.data_inicio.strftime('%d/%m/%Y') }}
+                            {% if evento.data_fim and evento.data_fim != evento.data_inicio %}
+                                a {{ evento.data_fim.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        </td>
+                        <td>{{ evento.cidade }}/{{ evento.estado }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if evento.status == 'realizado' %}bg-success
+                                {% elif evento.status == 'em andamento' %}bg-primary
+                                {% elif evento.status == 'a realizar' %}bg-warning
+                                {% else %}bg-secondary{% endif %}">
+                                {{ evento.status.title() }}
+                            </span>
+                        </td>
+                        <td>{{ evento.circo.nome if evento.circo else '—' }}</td>
+                        <td>
+                            <a href="{{ url_for('relatorio_fechamento_evento', id_evento=evento.id_evento) }}" 
+                               class="btn btn-sm btn-outline-primary" title="Ver Relatório">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted">
+        <i class="bi bi-calendar-x display-4"></i>
+        <h5 class="mt-3">Nenhum evento encontrado</h5>
+        <p class="mb-0">Não há eventos cadastrados para {{ meses_opcoes[mes_selecionado-1][1] }} de {{ ano_selecionado }}.</p>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Configuração dos gráficos de pizza
+const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: {
+                padding: 20,
+                usePointStyle: true
+            }
+        },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    const value = context.parsed;
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return context.label + ': R$ ' + value.toFixed(2) + ' (' + percentage + '%)';
+                }
+            }
+        }
+    }
+};
+
+// Gráfico de Receitas por Categoria
+{% if receitas_por_categoria %}
+const receitasCtx = document.getElementById('receitasChart').getContext('2d');
+new Chart(receitasCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ receitas_por_categoria|map(attribute='categoria')|list|tojson|safe }},
+        datasets: [{
+            data: {{ receitas_por_categoria|map(attribute='total')|list|tojson|safe }},
+            backgroundColor: [
+                '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#20c997', '#e83e8c'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: pieOptions
+});
+{% endif %}
+
+// Gráfico de Despesas por Categoria
+{% if despesas_por_categoria %}
+const despesasCtx = document.getElementById('despesasChart').getContext('2d');
+new Chart(despesasCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ despesas_por_categoria|map(attribute='categoria')|list|tojson|safe }},
+        datasets: [{
+            data: {{ despesas_por_categoria|map(attribute='total')|list|tojson|safe }},
+            backgroundColor: [
+                '#dc3545', '#fd7e14', '#ffc107', '#6f42c1', '#e83e8c', '#28a745', '#17a2b8', '#20c997'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: pieOptions
+});
+{% endif %}
+</script>
+{% endblock %} 

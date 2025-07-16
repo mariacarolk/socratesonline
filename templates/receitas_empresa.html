@@ -65,7 +65,7 @@
                         {{ form.valor.label(class="form-label") }}
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
-                            {{ form.valor(class="form-control", placeholder="0,00", required=true, step="0.01") }}
+                            {{ form.valor(class="form-control", placeholder="0,00", required=true) }}
                             <div class="invalid-feedback">
                                 Por favor, informe o valor.
                             </div>
@@ -177,38 +177,7 @@
                 </table>
             </div>
 
-            <!-- Resumo -->
-            <div class="row mt-4">
-                <div class="col-md-12">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <h6 class="card-title"><i class="bi bi-calculator me-2"></i>Resumo Financeiro</h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <small class="text-muted">Total de Receitas:</small>
-                                    <h5 class="text-success">{{ receitas|length }}</h5>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Valor Total:</small>
-                                    <h5 class="text-success">
-                                        R$ {{ "%.2f"|format(receitas|sum(attribute='valor'))|replace('.', ',') }}
-                                    </h5>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Valor Médio:</small>
-                                    <h5 class="text-info">
-                                        {% if receitas|length > 0 %}
-                                            R$ {{ "%.2f"|format((receitas|sum(attribute='valor')) / (receitas|length))|replace('.', ',') }}
-                                        {% else %}
-                                            R$ 0,00
-                                        {% endif %}
-                                    </h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
             {% else %}
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>Nenhuma receita da empresa cadastrada.

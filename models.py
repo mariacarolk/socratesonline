@@ -135,6 +135,8 @@ class Despesa(db.Model):
     id_categoria_despesa = db.Column(db.Integer, db.ForeignKey('categoria_despesa.id_categoria_despesa'))
     id_tipo_despesa = db.Column(db.Integer, nullable=False, default=1)  # 1=Fixas-Evento, 2=Variáveis-Evento, 3=Fixas-SócratesOnline, 4=Variáveis-SócratesOnline
     valor_medio_despesa = db.Column(db.Numeric(10, 2))
+    flag_alimentacao = db.Column(db.Boolean, nullable=False, default=False)
+    flag_combustivel = db.Column(db.Boolean, nullable=False, default=False)
     
     # Proteger despesa se tiver eventos usando
     despesa_eventos = db.relationship('DespesaEvento', back_populates='despesa')
@@ -169,13 +171,15 @@ class Evento(db.Model):
     equipes_evento = db.relationship('EquipeEvento', backref='evento_equipe', cascade='all, delete-orphan')
     elencos_evento = db.relationship('ElencoEvento', backref='evento_elenco', cascade='all, delete-orphan')
     fornecedores_evento = db.relationship('FornecedorEvento', backref='evento_fornecedor', cascade='all, delete-orphan')
+    veiculos_evento = db.relationship('VeiculoEvento', backref='evento_veiculo', cascade='all, delete-orphan')
 
 class DespesaEvento(db.Model):
     __tablename__ = 'despesas_evento'
     id_despesa_evento = db.Column(db.Integer, primary_key=True)
     id_evento = db.Column(db.Integer, db.ForeignKey('evento.id_evento'), nullable=False)
     id_despesa = db.Column(db.Integer, db.ForeignKey('despesa.id_despesa'), nullable=False)
-    data = db.Column(db.Date, nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
     valor = db.Column(db.Float, nullable=False)
     id_fornecedor = db.Column(db.Integer, db.ForeignKey('fornecedor.id_fornecedor'))
     status_pagamento = db.Column(db.String(20), nullable=False)
@@ -184,6 +188,8 @@ class DespesaEvento(db.Model):
     observacoes = db.Column(db.Text)
     despesa_cabeca = db.Column(db.Boolean, default=False, nullable=False)
     comprovante = db.Column(db.String(255))
+    qtd_dias = db.Column(db.Integer, nullable=True)
+    qtd_pessoas = db.Column(db.Integer, nullable=True)
     evento = db.relationship('Evento', back_populates='despesas_evento')
     despesa = db.relationship('Despesa', back_populates='despesa_eventos')
     fornecedor = db.relationship('Fornecedor', backref='despesas_evento')
@@ -256,7 +262,8 @@ class DespesaEmpresa(db.Model):
     __tablename__ = 'despesas_empresa'
     id_despesa_empresa = db.Column(db.Integer, primary_key=True)
     id_despesa = db.Column(db.Integer, db.ForeignKey('despesa.id_despesa'), nullable=False)
-    data = db.Column(db.Date, nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
     valor = db.Column(db.Float, nullable=False)
     id_fornecedor = db.Column(db.Integer, db.ForeignKey('fornecedor.id_fornecedor'))
     status_pagamento = db.Column(db.String(20), nullable=False)
@@ -264,6 +271,8 @@ class DespesaEmpresa(db.Model):
     pago_por = db.Column(db.String(100))
     observacoes = db.Column(db.Text)
     comprovante = db.Column(db.String(255))
+    qtd_dias = db.Column(db.Integer, nullable=True)
+    qtd_pessoas = db.Column(db.Integer, nullable=True)
     
     # Relacionamentos
     despesa = db.relationship('Despesa', backref='despesas_empresa')
@@ -279,3 +288,18 @@ class ReceitaEmpresa(db.Model):
     
     # Relacionamentos
     receita = db.relationship('Receita', backref='receitas_empresa')
+
+class VeiculoEvento(db.Model):
+    __tablename__ = 'veiculos_evento'
+    id_veiculo_evento = db.Column(db.Integer, primary_key=True)
+    id_evento = db.Column(db.Integer, db.ForeignKey('evento.id_evento'), nullable=False)
+    id_veiculo = db.Column(db.Integer, db.ForeignKey('veiculo.id_veiculo'), nullable=False)
+    id_motorista = db.Column(db.Integer, db.ForeignKey('colaborador.id_colaborador'), nullable=False)
+    data_inicio = db.Column(db.Date, nullable=False)
+    data_devolucao = db.Column(db.Date, nullable=False)
+    observacoes = db.Column(db.String)
+    
+    # Relacionamentos
+    veiculo = db.relationship('Veiculo', backref='veiculo_eventos')
+    motorista = db.relationship('Colaborador', backref='motorista_eventos')
+    evento = db.relationship('Evento', backref='evento_veiculos')

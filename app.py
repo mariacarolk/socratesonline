@@ -7,19 +7,19 @@ from models import (
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
     CategoriaDespesa, Despesa, Evento, DespesaEvento, ReceitaEvento,
     CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, 
-    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA
+    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento
 )
 from forms import (
     UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
-    DespesaEmpresaForm, ReceitaEmpresaForm
+    DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from extensions import db, login_manager
-from sqlalchemy import func, text
+from sqlalchemy import func, text, or_, and_
 from flask_migrate import Migrate
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -1004,6 +1004,26 @@ def api_receitas_por_categoria(categoria_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/despesa-detalhes/<int:despesa_id>')
+def api_despesa_detalhes(despesa_id):
+    """API para buscar detalhes de uma despesa específica"""
+    try:
+        despesa = Despesa.query.get(despesa_id)
+        if not despesa:
+            return jsonify({'error': 'Despesa não encontrada'}), 404
+        
+        return jsonify({
+            'id_despesa': despesa.id_despesa,
+            'nome': despesa.nome,
+            'flag_alimentacao': despesa.flag_alimentacao,
+            'flag_combustivel': despesa.flag_combustivel,
+            'categoria_nome': despesa.categoria.nome if despesa.categoria else None,
+            'tipo_despesa': despesa.id_tipo_despesa,
+            'valor_medio': float(despesa.valor_medio_despesa) if despesa.valor_medio_despesa else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/eventos/<int:id_evento>/salvar-receita', methods=['POST'])
 def salvar_receita_individual(id_evento):
     try:
@@ -1200,7 +1220,7 @@ def novo_evento():
             db.session.add(DespesaEvento(
                 id_evento=novo.id_evento,
                 id_despesa=int(despesa_ids[i]),
-                data=data,
+                data_vencimento=data,
                 valor=valor,
                 status_pagamento=status_pag[i] if i < len(status_pag) else 'pendente',
                 forma_pagamento=forma_pag[i] if i < len(forma_pag) else 'dÃ©bito',
@@ -1216,7 +1236,7 @@ def novo_evento():
             db.session.add(DespesaEvento(
                 id_evento=novo.id_evento,
                 id_despesa=despesa_fixa.id_despesa,
-                data=novo.data_inicio or date.today(),
+                data_vencimento=novo.data_inicio or date.today(),
                 valor=valor_automatico,
                 status_pagamento='pendente',
                 forma_pagamento='dÃ©bito',
@@ -1471,7 +1491,7 @@ def editar_evento(id):
                 print(f"   - Valor novo: {valor}")
                 print(f"   - ID DespesaEvento: {despesa_evento_existente.id_despesa_evento}")
                 
-                despesa_evento_existente.data = data
+                despesa_evento_existente.data_vencimento = data
                 despesa_evento_existente.valor = valor
                 despesa_evento_existente.status_pagamento = status_pag[i] if i < len(status_pag) else 'pendente'
                 despesa_evento_existente.forma_pagamento = forma_pag[i] if i < len(forma_pag) else 'débito'
@@ -1485,7 +1505,7 @@ def editar_evento(id):
                 nova_despesa_evento = DespesaEvento(
                     id_evento=evento.id_evento,
                     id_despesa=id_despesa,
-                    data=data,
+                    data_vencimento=data,
                     valor=valor,
                     status_pagamento=status_pag[i] if i < len(status_pag) else 'pendente',
                     forma_pagamento=forma_pag[i] if i < len(forma_pag) else 'débito',
@@ -1574,7 +1594,7 @@ def editar_evento(id):
                 'categoria_nome': categoria.nome,
                 # Se já foi cadastrada, usar valores reais do evento
                 'valor_atual': float(despesas_evento_dict[d.id_despesa].valor) if d.id_despesa in despesas_ja_cadastradas else (float(d.valor_medio_despesa) if d.valor_medio_despesa else None),
-                'data_atual': despesas_evento_dict[d.id_despesa].data.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
+                'data_atual': despesas_evento_dict[d.id_despesa].data_vencimento.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
                 'status_atual': despesas_evento_dict[d.id_despesa].status_pagamento if d.id_despesa in despesas_ja_cadastradas else 'pendente',
                 'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'débito',
                 'fornecedor_atual': despesas_evento_dict[d.id_despesa].id_fornecedor if d.id_despesa in despesas_ja_cadastradas else None,
@@ -1595,7 +1615,7 @@ def editar_evento(id):
                 'categoria_nome': categoria.nome,
                 # Se já foi cadastrada, usar valores reais do evento
                 'valor_atual': float(despesas_evento_dict[d.id_despesa].valor) if d.id_despesa in despesas_ja_cadastradas else (float(d.valor_medio_despesa) if d.valor_medio_despesa else None),
-                'data_atual': despesas_evento_dict[d.id_despesa].data.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
+                'data_atual': despesas_evento_dict[d.id_despesa].data_vencimento.strftime('%Y-%m-%d') if d.id_despesa in despesas_ja_cadastradas else None,
                 'status_atual': despesas_evento_dict[d.id_despesa].status_pagamento if d.id_despesa in despesas_ja_cadastradas else 'pendente',
                 'forma_atual': despesas_evento_dict[d.id_despesa].forma_pagamento if d.id_despesa in despesas_ja_cadastradas else 'débito',
                 'fornecedor_atual': despesas_evento_dict[d.id_despesa].id_fornecedor if d.id_despesa in despesas_ja_cadastradas else None,
@@ -1633,7 +1653,7 @@ def editar_evento(id):
                 'categoria_nome': categoria.nome,
                 'ja_cadastrada': True,
                 'valor_atual': float(despesa_evento.valor),
-                'data_atual': despesa_evento.data.strftime('%Y-%m-%d'),
+                'data_atual': despesa_evento.data_vencimento.strftime('%Y-%m-%d'),
                 'status_atual': despesa_evento.status_pagamento,
                 'forma_atual': despesa_evento.forma_pagamento,
                 'fornecedor_atual': despesa_evento.id_fornecedor,
@@ -1724,7 +1744,14 @@ def excluir_evento(id):
         ).rowcount
         print(f"Fornecedores deletados: {fornecedores_deletados}")
         
-        # 6. Deletar o evento principal
+        # 6. Veículos do evento
+        veiculos_deletados = db.session.execute(
+            text("DELETE FROM veiculos_evento WHERE id_evento = :id_evento"),
+            {"id_evento": id}
+        ).rowcount
+        print(f"Veículos deletados: {veiculos_deletados}")
+        
+        # 7. Deletar o evento principal
         evento_deletado = db.session.execute(
             text("DELETE FROM evento WHERE id_evento = :id_evento"),
             {"id_evento": id}
@@ -1751,104 +1778,241 @@ def excluir_evento(id):
     
     return redirect(url_for('listar_eventos'))
 
-@app.route('/relatorios/lucratividade-periodo')
-def relatorios_lucratividade_periodo():
+@app.route('/relatorios/lucratividade-mensal')
+def relatorios_lucratividade_mensal():
     if session.get('categoria', '').lower() != 'administrativo':
         flash('Acesso restrito a administradores.', 'danger')
         return redirect(url_for('dashboard'))
     
-    # Filtro de datas para perÃ­odo de anÃ¡lise
-    period = request.args.get('period', 'ano')
-    if period == 'mes':
-        # Ãšltimos 12 meses
-        data_fim = date.today().replace(day=1)  # Primeiro dia do mÃªs atual
-        data_inicio = (data_fim - timedelta(days=365)).replace(day=1)  # 12 meses atrÃ¡s
-    elif period == '6meses':
-        # Ãšltimos 6 meses
-        data_fim = date.today().replace(day=1)
-        data_inicio = (data_fim - timedelta(days=180)).replace(day=1)
-    elif period == 'ano':
-        # Este ano
-        data_fim = date.today()
-        data_inicio = date(data_fim.year, 1, 1)
-    elif period == 'custom':
-        data_inicio = request.args.get('data_inicio')
-        data_fim = request.args.get('data_fim')
-        if data_inicio and data_fim:
-            data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-        else:
-            data_fim = date.today()
-            data_inicio = date(data_fim.year, 1, 1)
+    # Obter mês e ano dos parâmetros ou usar mês atual como padrão
+    mes_param = request.args.get('mes')
+    ano_param = request.args.get('ano')
+    
+    # Se não foram fornecidos, usar mês atual
+    hoje = date.today()
+    mes_selecionado = int(mes_param) if mes_param else hoje.month
+    ano_selecionado = int(ano_param) if ano_param else hoje.year
+    
+    # Calcular primeiro e último dia do mês selecionado
+    primeiro_dia = date(ano_selecionado, mes_selecionado, 1)
+    if mes_selecionado == 12:
+        ultimo_dia = date(ano_selecionado + 1, 1, 1) - timedelta(days=1)
     else:
-        data_fim = date.today()
-        data_inicio = date(data_fim.year, 1, 1)
-
-    # Lucro por mÃªs no perÃ­odo
-    lucro_por_mes = []
-    meses = []
-    receitas_por_mes = []
-    despesas_por_mes = []
-    
-    # Gerar lista de meses no perÃ­odo
-    current_date = data_inicio.replace(day=1)  # Primeiro dia do mÃªs inicial
-    end_date = data_fim.replace(day=1)  # Primeiro dia do mÃªs final
-    
-    while current_date <= end_date:
-        # Calcular primeiro e Ãºltimo dia do mÃªs
-        primeiro_dia = current_date
-        if current_date.month == 12:
-            ultimo_dia = date(current_date.year + 1, 1, 1) - timedelta(days=1)
-        else:
-            ultimo_dia = date(current_date.year, current_date.month + 1, 1) - timedelta(days=1)
+        ultimo_dia = date(ano_selecionado, mes_selecionado + 1, 1) - timedelta(days=1)
         
-        # Buscar receitas e despesas do mÃªs
-        receitas = db.session.query(func.sum(ReceitaEvento.valor)).filter(
+    # Buscar receitas do mês (eventos + empresa)
+    # 1. Receitas de eventos com data no período
+    receitas_evento = db.session.query(func.sum(ReceitaEvento.valor)).filter(
             ReceitaEvento.data >= primeiro_dia,
             ReceitaEvento.data <= ultimo_dia
         ).scalar() or 0
         
-        # Excluir categoria "PAGAS PELO CIRCO" do cálculo de despesas
-        despesas = db.session.query(func.sum(DespesaEvento.valor)).join(
+    # 2. Receitas da empresa com data no período
+    receitas_empresa = db.session.query(func.sum(ReceitaEmpresa.valor)).filter(
+        ReceitaEmpresa.data >= primeiro_dia,
+        ReceitaEmpresa.data <= ultimo_dia
+    ).scalar() or 0
+    
+    # Total de receitas
+    receitas_mes = receitas_evento + receitas_empresa
+    
+    # Buscar despesas do mês (eventos pagas + empresa pagas)
+    # 1. Despesas de eventos com status pago e data de pagamento no período
+    # (usa data_vencimento como fallback se data_pagamento for NULL)
+    despesas_evento_pagas = db.session.query(func.sum(DespesaEvento.valor)).filter(
+        DespesaEvento.status_pagamento == 'pago',
+        or_(
+            # Prioridade 1: data_pagamento preenchida e no período
+            and_(
+                DespesaEvento.data_pagamento.isnot(None),
+                DespesaEvento.data_pagamento >= primeiro_dia,
+                DespesaEvento.data_pagamento <= ultimo_dia
+            ),
+            # Fallback: data_pagamento NULL mas data_vencimento no período
+            and_(
+                DespesaEvento.data_pagamento.is_(None),
+                DespesaEvento.data_vencimento >= primeiro_dia,
+                DespesaEvento.data_vencimento <= ultimo_dia
+            )
+        )
+    ).scalar() or 0
+    
+    # 2. Despesas da empresa com status pago e data de pagamento no período
+    # (usa data_vencimento como fallback se data_pagamento for NULL)
+    despesas_empresa_pagas = db.session.query(func.sum(DespesaEmpresa.valor)).filter(
+        DespesaEmpresa.status_pagamento == 'pago',
+        or_(
+            # Prioridade 1: data_pagamento preenchida e no período
+            and_(
+                DespesaEmpresa.data_pagamento.isnot(None),
+                DespesaEmpresa.data_pagamento >= primeiro_dia,
+                DespesaEmpresa.data_pagamento <= ultimo_dia
+            ),
+            # Fallback: data_pagamento NULL mas data_vencimento no período
+            and_(
+                DespesaEmpresa.data_pagamento.is_(None),
+                DespesaEmpresa.data_vencimento >= primeiro_dia,
+                DespesaEmpresa.data_vencimento <= ultimo_dia
+            )
+        )
+    ).scalar() or 0
+    
+    # Total de despesas
+    despesas_mes = despesas_evento_pagas + despesas_empresa_pagas
+    
+    lucro_mes = receitas_mes - despesas_mes
+    
+    # Buscar receitas detalhadas por categoria (eventos + empresa)
+    # 1. Receitas de eventos por categoria
+    receitas_evento_categoria = db.session.query(
+        CategoriaReceita.nome.label('categoria'),
+        func.sum(ReceitaEvento.valor).label('total')
+    ).join(
+        Receita, ReceitaEvento.id_receita == Receita.id_receita
+    ).join(
+        CategoriaReceita, Receita.id_categoria_receita == CategoriaReceita.id_categoria_receita
+    ).filter(
+        ReceitaEvento.data >= primeiro_dia,
+        ReceitaEvento.data <= ultimo_dia
+    ).group_by(CategoriaReceita.nome).all()
+    
+    # 2. Receitas da empresa por categoria
+    receitas_empresa_categoria = db.session.query(
+        CategoriaReceita.nome.label('categoria'),
+        func.sum(ReceitaEmpresa.valor).label('total')
+    ).join(
+        Receita, ReceitaEmpresa.id_receita == Receita.id_receita
+    ).join(
+        CategoriaReceita, Receita.id_categoria_receita == CategoriaReceita.id_categoria_receita
+    ).filter(
+        ReceitaEmpresa.data >= primeiro_dia,
+        ReceitaEmpresa.data <= ultimo_dia
+    ).group_by(CategoriaReceita.nome).all()
+    
+    # Combinar receitas de eventos e empresa por categoria
+    receitas_combinadas = {}
+    for item in receitas_evento_categoria:
+        if item.categoria not in receitas_combinadas:
+            receitas_combinadas[item.categoria] = 0
+        receitas_combinadas[item.categoria] += float(item.total)
+    
+    for item in receitas_empresa_categoria:
+        if item.categoria not in receitas_combinadas:
+            receitas_combinadas[item.categoria] = 0
+        receitas_combinadas[item.categoria] += float(item.total)
+    
+    # Converter para formato esperado pelo template
+    receitas_por_categoria = [
+        type('obj', (object,), {'categoria': categoria, 'total': total})()
+        for categoria, total in receitas_combinadas.items()
+    ]
+    
+    # Buscar despesas detalhadas por categoria (eventos pagas + empresa pagas)
+    # 1. Despesas de eventos pagas por categoria
+    # (usa data_vencimento como fallback se data_pagamento for NULL)
+    despesas_evento_categoria = db.session.query(
+        CategoriaDespesa.nome.label('categoria'),
+        func.sum(DespesaEvento.valor).label('total')
+    ).join(
             Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
         ).join(
             CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
         ).filter(
-            DespesaEvento.data >= primeiro_dia,
-            DespesaEvento.data <= ultimo_dia,
-            CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
-        ).scalar() or 0
-        
-        lucro = receitas - despesas
-        
-        lucro_por_mes.append(float(lucro))
-        receitas_por_mes.append(float(receitas))
-        despesas_por_mes.append(float(despesas))
-        meses.append(current_date.strftime('%m/%Y'))  # Formato MM/AAAA
-        
-        # PrÃ³ximo mÃªs
-        if current_date.month == 12:
-            current_date = date(current_date.year + 1, 1, 1)
-        else:
-            current_date = date(current_date.year, current_date.month + 1, 1)
+        DespesaEvento.status_pagamento == 'pago',
+        or_(
+            # Prioridade 1: data_pagamento preenchida e no período
+            and_(
+                DespesaEvento.data_pagamento.isnot(None),
+                DespesaEvento.data_pagamento >= primeiro_dia,
+                DespesaEvento.data_pagamento <= ultimo_dia
+            ),
+            # Fallback: data_pagamento NULL mas data_vencimento no período
+            and_(
+                DespesaEvento.data_pagamento.is_(None),
+                DespesaEvento.data_vencimento >= primeiro_dia,
+                DespesaEvento.data_vencimento <= ultimo_dia
+            )
+        )
+    ).group_by(CategoriaDespesa.nome).all()
+    
+    # 2. Despesas da empresa pagas por categoria
+    # (usa data_vencimento como fallback se data_pagamento for NULL)
+    despesas_empresa_categoria = db.session.query(
+        CategoriaDespesa.nome.label('categoria'),
+        func.sum(DespesaEmpresa.valor).label('total')
+    ).join(
+        Despesa, DespesaEmpresa.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).filter(
+        DespesaEmpresa.status_pagamento == 'pago',
+        or_(
+            # Prioridade 1: data_pagamento preenchida e no período
+            and_(
+                DespesaEmpresa.data_pagamento.isnot(None),
+                DespesaEmpresa.data_pagamento >= primeiro_dia,
+                DespesaEmpresa.data_pagamento <= ultimo_dia
+            ),
+            # Fallback: data_pagamento NULL mas data_vencimento no período
+            and_(
+                DespesaEmpresa.data_pagamento.is_(None),
+                DespesaEmpresa.data_vencimento >= primeiro_dia,
+                DespesaEmpresa.data_vencimento <= ultimo_dia
+            )
+        )
+    ).group_by(CategoriaDespesa.nome).all()
+    
+    # Combinar despesas de eventos e empresa por categoria
+    despesas_combinadas = {}
+    for item in despesas_evento_categoria:
+        if item.categoria not in despesas_combinadas:
+            despesas_combinadas[item.categoria] = 0
+        despesas_combinadas[item.categoria] += float(item.total)
+    
+    for item in despesas_empresa_categoria:
+        if item.categoria not in despesas_combinadas:
+            despesas_combinadas[item.categoria] = 0
+        despesas_combinadas[item.categoria] += float(item.total)
 
-    # Totais do perÃ­odo
-    total_receitas_periodo = sum(receitas_por_mes)
-    total_despesas_periodo = sum(despesas_por_mes)
-    total_lucro_periodo = total_receitas_periodo - total_despesas_periodo
+    # Converter para formato esperado pelo template
+    despesas_por_categoria = [
+        type('obj', (object,), {'categoria': categoria, 'total': total})()
+        for categoria, total in despesas_combinadas.items()
+    ]
+    
+    # Buscar eventos do mês
+    eventos_mes = Evento.query.filter(
+        Evento.data_inicio >= primeiro_dia,
+        Evento.data_inicio <= ultimo_dia
+    ).all()
+    
+    # Lista de meses para o seletor
+    meses_opcoes = [
+        (1, 'Janeiro'), (2, 'Fevereiro'), (3, 'Março'), (4, 'Abril'),
+        (5, 'Maio'), (6, 'Junho'), (7, 'Julho'), (8, 'Agosto'),
+        (9, 'Setembro'), (10, 'Outubro'), (11, 'Novembro'), (12, 'Dezembro')
+    ]
+    
+    # Lista de anos (últimos 5 anos + próximos 2)
+    ano_atual = hoje.year
+    anos_opcoes = list(range(ano_atual - 5, ano_atual + 3))
 
     return render_template(
-        'relatorios_lucratividade_periodo.html',
-        lucro_por_mes=lucro_por_mes,
-        receitas_por_mes=receitas_por_mes,
-        despesas_por_mes=despesas_por_mes,
-        meses=meses,
-        data_inicio=data_inicio.strftime('%Y-%m-%d'),
-        data_fim=data_fim.strftime('%Y-%m-%d'),
-        period=period,
-        total_receitas_periodo=total_receitas_periodo,
-        total_despesas_periodo=total_despesas_periodo,
-        total_lucro_periodo=total_lucro_periodo
+        'relatorios_lucratividade_mensal.html',
+        mes_selecionado=mes_selecionado,
+        ano_selecionado=ano_selecionado,
+        primeiro_dia=primeiro_dia,
+        ultimo_dia=ultimo_dia,
+        receitas_mes=float(receitas_mes),
+        despesas_mes=float(despesas_mes),
+        lucro_mes=float(lucro_mes),
+        receitas_por_categoria=receitas_por_categoria,
+        despesas_por_categoria=despesas_por_categoria,
+        eventos_mes=eventos_mes,
+        meses_opcoes=meses_opcoes,
+        anos_opcoes=anos_opcoes,
+        total_eventos=len(eventos_mes),
+        hoje=hoje  # Adicionar data atual para o template
     )
 
 @app.route('/relatorios/faturamento-evento')
@@ -2234,7 +2398,9 @@ def cadastrar_despesa():
             nome=form.nome.data, 
             id_categoria_despesa=form.id_categoria_despesa.data,
             id_tipo_despesa=form.id_tipo_despesa.data,
-            valor_medio_despesa=valor_medio
+            valor_medio_despesa=valor_medio,
+            flag_alimentacao=form.flag_alimentacao.data,
+            flag_combustivel=form.flag_combustivel.data
         )
         db.session.add(nova)
         db.session.commit()
@@ -2274,6 +2440,8 @@ def editar_despesa(id):
         despesa.id_categoria_despesa = form.id_categoria_despesa.data
         despesa.id_tipo_despesa = form.id_tipo_despesa.data
         despesa.valor_medio_despesa = valor_medio
+        despesa.flag_alimentacao = form.flag_alimentacao.data
+        despesa.flag_combustivel = form.flag_combustivel.data
         db.session.commit()
         flash('Despesa atualizada com sucesso!', 'success')
         return redirect(url_for('cadastrar_despesa'))
@@ -2329,7 +2497,9 @@ def cadastrar_despesa_evento(id_evento):
             nome=form.nome.data, 
             id_categoria_despesa=form.id_categoria_despesa.data,
             id_tipo_despesa=form.id_tipo_despesa.data,
-            valor_medio_despesa=valor_medio
+            valor_medio_despesa=valor_medio,
+            flag_alimentacao=form.flag_alimentacao.data,
+            flag_combustivel=form.flag_combustivel.data
         )
         db.session.add(nova)
         db.session.commit()
@@ -2353,24 +2523,28 @@ def salvar_despesa_individual(id_evento):
             data = request.get_json()
             despesa_id = data.get('despesa_id')
             valor_str = data.get('valor', '')
-            data_despesa = data.get('data')
+            data_despesa = data.get('data_vencimento')
             status_pagamento = data.get('status_pagamento', 'pendente')
             forma_pagamento = data.get('forma_pagamento', 'débito')
             pago_por = data.get('pago_por', '')
             observacoes = data.get('observacoes', '')
             id_fornecedor = data.get('id_fornecedor', None)
             despesa_cabeca = data.get('despesa_cabeca', False)
+            qtd_dias = data.get('qtd_dias', None)
+            qtd_pessoas = data.get('qtd_pessoas', None)
         else:
             # Processar dados do FormData (upload com arquivo)
             despesa_id = request.form.get('despesa_id')
             valor_str = request.form.get('valor', '')
-            data_despesa = request.form.get('data')
+            data_despesa = request.form.get('data_vencimento')
             status_pagamento = request.form.get('status_pagamento', 'pendente')
             forma_pagamento = request.form.get('forma_pagamento', 'débito')
             pago_por = request.form.get('pago_por', '')
             observacoes = request.form.get('observacoes', '')
             id_fornecedor = request.form.get('id_fornecedor', None)
             despesa_cabeca = request.form.get('despesa_cabeca') == '1'
+            qtd_dias = request.form.get('qtd_dias', None)
+            qtd_pessoas = request.form.get('qtd_pessoas', None)
         
         print(f"=== SALVAMENTO INDIVIDUAL ===")
         print(f"Tipo de dados: {'JSON' if request.content_type and 'application/json' in request.content_type else 'FormData'}")
@@ -2407,6 +2581,21 @@ def salvar_despesa_individual(id_evento):
         data_obj = datetime.strptime(data_despesa, '%Y-%m-%d').date() if data_despesa else date.today()
         fornecedor_id = int(id_fornecedor) if id_fornecedor and id_fornecedor != '0' else None
         
+        # Converter qtd_dias e qtd_pessoas para inteiros quando válidos
+        qtd_dias_int = None
+        qtd_pessoas_int = None
+        try:
+            if qtd_dias and qtd_dias.strip():
+                qtd_dias_int = int(qtd_dias)
+        except (ValueError, AttributeError):
+            pass
+        
+        try:
+            if qtd_pessoas and qtd_pessoas.strip():
+                qtd_pessoas_int = int(qtd_pessoas)
+        except (ValueError, AttributeError):
+            pass
+        
         # Processar upload do comprovante
         comprovante_filename = None
         if 'comprovante' in request.files:
@@ -2435,7 +2624,7 @@ def salvar_despesa_individual(id_evento):
         nova_despesa = DespesaEvento(
             id_evento=id_evento,
             id_despesa=int(despesa_id),
-            data=data_obj,
+            data_vencimento=data_obj,
             valor=valor_float,
             status_pagamento=status_pagamento,
             forma_pagamento=forma_pagamento,
@@ -2443,7 +2632,9 @@ def salvar_despesa_individual(id_evento):
             observacoes=observacoes,
             id_fornecedor=fornecedor_id,
             comprovante=comprovante_filename,
-            despesa_cabeca=despesa_cabeca
+            despesa_cabeca=despesa_cabeca,
+            qtd_dias=qtd_dias_int,
+            qtd_pessoas=qtd_pessoas_int
         )
         
         db.session.add(nova_despesa)
@@ -2571,6 +2762,141 @@ def excluir_equipe_evento(id_evento, id):
     db.session.commit()
     flash('Colaborador removido da equipe com sucesso!', 'success')
     return redirect(url_for('equipe_evento', id_evento=id_evento))
+
+# =============== ROTAS PARA VEÍCULOS DO EVENTO ===============
+@app.route('/eventos/<int:id_evento>/veiculos', methods=['GET', 'POST'])
+def veiculos_evento(id_evento):
+    evento = Evento.query.get_or_404(id_evento)
+    
+    # Verificar se existem veículos
+    veiculos_existentes = Veiculo.query.all()
+    if not veiculos_existentes:
+        flash('É necessário cadastrar pelo menos um veículo antes de adicionar ao evento.', 'warning')
+        return redirect(url_for('cadastrar_veiculo'))
+    
+    # Verificar se existem colaboradores
+    colaboradores_existentes = Colaborador.query.all()
+    if not colaboradores_existentes:
+        flash('É necessário cadastrar pelo menos um colaborador antes de adicionar veículos ao evento.', 'warning')
+        return redirect(url_for('cadastrar_colaborador'))
+    
+    form = VeiculoEventoForm()
+    form.id_veiculo.choices = [(0, 'Selecione um veículo')] + [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
+    form.id_motorista.choices = [(0, 'Selecione um motorista')] + [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
+    
+    if form.validate_on_submit():
+        # Validar se data de devolução é posterior à data de início
+        if form.data_devolucao.data <= form.data_inicio.data:
+            flash('A data de devolução deve ser posterior à data de início.', 'warning')
+        else:
+            # Verificar se o veículo já está sendo usado neste período
+            conflito = VeiculoEvento.query.filter(
+                VeiculoEvento.id_veiculo == form.id_veiculo.data,
+                VeiculoEvento.id_evento != id_evento,
+                db.or_(
+                    db.and_(
+                        VeiculoEvento.data_inicio <= form.data_inicio.data,
+                        VeiculoEvento.data_devolucao > form.data_inicio.data
+                    ),
+                    db.and_(
+                        VeiculoEvento.data_inicio < form.data_devolucao.data,
+                        VeiculoEvento.data_devolucao >= form.data_devolucao.data
+                    )
+                )
+            ).first()
+            
+            if conflito:
+                flash('Este veículo já está sendo usado em outro evento no período informado.', 'warning')
+            else:
+                # Verificar se o veículo já está associado a este evento
+                veiculo_existente = VeiculoEvento.query.filter_by(
+                    id_evento=id_evento,
+                    id_veiculo=form.id_veiculo.data
+                ).first()
+                
+                if veiculo_existente:
+                    flash('Este veículo já está associado a este evento.', 'warning')
+                else:
+                    novo_veiculo = VeiculoEvento(
+                        id_evento=id_evento,
+                        id_veiculo=form.id_veiculo.data,
+                        id_motorista=form.id_motorista.data,
+                        data_inicio=form.data_inicio.data,
+                        data_devolucao=form.data_devolucao.data,
+                        observacoes=form.observacoes.data
+                    )
+                    db.session.add(novo_veiculo)
+                    db.session.commit()
+                    flash('Veículo adicionado ao evento com sucesso!', 'success')
+        return redirect(url_for('veiculos_evento', id_evento=id_evento))
+    
+    veiculos_evento = VeiculoEvento.query.filter_by(id_evento=id_evento).all()
+    return render_template('veiculos_evento.html', form=form, veiculos_evento=veiculos_evento, evento=evento)
+
+@app.route('/eventos/<int:id_evento>/veiculos/editar/<int:id>', methods=['GET', 'POST'])
+def editar_veiculo_evento(id_evento, id):
+    evento = Evento.query.get_or_404(id_evento)
+    veiculo_evento = VeiculoEvento.query.get_or_404(id)
+    
+    veiculos_existentes = Veiculo.query.all()
+    colaboradores_existentes = Colaborador.query.all()
+    form = VeiculoEventoForm(obj=veiculo_evento)
+    form.id_veiculo.choices = [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
+    form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
+    
+    if form.validate_on_submit():
+        # Validar se data de devolução é posterior à data de início
+        if form.data_devolucao.data <= form.data_inicio.data:
+            flash('A data de devolução deve ser posterior à data de início.', 'warning')
+        else:
+            # Verificar se o veículo já está sendo usado neste período (exceto o atual)
+            conflito = VeiculoEvento.query.filter(
+                VeiculoEvento.id_veiculo == form.id_veiculo.data,
+                VeiculoEvento.id_evento != id_evento,
+                VeiculoEvento.id_veiculo_evento != id,
+                db.or_(
+                    db.and_(
+                        VeiculoEvento.data_inicio <= form.data_inicio.data,
+                        VeiculoEvento.data_devolucao > form.data_inicio.data
+                    ),
+                    db.and_(
+                        VeiculoEvento.data_inicio < form.data_devolucao.data,
+                        VeiculoEvento.data_devolucao >= form.data_devolucao.data
+                    )
+                )
+            ).first()
+            
+            if conflito:
+                flash('Este veículo já está sendo usado em outro evento no período informado.', 'warning')
+            else:
+                # Verificar se outro veículo já está associado a este evento (exceto o atual)
+                veiculo_existente = VeiculoEvento.query.filter_by(
+                    id_evento=id_evento,
+                    id_veiculo=form.id_veiculo.data
+                ).filter(VeiculoEvento.id_veiculo_evento != id).first()
+                
+                if veiculo_existente:
+                    flash('Este veículo já está associado a este evento.', 'warning')
+                else:
+                    veiculo_evento.id_veiculo = form.id_veiculo.data
+                    veiculo_evento.id_motorista = form.id_motorista.data
+                    veiculo_evento.data_inicio = form.data_inicio.data
+                    veiculo_evento.data_devolucao = form.data_devolucao.data
+                    veiculo_evento.observacoes = form.observacoes.data
+                    db.session.commit()
+                    flash('Veículo do evento atualizado com sucesso!', 'success')
+        return redirect(url_for('veiculos_evento', id_evento=id_evento))
+    
+    veiculos_evento = VeiculoEvento.query.filter_by(id_evento=id_evento).all()
+    return render_template('veiculos_evento.html', form=form, veiculos_evento=veiculos_evento, evento=evento)
+
+@app.route('/eventos/<int:id_evento>/veiculos/excluir/<int:id>')
+def excluir_veiculo_evento(id_evento, id):
+    veiculo_evento = VeiculoEvento.query.get_or_404(id)
+    db.session.delete(veiculo_evento)
+    db.session.commit()
+    flash('Veículo removido do evento com sucesso!', 'success')
+    return redirect(url_for('veiculos_evento', id_evento=id_evento))
 
 # =============== ROTAS PARA ELENCO DO EVENTO ===============
 @app.route('/eventos/<int:id_evento>/elenco', methods=['GET', 'POST'])
@@ -2874,7 +3200,7 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         # Obter dados do FormData
         despesa_id = request.form.get('despesa_id')
         valor_str = request.form.get('valor', '')
-        data_despesa = request.form.get('data')
+        data_despesa = request.form.get('data_vencimento')
         
         # Validar dados obrigatórios
         if not despesa_id or not valor_str:
@@ -2908,12 +3234,32 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         
         # Atualizar campos da despesa do evento
         despesa_evento.id_despesa = int(despesa_id)
-        despesa_evento.data = data_obj
+        despesa_evento.data_vencimento = data_obj
         despesa_evento.valor = valor
         despesa_evento.status_pagamento = request.form.get('status_pagamento', 'pendente')
         despesa_evento.forma_pagamento = request.form.get('forma_pagamento', 'débito')
         despesa_evento.pago_por = request.form.get('pago_por', '')
         despesa_evento.observacoes = request.form.get('observacoes', '')
+        
+        # Atualizar campos de quantidade se presentes
+        qtd_dias_form = request.form.get('qtd_dias', None)
+        qtd_pessoas_form = request.form.get('qtd_pessoas', None)
+        
+        try:
+            if qtd_dias_form and qtd_dias_form.strip():
+                despesa_evento.qtd_dias = int(qtd_dias_form)
+            else:
+                despesa_evento.qtd_dias = None
+        except (ValueError, AttributeError):
+            despesa_evento.qtd_dias = None
+        
+        try:
+            if qtd_pessoas_form and qtd_pessoas_form.strip():
+                despesa_evento.qtd_pessoas = int(qtd_pessoas_form)
+            else:
+                despesa_evento.qtd_pessoas = None
+        except (ValueError, AttributeError):
+            despesa_evento.qtd_pessoas = None
         
         # Processar upload de comprovante se fornecido
         comprovante = request.files.get('comprovante')
@@ -3377,7 +3723,7 @@ def obter_dados_completos_evento(id_evento):
         CategoriaDespesa.nome.label('categoria_nome'),
         Despesa.nome.label('despesa_nome'),
         DespesaEvento.valor,
-        DespesaEvento.data,
+        DespesaEvento.data_vencimento,
         DespesaEvento.status_pagamento,
         DespesaEvento.despesa_cabeca,
         Fornecedor.nome.label('fornecedor_nome'),
@@ -3406,7 +3752,7 @@ def obter_dados_completos_evento(id_evento):
         despesas_agrupadas[item.categoria_nome]['itens'].append({
             'despesa_nome': item.despesa_nome,
             'valor': float(item.valor),
-            'data': item.data,
+            'data': item.data_vencimento,
             'status_pagamento': item.status_pagamento or 'pendente',
             'despesa_cabeca': bool(item.despesa_cabeca),
             'fornecedor_nome': item.fornecedor_nome or '',
@@ -3818,6 +4164,201 @@ def exportar_despesas_fixas(formato):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/relatorios/veiculos')
+def relatorio_veiculos():
+    """Relatório de veículos e eventos associados"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se é administrador
+    if session.get('categoria', '').lower() != 'administrativo':
+        flash('Acesso restrito a administradores.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # Obter filtros
+        categoria_filtro = request.args.get('categoria', '')
+        data_inicio = request.args.get('data_inicio', '')
+        data_fim = request.args.get('data_fim', '')
+        
+        # Query base de veículos
+        veiculos_query = db.session.query(Veiculo).join(CategoriaVeiculo)
+        
+        # Aplicar filtro de categoria se fornecido
+        if categoria_filtro:
+            veiculos_query = veiculos_query.filter(Veiculo.id_categoria_veiculo == categoria_filtro)
+        
+        # Ordenar por categoria e nome
+        veiculos = veiculos_query.order_by(CategoriaVeiculo.nome, Veiculo.nome).all()
+        
+        # Buscar eventos de veículos com filtro de data
+        eventos_query = db.session.query(VeiculoEvento).join(
+            Evento, VeiculoEvento.id_evento == Evento.id_evento
+        ).join(
+            Veiculo, VeiculoEvento.id_veiculo == Veiculo.id_veiculo
+        ).join(
+            Colaborador, VeiculoEvento.id_motorista == Colaborador.id_colaborador
+        )
+        
+        # Aplicar filtros de data se fornecidos
+        if data_inicio:
+            eventos_query = eventos_query.filter(VeiculoEvento.data_inicio >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
+        if data_fim:
+            eventos_query = eventos_query.filter(VeiculoEvento.data_devolucao <= datetime.strptime(data_fim, '%Y-%m-%d').date())
+        
+        # Aplicar filtro de categoria se fornecido
+        if categoria_filtro:
+            eventos_query = eventos_query.filter(Veiculo.id_categoria_veiculo == categoria_filtro)
+        
+        # Ordenar por data de início
+        eventos_veiculos = eventos_query.order_by(VeiculoEvento.data_inicio.desc()).all()
+        
+        # Organizar dados por veículo
+        dados_veiculos = {}
+        for veiculo in veiculos:
+            dados_veiculos[veiculo.id_veiculo] = {
+                'veiculo': veiculo,
+                'eventos': [],
+                'total_eventos': 0,
+                'dias_uso': 0
+            }
+        
+        # Adicionar eventos aos veículos
+        for evento_veiculo in eventos_veiculos:
+            veiculo_id = evento_veiculo.id_veiculo
+            if veiculo_id in dados_veiculos:
+                dados_veiculos[veiculo_id]['eventos'].append(evento_veiculo)
+                dados_veiculos[veiculo_id]['total_eventos'] += 1
+                
+                # Calcular dias de uso
+                delta = evento_veiculo.data_devolucao - evento_veiculo.data_inicio
+                dados_veiculos[veiculo_id]['dias_uso'] += delta.days + 1
+        
+        # Buscar categorias para o filtro
+        categorias = CategoriaVeiculo.query.order_by(CategoriaVeiculo.nome).all()
+        
+        # Estatísticas gerais
+        total_veiculos = len(veiculos)
+        veiculos_com_eventos = sum(1 for dados in dados_veiculos.values() if dados['total_eventos'] > 0)
+        total_eventos_veiculos = sum(dados['total_eventos'] for dados in dados_veiculos.values())
+        total_dias_uso = sum(dados['dias_uso'] for dados in dados_veiculos.values())
+        
+        estatisticas = {
+            'total_veiculos': total_veiculos,
+            'veiculos_com_eventos': veiculos_com_eventos,
+            'veiculos_sem_eventos': total_veiculos - veiculos_com_eventos,
+            'total_eventos_veiculos': total_eventos_veiculos,
+            'total_dias_uso': total_dias_uso,
+            'media_dias_por_veiculo': round(total_dias_uso / total_veiculos, 1) if total_veiculos > 0 else 0
+        }
+        
+        return render_template('relatorio_veiculos.html',
+                             dados_veiculos=dados_veiculos,
+                             categorias=categorias,
+                             categoria_filtro=categoria_filtro,
+                             data_inicio=data_inicio,
+                             data_fim=data_fim,
+                             estatisticas=estatisticas)
+        
+    except Exception as e:
+        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+@app.route('/relatorios/veiculos/exportar/<string:formato>')
+def exportar_relatorio_veiculos(formato):
+    """Exportar relatório de veículos"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    # Verificar se é administrador
+    if session.get('categoria', '').lower() != 'administrativo':
+        return jsonify({'error': 'Acesso restrito a administradores'}), 403
+    
+    try:
+        # Obter filtros
+        categoria_filtro = request.args.get('categoria', '')
+        data_inicio = request.args.get('data_inicio', '')
+        data_fim = request.args.get('data_fim', '')
+        
+        # Query base de veículos
+        veiculos_query = db.session.query(Veiculo).join(CategoriaVeiculo)
+        
+        # Aplicar filtro de categoria se fornecido
+        if categoria_filtro:
+            veiculos_query = veiculos_query.filter(Veiculo.id_categoria_veiculo == categoria_filtro)
+        
+        veiculos = veiculos_query.order_by(CategoriaVeiculo.nome, Veiculo.nome).all()
+        
+        # Buscar eventos de veículos com filtro de data
+        eventos_query = db.session.query(VeiculoEvento).join(
+            Evento, VeiculoEvento.id_evento == Evento.id_evento
+        ).join(
+            Veiculo, VeiculoEvento.id_veiculo == Veiculo.id_veiculo
+        ).join(
+            Colaborador, VeiculoEvento.id_motorista == Colaborador.id_colaborador
+        )
+        
+        # Aplicar filtros de data se fornecidos
+        if data_inicio:
+            eventos_query = eventos_query.filter(VeiculoEvento.data_inicio >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
+        if data_fim:
+            eventos_query = eventos_query.filter(VeiculoEvento.data_devolucao <= datetime.strptime(data_fim, '%Y-%m-%d').date())
+        
+        # Aplicar filtro de categoria se fornecido
+        if categoria_filtro:
+            eventos_query = eventos_query.filter(Veiculo.id_categoria_veiculo == categoria_filtro)
+        
+        eventos_veiculos = eventos_query.order_by(VeiculoEvento.data_inicio.desc()).all()
+        
+        # Preparar dados para exportação
+        headers = ['Veículo', 'Categoria', 'Placa', 'Evento', 'Motorista', 'Data Início', 'Data Devolução', 'Dias de Uso', 'Observações']
+        data = []
+        
+        # Organizar dados por veículo
+        for veiculo in veiculos:
+            eventos_veiculo = [ev for ev in eventos_veiculos if ev.id_veiculo == veiculo.id_veiculo]
+            
+            if eventos_veiculo:
+                for evento_veiculo in eventos_veiculo:
+                    dias_uso = (evento_veiculo.data_devolucao - evento_veiculo.data_inicio).days + 1
+                    data.append([
+                        veiculo.nome,
+                        veiculo.categoria.nome if veiculo.categoria else 'Sem categoria',
+                        veiculo.placa or 'Sem placa',
+                        evento_veiculo.evento.nome,
+                        evento_veiculo.motorista.nome,
+                        evento_veiculo.data_inicio.strftime('%d/%m/%Y'),
+                        evento_veiculo.data_devolucao.strftime('%d/%m/%Y'),
+                        str(dias_uso),
+                        evento_veiculo.observacoes or ''
+                    ])
+            else:
+                # Veículo sem eventos
+                data.append([
+                    veiculo.nome,
+                    veiculo.categoria.nome if veiculo.categoria else 'Sem categoria',
+                    veiculo.placa or 'Sem placa',
+                    'Nenhum evento',
+                    '',
+                    '',
+                    '',
+                    '',
+                    ''
+                ])
+        
+        today = datetime.now().strftime('%Y-%m-%d')
+        filename = f"relatorio_veiculos_{today}"
+        
+        if formato == 'excel':
+            return criar_excel_response(headers, data, filename)
+        elif formato == 'pdf':
+            return criar_pdf_response(headers, data, 'Relatório de Veículos e Eventos', filename)
+        else:
+            return jsonify({'error': 'Formato não suportado'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # ==================== GESTÃO FINANCEIRA EMPRESA ====================
 
 @app.route('/empresa/despesas', methods=['GET', 'POST'])
@@ -3861,14 +4402,17 @@ def despesas_empresa():
             
             despesa_empresa = DespesaEmpresa(
                 id_despesa=form.despesa_id.data,
-                data=form.data.data,
+                data_vencimento=form.data_vencimento.data,
+                data_pagamento=form.data_pagamento.data,
                 valor=form.valor.data,
                 id_fornecedor=form.fornecedor_id.data if form.fornecedor_id.data != 0 else None,
                 status_pagamento=form.status_pagamento.data,
                 forma_pagamento=form.forma_pagamento.data,
                 pago_por=form.pago_por.data,
                 observacoes=form.observacoes.data,
-                comprovante=filename
+                comprovante=filename,
+                qtd_dias=form.qtd_dias.data,
+                qtd_pessoas=form.qtd_pessoas.data
             )
             
             db.session.add(despesa_empresa)
@@ -3881,7 +4425,7 @@ def despesas_empresa():
             flash(f'Erro ao cadastrar despesa: {str(e)}', 'danger')
     
     # Listar despesas cadastradas
-    despesas = db.session.query(DespesaEmpresa).join(Despesa).join(CategoriaDespesa).order_by(DespesaEmpresa.data.desc()).all()
+    despesas = db.session.query(DespesaEmpresa).join(Despesa).join(CategoriaDespesa).order_by(DespesaEmpresa.data_vencimento.desc()).all()
     
     return render_template('despesas_empresa.html', form=form, despesas=despesas)
 
@@ -3954,6 +4498,13 @@ def editar_despesa_empresa(id):
     fornecedores = Fornecedor.query.all()
     form.fornecedor_id.choices = [(0, 'Selecione um fornecedor (opcional)')] + [(f.id_fornecedor, f.nome) for f in fornecedores]
     
+    # Carregar explicitamente os valores dos campos de quantidade no GET request
+    if request.method == 'GET':
+        form.despesa_id.data = despesa_empresa.id_despesa  # Pré-selecionar a despesa correta
+        form.qtd_dias.data = despesa_empresa.qtd_dias
+        form.qtd_pessoas.data = despesa_empresa.qtd_pessoas
+        print(f"DEBUG EDIÇÃO: despesa_id={despesa_empresa.id_despesa}, qtd_dias={despesa_empresa.qtd_dias}, qtd_pessoas={despesa_empresa.qtd_pessoas}")
+    
     if form.validate_on_submit():
         try:
             # Upload do comprovante se houver
@@ -3967,13 +4518,16 @@ def editar_despesa_empresa(id):
                     despesa_empresa.comprovante = filename
             
             despesa_empresa.id_despesa = form.despesa_id.data
-            despesa_empresa.data = form.data.data
+            despesa_empresa.data_vencimento = form.data_vencimento.data
+            despesa_empresa.data_pagamento = form.data_pagamento.data
             despesa_empresa.valor = form.valor.data
             despesa_empresa.id_fornecedor = form.fornecedor_id.data if form.fornecedor_id.data != 0 else None
             despesa_empresa.status_pagamento = form.status_pagamento.data
             despesa_empresa.forma_pagamento = form.forma_pagamento.data
             despesa_empresa.pago_por = form.pago_por.data
             despesa_empresa.observacoes = form.observacoes.data
+            despesa_empresa.qtd_dias = form.qtd_dias.data
+            despesa_empresa.qtd_pessoas = form.qtd_pessoas.data
             
             db.session.commit()
             flash('Despesa da empresa atualizada com sucesso!', 'success')
@@ -4005,6 +4559,10 @@ def editar_receita_empresa(id):
     
     receitas_opcoes = Receita.query.all()
     form.receita_id.choices = [(r.id_receita, r.nome) for r in receitas_opcoes]
+    
+    # Preencher o valor no formato brasileiro se for GET
+    if request.method == 'GET' and receita_empresa.valor:
+        form.valor.data = str(receita_empresa.valor).replace('.', ',')
     
     if form.validate_on_submit():
         try:
@@ -4074,11 +4632,11 @@ def excluir_receita_empresa(id):
     
     return redirect(url_for('receitas_empresa'))
 
-# ==================== PROGRAMAR MÊS ====================
+# ==================== FINANCEIRO MÊS ====================
 
-@app.route('/empresa/programar-mes', methods=['GET', 'POST'])
-def programar_mes():
-    """Programar despesas fixas da empresa para um mês específico"""
+@app.route('/empresa/financeiro-mes', methods=['GET', 'POST'])
+def financeiro_mes():
+    """Visualizar despesas e receitas da empresa para um mês específico"""
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
@@ -4086,51 +4644,84 @@ def programar_mes():
         flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
         return redirect(url_for('dashboard'))
     
+    # Obter mês e ano atual como padrão
+    hoje = date.today()
+    mes_atual = hoje.month
+    ano_atual = hoje.year
+    
     if request.method == 'POST':
         mes = request.form.get('mes')
         ano = request.form.get('ano')
         
         if not mes or not ano:
             flash('Por favor, selecione o mês e o ano.', 'danger')
-            return render_template('programar_mes.html')
+            return render_template('financeiro_mes.html', 
+                                 mes_padrao=mes_atual, 
+                                 ano_padrao=ano_atual)
         
         try:
             mes_int = int(mes)
             ano_int = int(ano)
-            
-            # Verificar se já existem despesas da empresa para este mês
-            despesas_existentes = verificar_despesas_empresa_mes(mes_int, ano_int)
-            
-            if despesas_existentes:
-                # Listar despesas existentes
-                despesas_mes = listar_despesas_empresa_mes(mes_int, ano_int)
-                flash(f'Já existem despesas cadastradas para {mes_int:02d}/{ano_int}. Exibindo despesas do mês.', 'info')
-                return render_template('programar_mes.html', 
-                                     despesas_mes=despesas_mes, 
-                                     mes_selecionado=mes_int, 
-                                     ano_selecionado=ano_int,
-                                     mostrar_listagem=True)
-            else:
-                # Criar despesas fixas automaticamente
-                despesas_criadas = criar_despesas_fixas_mes(mes_int, ano_int)
-                if despesas_criadas > 0:
-                    flash(f'{despesas_criadas} despesas fixas foram criadas automaticamente para {mes_int:02d}/{ano_int}.', 'success')
-                    # Listar despesas criadas
-                    despesas_mes = listar_despesas_empresa_mes(mes_int, ano_int)
-                    return render_template('programar_mes.html', 
-                                         despesas_mes=despesas_mes, 
-                                         mes_selecionado=mes_int, 
-                                         ano_selecionado=ano_int,
-                                         mostrar_listagem=True)
-                else:
-                    flash('Nenhuma despesa fixa foi encontrada para criar automaticamente.', 'warning')
-                    return render_template('programar_mes.html')
-        
         except ValueError:
             flash('Mês e ano devem ser números válidos.', 'danger')
-            return render_template('programar_mes.html')
+            return render_template('financeiro_mes.html', 
+                                 mes_padrao=mes_atual, 
+                                 ano_padrao=ano_atual)
+    else:
+        # Para requisições GET, verificar se tem parâmetros na URL
+        mes_get = request.args.get('mes')
+        ano_get = request.args.get('ano')
+        
+        if mes_get and ano_get:
+            try:
+                mes_int = int(mes_get)
+                ano_int = int(ano_get)
+            except ValueError:
+                mes_int = mes_atual
+                ano_int = ano_atual
+        else:
+            mes_int = mes_atual
+            ano_int = ano_atual
     
-    return render_template('programar_mes.html')
+    # Buscar despesas e receitas da empresa sempre
+    despesas_mes = listar_despesas_empresa_mes(mes_int, ano_int)
+    receitas_mes = listar_receitas_empresa_mes(mes_int, ano_int)
+    
+    # Buscar despesas e receitas de eventos para o mês
+    despesas_evento_mes = listar_despesas_evento_mes(mes_int, ano_int)
+    receitas_evento_mes = listar_receitas_evento_mes(mes_int, ano_int)
+    
+    # Calcular subtotais
+    subtotal_despesas_empresa = sum(d.valor for d in despesas_mes) if despesas_mes else 0
+    subtotal_receitas_empresa = sum(r.valor for r in receitas_mes) if receitas_mes else 0
+    subtotal_despesas_evento = sum(d.valor for d in despesas_evento_mes) if despesas_evento_mes else 0
+    subtotal_receitas_evento = sum(r.valor for r in receitas_evento_mes) if receitas_evento_mes else 0
+    
+    # Verificar se existem despesas fixas da empresa que ainda não foram criadas
+    despesas_fixas_pendentes = verificar_despesas_fixas_pendentes(mes_int, ano_int)
+    
+    if request.method == 'GET':
+        total_registros = len(despesas_mes) + len(receitas_mes) + len(despesas_evento_mes) + len(receitas_evento_mes)
+        if total_registros > 0:
+            flash(f'Exibindo dados financeiros de {mes_int:02d}/{ano_int}.', 'info')
+        else:
+            flash(f'Nenhuma despesa ou receita encontrada para {mes_int:02d}/{ano_int}.', 'info')
+    
+    return render_template('financeiro_mes.html', 
+                         despesas_mes=despesas_mes, 
+                         receitas_mes=receitas_mes, 
+                         despesas_evento_mes=despesas_evento_mes,
+                         receitas_evento_mes=receitas_evento_mes,
+                         subtotal_despesas_empresa=subtotal_despesas_empresa,
+                         subtotal_receitas_empresa=subtotal_receitas_empresa,
+                         subtotal_despesas_evento=subtotal_despesas_evento,
+                         subtotal_receitas_evento=subtotal_receitas_evento,
+                         mes_selecionado=mes_int, 
+                         ano_selecionado=ano_int,
+                         mes_padrao=mes_atual,
+                         ano_padrao=ano_atual,
+                         mostrar_listagem=True,
+                         despesas_fixas_pendentes=despesas_fixas_pendentes)
 
 def verificar_despesas_empresa_mes(mes, ano):
     """Verificar se já existem despesas da empresa para o mês especificado"""
@@ -4147,11 +4738,44 @@ def verificar_despesas_empresa_mes(mes, ano):
     
     # Verificar se existem despesas da empresa no período
     despesas_existentes = DespesaEmpresa.query.filter(
-        DespesaEmpresa.data >= data_inicio,
-        DespesaEmpresa.data <= data_fim
+        DespesaEmpresa.data_vencimento >= data_inicio,
+        DespesaEmpresa.data_vencimento <= data_fim
     ).count()
     
     return despesas_existentes > 0
+
+def verificar_despesas_fixas_pendentes(mes, ano):
+    """Verificar quais despesas fixas da empresa ainda não foram criadas para o mês especificado"""
+    from datetime import date
+    
+    # Criar data de início e fim do mês
+    data_inicio = date(ano, mes, 1)
+    
+    # Calcular último dia do mês
+    if mes == 12:
+        data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+    
+    # Buscar todas as despesas fixas da empresa (tipo 3)
+    despesas_fixas = Despesa.query.filter_by(id_tipo_despesa=3).all()
+    
+    # Verificar quais ainda não foram criadas para este mês
+    despesas_pendentes = []
+    
+    for despesa_fixa in despesas_fixas:
+        # Verificar se já existe uma despesa desta categoria neste mês
+        despesa_existente = DespesaEmpresa.query.filter_by(
+            id_despesa=despesa_fixa.id_despesa
+        ).filter(
+            DespesaEmpresa.data_vencimento >= data_inicio,
+            DespesaEmpresa.data_vencimento <= data_fim
+        ).first()
+        
+        if not despesa_existente:
+            despesas_pendentes.append(despesa_fixa)
+    
+    return despesas_pendentes
 
 def criar_despesas_fixas_mes(mes, ano):
     """Criar despesas fixas da empresa para o mês especificado"""
@@ -4170,15 +4794,15 @@ def criar_despesas_fixas_mes(mes, ano):
             # Verificar se já existe uma despesa desta categoria neste mês
             despesa_existente = DespesaEmpresa.query.join(Despesa).filter(
                 DespesaEmpresa.id_despesa == despesa_fixa.id_despesa,
-                DespesaEmpresa.data >= data_padrao,
-                DespesaEmpresa.data <= date(ano, mes, 28)  # Verificar até o dia 28 para evitar problemas com meses diferentes
+                DespesaEmpresa.data_vencimento >= data_padrao,
+                DespesaEmpresa.data_vencimento <= date(ano, mes, 28)  # Verificar até o dia 28 para evitar problemas com meses diferentes
             ).first()
             
             if not despesa_existente:
                 # Criar nova despesa da empresa
                 nova_despesa = DespesaEmpresa(
                     id_despesa=despesa_fixa.id_despesa,
-                    data=data_padrao,
+                    data_vencimento=data_padrao,
                     valor=float(despesa_fixa.valor_medio_despesa) if despesa_fixa.valor_medio_despesa else 0.0,
                     status_pagamento='pendente',
                     forma_pagamento='débito',
@@ -4215,11 +4839,110 @@ def listar_despesas_empresa_mes(mes, ano):
     
     # Buscar despesas da empresa no período
     despesas_mes = db.session.query(DespesaEmpresa).join(Despesa).join(CategoriaDespesa).filter(
-        DespesaEmpresa.data >= data_inicio,
-        DespesaEmpresa.data <= data_fim
-    ).order_by(DespesaEmpresa.data.desc()).all()
+        DespesaEmpresa.data_vencimento >= data_inicio,
+        DespesaEmpresa.data_vencimento <= data_fim
+    ).order_by(DespesaEmpresa.data_vencimento.desc()).all()
     
     return despesas_mes
+
+def listar_receitas_empresa_mes(mes, ano):
+    """Listar receitas da empresa para o mês especificado"""
+    from datetime import date
+    
+    # Criar data de início e fim do mês
+    data_inicio = date(ano, mes, 1)
+    
+    # Calcular último dia do mês
+    if mes == 12:
+        data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+    
+    # Buscar receitas da empresa no período
+    receitas_mes = db.session.query(ReceitaEmpresa).join(Receita).join(CategoriaReceita).filter(
+        ReceitaEmpresa.data >= data_inicio,
+        ReceitaEmpresa.data <= data_fim
+    ).order_by(ReceitaEmpresa.data.desc()).all()
+    
+    return receitas_mes
+
+def listar_despesas_evento_mes(mes, ano):
+    """Listar despesas de eventos para o mês especificado"""
+    from datetime import date
+    
+    # Criar data de início e fim do mês
+    data_inicio = date(ano, mes, 1)
+    
+    # Calcular último dia do mês
+    if mes == 12:
+        data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+    
+    # Buscar despesas de eventos no período (por data_vencimento)
+    despesas_evento_mes = db.session.query(DespesaEvento).join(Despesa).join(CategoriaDespesa).join(Evento).filter(
+        DespesaEvento.data_vencimento >= data_inicio,
+        DespesaEvento.data_vencimento <= data_fim
+    ).order_by(DespesaEvento.data_vencimento.desc()).all()
+    
+    return despesas_evento_mes
+
+def listar_receitas_evento_mes(mes, ano):
+    """Listar receitas de eventos para o mês especificado"""
+    from datetime import date
+    
+    # Criar data de início e fim do mês
+    data_inicio = date(ano, mes, 1)
+    
+    # Calcular último dia do mês
+    if mes == 12:
+        data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+    
+    # Buscar receitas de eventos no período (por data)
+    receitas_evento_mes = db.session.query(ReceitaEvento).join(Receita).join(CategoriaReceita).join(Evento).filter(
+        ReceitaEvento.data >= data_inicio,
+        ReceitaEvento.data <= data_fim
+    ).order_by(ReceitaEvento.data.desc()).all()
+    
+    return receitas_evento_mes
+
+@app.route('/empresa/adicionar-despesas-fixas', methods=['POST'])
+def adicionar_despesas_fixas():
+    """Adicionar despesas fixas da empresa para um mês específico"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo':
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Obter mês e ano do formulário
+    mes = request.form.get('mes')
+    ano = request.form.get('ano')
+    
+    if not mes or not ano:
+        flash('Por favor, selecione o mês e o ano.', 'danger')
+        return redirect(url_for('financeiro_mes'))
+    
+    try:
+        mes_int = int(mes)
+        ano_int = int(ano)
+    except ValueError:
+        flash('Mês e ano devem ser números válidos.', 'danger')
+        return redirect(url_for('financeiro_mes'))
+    
+    # Criar despesas fixas
+    despesas_criadas = criar_despesas_fixas_mes(mes_int, ano_int)
+    
+    if despesas_criadas > 0:
+        flash(f'{despesas_criadas} despesas fixas foram adicionadas para {mes_int:02d}/{ano_int}.', 'success')
+    else:
+        flash('Nenhuma despesa fixa foi encontrada para adicionar ou todas já foram criadas.', 'info')
+    
+    # Retornar para a página do financeiro com os parâmetros corretos
+    return redirect(url_for('financeiro_mes') + f'?mes={mes_int}&ano={ano_int}')
 
 if __name__ == '__main__':
     app.run(debug=True)
