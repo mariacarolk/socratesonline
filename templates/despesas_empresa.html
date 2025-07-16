@@ -52,13 +52,26 @@
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        {{ form.data.label(class="form-label") }}
+                        {{ form.data_vencimento.label(class="form-label") }}
                         <div class="input-group">
-                            {{ form.data(class="form-control", required=true) }}
+                            {{ form.data_vencimento(class="form-control", required=true) }}
                             <span class="input-group-text"><i class="bi bi-calendar"></i></span>
                             <div class="invalid-feedback">
-                                Por favor, informe a data.
+                                Por favor, informe a data de vencimento.
                             </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.data_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_pagamento(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                            <div class="invalid-feedback">
+                                Data de pagamento inválida.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
@@ -129,6 +142,42 @@
                         <div class="input-group">
                             {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre a despesa") }}
                             <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campos de quantidade para despesas de alimentação -->
+                <div class="row" id="campos-alimentacao" style="display: none;">
+                    <div class="col-12 mb-2">
+                        <div class="alert alert-info alert-sm">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.qtd_dias.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.qtd_dias(class="form-control", min="1", placeholder="Ex: 5", id="qtd_dias") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a quantidade de dias.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.qtd_pessoas.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.qtd_pessoas(class="form-control", min="1", placeholder="Ex: 10", id="qtd_pessoas") }}
+                            <span class="input-group-text"><i class="bi bi-people"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a quantidade de pessoas.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Número de pessoas que serão alimentadas</small>
                         </div>
                     </div>
                 </div>
@@ -228,7 +277,7 @@
                     <tbody>
                         {% for d in despesas %}
                         <tr>
-                            <td>{{ d.data.strftime('%d/%m/%Y') if d.data else '—' }}</td>
+                            <td>{{ d.data_vencimento.strftime('%d/%m/%Y') if d.data_vencimento else '—' }}</td>
                             <td>{{ d.despesa.nome if d.despesa else '—' }}</td>
                             <td>{{ d.despesa.categoria.nome if d.despesa and d.despesa.categoria else '—' }}</td>
                             <td>
@@ -270,40 +319,7 @@
                 </table>
             </div>
 
-            <!-- Resumo -->
-            <div class="row mt-4">
-                <div class="col-md-12">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <h6 class="card-title"><i class="bi bi-calculator me-2"></i>Resumo Financeiro <small class="text-muted" id="periodoResumo">(Período filtrado)</small></h6>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <small class="text-muted">Total de Despesas:</small>
-                                    <h5 class="text-danger" id="totalDespesas">{{ despesas|length }}</h5>
-                                </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Valor Total:</small>
-                                    <h5 class="text-danger" id="valorTotal">
-                                        R$ {{ "%.2f"|format(despesas|sum(attribute='valor'))|replace('.', ',') }}
-                                    </h5>
-                                </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Pagas:</small>
-                                    <h5 class="text-success" id="totalPagas">
-                                        {{ despesas|selectattr('status_pagamento', 'equalto', 'pago')|list|length }}
-                                    </h5>
-                                </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Pendentes:</small>
-                                    <h5 class="text-warning" id="totalPendentes">
-                                        {{ despesas|selectattr('status_pagamento', 'equalto', 'pendente')|list|length }}
-                                    </h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
             {% else %}
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>Nenhuma despesa da empresa cadastrada.
@@ -322,6 +338,17 @@
     document.addEventListener('DOMContentLoaded', function() {
         const categoriaSelect = document.getElementById('categoria_despesa');
         const despesaSelect = document.getElementById('despesa_id');
+        const camposAlimentacao = document.getElementById('campos-alimentacao');
+        const qtdDiasInput = document.getElementById('qtd_dias');
+        const qtdPessoasInput = document.getElementById('qtd_pessoas');
+        
+        // Debug: verificar se elementos foram encontrados
+        console.log('Elementos encontrados:');
+        console.log('categoriaSelect:', categoriaSelect);
+        console.log('despesaSelect:', despesaSelect);
+        console.log('camposAlimentacao:', camposAlimentacao);
+        console.log('qtdDiasInput:', qtdDiasInput);
+        console.log('qtdPessoasInput:', qtdPessoasInput);
         
         // Inicializar filtros de data com valores úteis
         const hoje = new Date();
@@ -333,12 +360,64 @@
         // Aplicar filtros iniciais
         aplicarFiltros();
         
+        // Função para verificar se a despesa é de alimentação
+        function verificarDespesaAlimentacao() {
+            const despesaId = despesaSelect.value;
+            console.log('Verificando despesa ID:', despesaId);
+            
+            if (despesaId && despesaId != '0') {
+                // Buscar informações da despesa selecionada
+                fetch(`/api/despesa-detalhes/${despesaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Dados da despesa:', data);
+                        if (data.flag_alimentacao) {
+                            console.log('Despesa é de alimentação - mostrando campos');
+                            // Mostrar campos de quantidade
+                            camposAlimentacao.style.display = 'block';
+                            // Tornar campos obrigatórios
+                            qtdDiasInput.setAttribute('required', 'required');
+                            qtdPessoasInput.setAttribute('required', 'required');
+                        } else {
+                            console.log('Despesa NÃO é de alimentação - escondendo campos');
+                            // Esconder campos de quantidade
+                            camposAlimentacao.style.display = 'none';
+                            // Remover obrigatoriedade
+                            qtdDiasInput.removeAttribute('required');
+                            qtdPessoasInput.removeAttribute('required');
+                            // Limpar valores
+                            qtdDiasInput.value = '';
+                            qtdPessoasInput.value = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar despesa:', error);
+                        // Em caso de erro, esconder campos
+                        camposAlimentacao.style.display = 'none';
+                        qtdDiasInput.removeAttribute('required');
+                        qtdPessoasInput.removeAttribute('required');
+                    });
+            } else {
+                // Esconder campos se nenhuma despesa selecionada
+                camposAlimentacao.style.display = 'none';
+                qtdDiasInput.removeAttribute('required');
+                qtdPessoasInput.removeAttribute('required');
+                qtdDiasInput.value = '';
+                qtdPessoasInput.value = '';
+            }
+        }
+        
         if (categoriaSelect && despesaSelect) {
             categoriaSelect.addEventListener('change', function() {
                 const categoriaId = this.value;
                 
                 // Limpar despesas
                 despesaSelect.innerHTML = '<option value="0">Carregando...</option>';
+                
+                // Esconder campos de alimentação
+                camposAlimentacao.style.display = 'none';
+                qtdDiasInput.removeAttribute('required');
+                qtdPessoasInput.removeAttribute('required');
                 
                 if (categoriaId && categoriaId != '0') {
                     fetch(`/api/despesas-empresa-por-categoria/${categoriaId}`)
@@ -365,6 +444,9 @@
                     despesaSelect.innerHTML = '<option value="0">Selecione uma categoria primeiro</option>';
                 }
             });
+            
+            // Verificar despesa de alimentação quando despesa mudar
+            despesaSelect.addEventListener('change', verificarDespesaAlimentacao);
         }
     });
 
@@ -398,9 +480,6 @@
         const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
         
         let despesasVisiveis = 0;
-        let valorTotal = 0;
-        let despesasPagas = 0;
-        let despesasPendentes = 0;
         
         let filtroAtivo = false;
         let descricaoFiltro = 'Mostrando todas as despesas';
@@ -459,49 +538,11 @@
             if (mostrarLinha) {
                 row.style.display = '';
                 despesasVisiveis++;
-                
-                // Somar valores para o resumo
-                const valorCell = cells[3];
-                if (valorCell) {
-                    let valorTexto = valorCell.textContent.trim();
-                    // Remover R$ e espaços
-                    valorTexto = valorTexto.replace(/R\$\s*/g, '');
-                    
-                    // Se contém ponto e vírgula, formato brasileiro (1.000,50)
-                    if (valorTexto.includes('.') && valorTexto.includes(',')) {
-                        valorTexto = valorTexto.replace(/\./g, '').replace(',', '.');
-                    }
-                    // Se contém apenas vírgula, trocar por ponto
-                    else if (valorTexto.includes(',') && !valorTexto.includes('.')) {
-                        valorTexto = valorTexto.replace(',', '.');
-                    }
-                    
-                    const valor = parseFloat(valorTexto);
-                    if (!isNaN(valor)) {
-                        valorTotal += valor;
-                    }
-                }
-                
-                // Contar status
-                const statusCell = cells[5];
-                if (statusCell) {
-                    const statusText = statusCell.textContent.toLowerCase();
-                    if (statusText.includes('pago')) {
-                        despesasPagas++;
-                    } else if (statusText.includes('pendente')) {
-                        despesasPendentes++;
-                    }
-                }
             } else {
                 row.style.display = 'none';
             }
         }
-        
-        // Atualizar resumo financeiro
-        document.getElementById('totalDespesas').textContent = despesasVisiveis;
-        document.getElementById('valorTotal').textContent = formatarValor(valorTotal);
-        document.getElementById('totalPagas').textContent = despesasPagas;
-        document.getElementById('totalPendentes').textContent = despesasPendentes;
+
         
         // Atualizar informação do filtro
         if (filtroAtivo) {
@@ -523,7 +564,7 @@
         }
         
         document.getElementById('filtroInfo').textContent = descricaoFiltro;
-        document.getElementById('periodoResumo').textContent = filtroAtivo ? '(Dados filtrados)' : '(Todas as despesas)';
+
     }
 
     // Função para limpar filtros

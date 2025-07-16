@@ -1,0 +1,1071 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-calendar-plus me-2"></i>Financeiro Mês</h4>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Selecionar Mês e Ano</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="mes" class="form-label">Mês</label>
+                        <div class="input-group">
+                            <select class="form-select" id="mes" name="mes" required>
+                                <option value="">Selecione o mês</option>
+                                <option value="1" {% if (mes_selecionado or mes_padrao) == 1 %}selected{% endif %}>Janeiro</option>
+                                <option value="2" {% if (mes_selecionado or mes_padrao) == 2 %}selected{% endif %}>Fevereiro</option>
+                                <option value="3" {% if (mes_selecionado or mes_padrao) == 3 %}selected{% endif %}>Março</option>
+                                <option value="4" {% if (mes_selecionado or mes_padrao) == 4 %}selected{% endif %}>Abril</option>
+                                <option value="5" {% if (mes_selecionado or mes_padrao) == 5 %}selected{% endif %}>Maio</option>
+                                <option value="6" {% if (mes_selecionado or mes_padrao) == 6 %}selected{% endif %}>Junho</option>
+                                <option value="7" {% if (mes_selecionado or mes_padrao) == 7 %}selected{% endif %}>Julho</option>
+                                <option value="8" {% if (mes_selecionado or mes_padrao) == 8 %}selected{% endif %}>Agosto</option>
+                                <option value="9" {% if (mes_selecionado or mes_padrao) == 9 %}selected{% endif %}>Setembro</option>
+                                <option value="10" {% if (mes_selecionado or mes_padrao) == 10 %}selected{% endif %}>Outubro</option>
+                                <option value="11" {% if (mes_selecionado or mes_padrao) == 11 %}selected{% endif %}>Novembro</option>
+                                <option value="12" {% if (mes_selecionado or mes_padrao) == 12 %}selected{% endif %}>Dezembro</option>
+                            </select>
+                            <span class="input-group-text"><i class="bi bi-calendar-month"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione um mês.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="ano" class="form-label">Ano</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="ano" name="ano" 
+                                   value="{{ ano_selecionado or ano_padrao or 2025 }}" 
+                                   min="2020" max="2030" required>
+                            <span class="input-group-text"><i class="bi bi-calendar-year"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe um ano válido.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-2"></i>Confirmar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Informações explicativas e botão para adicionar despesas fixas -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <h6><i class="bi bi-info-circle me-2"></i>Como funciona:</h6>
+                <ul class="mb-0">
+                    <li><strong>Visualização:</strong> O sistema mostra todas as despesas e receitas da empresa cadastradas para o mês selecionado.</li>
+                    <li><strong>Despesas fixas:</strong> São despesas do tipo "Fixas - SócratesOnline" que se repetem mensalmente.</li>
+                    <li><strong>Adicionar despesas fixas:</strong> Use o botão abaixo para criar automaticamente as despesas fixas que ainda não foram cadastradas no mês.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botão para adicionar despesas fixas -->
+    {% if mes_selecionado and ano_selecionado and despesas_fixas_pendentes %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-plus-circle-fill me-2"></i>Despesas Fixas Pendentes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                                                         <p class="mb-2">
+                                 <strong>{{ despesas_fixas_pendentes|length }}</strong> despesas fixas da empresa ainda não foram criadas para 
+                                 <strong><span id="mes-nome">{{ mes_selecionado }}</span>/{{ ano_selecionado }}</strong>:
+                             </p>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for despesa in despesas_fixas_pendentes %}
+                                <span class="badge bg-secondary">{{ despesa.nome }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <form method="POST" action="{{ url_for('adicionar_despesas_fixas') }}" class="d-inline">
+                                <input type="hidden" name="mes" value="{{ mes_selecionado }}">
+                                <input type="hidden" name="ano" value="{{ ano_selecionado }}">
+                                                                 <button type="submit" class="btn btn-primary" 
+                                         onclick="return confirm('Tem certeza que deseja adicionar {{ despesas_fixas_pendentes|length }} despesas fixas para {{ mes_selecionado }}/{{ ano_selecionado }}?')">
+                                     <i class="bi bi-plus-circle me-2"></i>
+                                     Adicionar Despesas Fixas para <span id="mes-abrev">{{ mes_selecionado }}</span>/{{ ano_selecionado }}
+                                 </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if mostrar_listagem and (despesas_mes or receitas_mes or despesas_evento_mes or receitas_evento_mes) %}
+    
+    <!-- Bloco de Despesas da Empresa -->
+    {% if despesas_mes %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <button class="btn btn-link text-decoration-none p-0 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDespesasEmpresa" aria-expanded="false" aria-controls="collapseDespesasEmpresa">
+                    <i class="bi bi-list-ul me-2 text-danger"></i>Despesas da Empresa - <span class="mes-nome-display">{{ mes_selecionado }}</span>/{{ ano_selecionado }}
+                    <i class="bi bi-chevron-down ms-2"></i>
+                </button>
+            </h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarDespesas('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarDespesas('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="collapse" id="collapseDespesasEmpresa">
+        <div class="card-body">
+            <!-- Campo de Busca -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar despesas..." onkeyup="aplicarFiltros()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+                        <select class="form-select" id="statusFilter" onchange="aplicarFiltros()">
+                            <option value="">Todos os Status</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <!-- Espaço removido do botão "Editar Despesas" -->
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="despesasTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTableDespesas(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(1)">Despesa <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(2)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(3)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(4)">Fornecedor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(5)">Status <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(6)">Forma Pagamento <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesas(7)">Observações <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th class="text-center" style="width: 150px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in despesas_mes %}
+                        <tr>
+                            <td>{{ d.data_vencimento.strftime('%d/%m/%Y') if d.data_vencimento else '—' }}</td>
+                            <td>{{ d.despesa.nome if d.despesa else '—' }}</td>
+                            <td>{{ d.despesa.categoria.nome if d.despesa and d.despesa.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-danger">
+                                    R$ {{ "%.2f"|format(d.valor)|replace('.', ',') if d.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>{{ d.fornecedor.nome if d.fornecedor else '—' }}</td>
+                            <td>
+                                {% if d.status_pagamento == 'pago' %}
+                                    <span class="badge bg-success">Pago</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ d.forma_pagamento.title() if d.forma_pagamento else '—' }}</td>
+                            <td>
+                                <span class="text-muted" title="{{ d.observacoes or '' }}">
+                                    {{ (d.observacoes[:30] + '...') if d.observacoes and d.observacoes|length > 30 else (d.observacoes or '—') }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('editar_despesa_empresa', id=d.id_despesa_empresa) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% if d.comprovante %}
+                                    <a href="{{ url_for('uploaded_file', filename=d.comprovante) }}" 
+                                       target="_blank" class="btn btn-sm btn-outline-info" title="Ver Comprovante">
+                                        <i class="bi bi-file-earmark"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{{ url_for('excluir_despesa_empresa', id=d.id_despesa_empresa) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir esta despesa?')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-warning">
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold">Subtotal:</td>
+                            <td class="fw-bold text-danger">
+                                R$ {{ "%.2f"|format(subtotal_despesas_empresa)|replace('.', ',') }}
+                            </td>
+                            <td colspan="5"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bloco de Receitas da Empresa -->
+    {% if receitas_mes %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <button class="btn btn-link text-decoration-none p-0 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReceitasEmpresa" aria-expanded="false" aria-controls="collapseReceitasEmpresa">
+                    <i class="bi bi-cash-coin me-2 text-success"></i>Receitas da Empresa - <span class="mes-nome-display">{{ mes_selecionado }}</span>/{{ ano_selecionado }}
+                    <i class="bi bi-chevron-down ms-2"></i>
+                </button>
+            </h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarReceitas('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarReceitas('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="collapse" id="collapseReceitasEmpresa">
+        <div class="card-body">
+            <!-- Campo de Busca para Receitas -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInputReceitas" placeholder="Buscar receitas..." onkeyup="aplicarFiltrosReceitas()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="receitasTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTableReceitas(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitas(1)">Receita <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitas(2)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitas(3)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitas(4)">Observações <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th class="text-center" style="width: 150px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in receitas_mes %}
+                        <tr>
+                            <td>{{ r.data.strftime('%d/%m/%Y') if r.data else '—' }}</td>
+                            <td>{{ r.receita.nome if r.receita else '—' }}</td>
+                            <td>{{ r.receita.categoria.nome if r.receita and r.receita.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-success">
+                                    R$ {{ "%.2f"|format(r.valor)|replace('.', ',') if r.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-muted" title="{{ r.observacoes or '' }}">
+                                    {{ (r.observacoes[:30] + '...') if r.observacoes and r.observacoes|length > 30 else (r.observacoes or '—') }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('editar_receita_empresa', id=r.id_receita_empresa) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('excluir_receita_empresa', id=r.id_receita_empresa) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir esta receita?')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-success">
+                        <tr>
+                            <td colspan="2" class="text-end fw-bold">Subtotal:</td>
+                            <td class="fw-bold text-success">
+                                R$ {{ "%.2f"|format(subtotal_receitas_empresa)|replace('.', ',') }}
+                            </td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Bloco de Despesas de Evento -->
+    {% if despesas_evento_mes %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <button class="btn btn-link text-decoration-none p-0 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDespesasEvento" aria-expanded="false" aria-controls="collapseDespesasEvento">
+                    <i class="bi bi-calendar-event me-2 text-danger"></i>Despesas de Evento - <span class="mes-nome-display">{{ mes_selecionado }}</span>/{{ ano_selecionado }}
+                    <i class="bi bi-chevron-down ms-2"></i>
+                </button>
+            </h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarDespesasEvento('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarDespesasEvento('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="collapse" id="collapseDespesasEvento">
+        <div class="card-body">
+            <!-- Campo de Busca para Despesas de Evento -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInputDespesasEvento" placeholder="Buscar despesas de evento..." onkeyup="aplicarFiltrosDespesasEvento()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+                        <select class="form-select" id="statusFilterDespesasEvento" onchange="aplicarFiltrosDespesasEvento()">
+                            <option value="">Todos os Status</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="despesasEventoTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTableDespesasEvento(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(1)">Evento <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(2)">Despesa <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(3)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(4)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(5)">Status <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(6)">Fornecedor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableDespesasEvento(7)">Observações <i class="bi bi-arrow-down-up text-muted"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in despesas_evento_mes %}
+                        <tr>
+                            <td>{{ d.data_vencimento.strftime('%d/%m/%Y') if d.data_vencimento else '—' }}</td>
+                            <td>{{ d.evento.nome if d.evento else '—' }}</td>
+                            <td>{{ d.despesa.nome if d.despesa else '—' }}</td>
+                            <td>{{ d.despesa.categoria.nome if d.despesa and d.despesa.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-danger">
+                                    R$ {{ "%.2f"|format(d.valor)|replace('.', ',') if d.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if d.status_pagamento == 'pago' %}
+                                    <span class="badge bg-success">Pago</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ d.fornecedor.nome if d.fornecedor else '—' }}</td>
+                            <td>
+                                <span class="text-muted" title="{{ d.observacoes or '' }}">
+                                    {{ (d.observacoes[:30] + '...') if d.observacoes and d.observacoes|length > 30 else (d.observacoes or '—') }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-warning">
+                        <tr>
+                            <td colspan="4" class="text-end fw-bold">Subtotal:</td>
+                            <td class="fw-bold text-danger">
+                                R$ {{ "%.2f"|format(subtotal_despesas_evento)|replace('.', ',') }}
+                            </td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bloco de Receitas de Evento -->
+    {% if receitas_evento_mes %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <button class="btn btn-link text-decoration-none p-0 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReceitasEvento" aria-expanded="false" aria-controls="collapseReceitasEvento">
+                    <i class="bi bi-calendar-event me-2 text-success"></i>Receitas de Evento - <span class="mes-nome-display">{{ mes_selecionado }}</span>/{{ ano_selecionado }}
+                    <i class="bi bi-chevron-down ms-2"></i>
+                </button>
+            </h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="exportarReceitasEvento('excel')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportarReceitasEvento('pdf')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <div class="collapse" id="collapseReceitasEvento">
+        <div class="card-body">
+            <!-- Campo de Busca para Receitas de Evento -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInputReceitasEvento" placeholder="Buscar receitas de evento..." onkeyup="aplicarFiltrosReceitasEvento()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="receitasEventoTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th onclick="sortTableReceitasEvento(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitasEvento(1)">Evento <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitasEvento(2)">Receita <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitasEvento(3)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitasEvento(4)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTableReceitasEvento(5)">Observações <i class="bi bi-arrow-down-up text-muted"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in receitas_evento_mes %}
+                        <tr>
+                            <td>{{ r.data.strftime('%d/%m/%Y') if r.data else '—' }}</td>
+                            <td>{{ r.evento.nome if r.evento else '—' }}</td>
+                            <td>{{ r.receita.nome if r.receita else '—' }}</td>
+                            <td>{{ r.receita.categoria.nome if r.receita and r.receita.categoria else '—' }}</td>
+                            <td>
+                                <span class="fw-bold text-success">
+                                    R$ {{ "%.2f"|format(r.valor)|replace('.', ',') if r.valor else '0,00' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-muted" title="{{ r.observacoes or '' }}">
+                                    {{ (r.observacoes[:30] + '...') if r.observacoes and r.observacoes|length > 30 else (r.observacoes or '—') }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-success">
+                        <tr>
+                            <td colspan="4" class="text-end fw-bold">Subtotal:</td>
+                            <td class="fw-bold text-success">
+                                R$ {{ "%.2f"|format(subtotal_receitas_evento)|replace('.', ',') }}
+                            </td>
+                            <td colspan="1"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if mostrar_listagem and not despesas_mes and not receitas_mes and not despesas_evento_mes and not receitas_evento_mes %}
+    <div class="alert alert-warning text-center">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Nenhuma despesa ou receita encontrada para o período selecionado.</strong>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Validação do formulário
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Filtros e busca para despesas
+function aplicarFiltros() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const table = document.getElementById('despesasTable');
+    
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const statusTerm = statusFilter.value.toLowerCase();
+    
+    let despesasVisiveis = 0;
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length === 0) continue;
+        
+        let mostrarLinha = true;
+        
+        // Filtro de busca
+        if (searchTerm) {
+            const textoLinha = row.textContent.toLowerCase();
+            if (!textoLinha.includes(searchTerm)) {
+                mostrarLinha = false;
+            }
+        }
+        
+        // Filtro de status
+        if (statusTerm && mostrarLinha) {
+            const statusCell = cells[5];
+            if (statusCell) {
+                const statusText = statusCell.textContent.toLowerCase();
+                if (!statusText.includes(statusTerm)) {
+                    mostrarLinha = false;
+                }
+            }
+        }
+        
+        if (mostrarLinha) {
+            row.style.display = '';
+            despesasVisiveis++;
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
+
+// Filtros e busca para receitas
+function aplicarFiltrosReceitas() {
+    const searchInput = document.getElementById('searchInputReceitas');
+    const table = document.getElementById('receitasTable');
+    
+    if (!table || !searchInput) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    
+    let receitasVisiveis = 0;
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length === 0) continue;
+        
+        let mostrarLinha = true;
+        
+        // Filtro de busca
+        if (searchTerm) {
+            const textoLinha = row.textContent.toLowerCase();
+            if (!textoLinha.includes(searchTerm)) {
+                mostrarLinha = false;
+            }
+        }
+        
+        if (mostrarLinha) {
+            row.style.display = '';
+            receitasVisiveis++;
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
+
+function formatarValor(valor) {
+    return 'R$ ' + valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Função para exportar despesas
+function exportarDespesas(formato) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/exportar/despesas_empresa_mes/' + formato;
+    
+    // Adicionar dados do mês selecionado
+    const mesInput = document.createElement('input');
+    mesInput.type = 'hidden';
+    mesInput.name = 'mes';
+    mesInput.value = '{{ mes_selecionado or "" }}';
+    form.appendChild(mesInput);
+    
+    const anoInput = document.createElement('input');
+    anoInput.type = 'hidden';
+    anoInput.name = 'ano';
+    anoInput.value = '{{ ano_selecionado or "" }}';
+    form.appendChild(anoInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// Função para exportar receitas
+function exportarReceitas(formato) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/exportar/receitas_empresa_mes/' + formato;
+    
+    // Adicionar dados do mês selecionado
+    const mesInput = document.createElement('input');
+    mesInput.type = 'hidden';
+    mesInput.name = 'mes';
+    mesInput.value = '{{ mes_selecionado or "" }}';
+    form.appendChild(mesInput);
+    
+    const anoInput = document.createElement('input');
+    anoInput.type = 'hidden';
+    anoInput.name = 'ano';
+    anoInput.value = '{{ ano_selecionado or "" }}';
+    form.appendChild(anoInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// Função de ordenação de tabela de despesas
+function sortTableDespesas(columnIndex) {
+    const table = document.getElementById('despesasTable');
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    
+    // Determinar direção da ordenação
+    let isAsc = table.getAttribute('data-sort-dir') !== 'asc';
+    table.setAttribute('data-sort-dir', isAsc ? 'asc' : 'desc');
+    
+    // Ordenar linhas
+    rows.sort((a, b) => {
+        const aVal = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+        const bVal = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+        
+        // Tratamento especial para valores monetários
+        if (columnIndex === 3) {
+            const aNum = parseFloat(aVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            const bNum = parseFloat(bVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            return isAsc ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Tratamento especial para datas
+        if (columnIndex === 0) {
+            const aDate = new Date(aVal.split('/').reverse().join('/'));
+            const bDate = new Date(bVal.split('/').reverse().join('/'));
+            return isAsc ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Não ordenar a coluna de ações
+        if (columnIndex === 8) {
+            return 0;
+        }
+        
+        // Ordenação alfabética
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    
+    // Reordenar elementos no DOM
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Atualizar ícones de ordenação
+    const headers = table.querySelectorAll('th i.bi-arrow-down-up');
+    headers.forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up text-muted';
+    });
+    
+    const currentIcon = table.querySelectorAll('th')[columnIndex].querySelector('i');
+    currentIcon.className = isAsc ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+}
+
+// Função de ordenação de tabela de receitas
+function sortTableReceitas(columnIndex) {
+    const table = document.getElementById('receitasTable');
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    
+    // Determinar direção da ordenação
+    let isAsc = table.getAttribute('data-sort-dir-receitas') !== 'asc';
+    table.setAttribute('data-sort-dir-receitas', isAsc ? 'asc' : 'desc');
+    
+    // Ordenar linhas
+    rows.sort((a, b) => {
+        const aVal = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+        const bVal = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+        
+        // Tratamento especial para valores monetários
+        if (columnIndex === 3) {
+            const aNum = parseFloat(aVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            const bNum = parseFloat(bVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            return isAsc ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Tratamento especial para datas
+        if (columnIndex === 0) {
+            const aDate = new Date(aVal.split('/').reverse().join('/'));
+            const bDate = new Date(bVal.split('/').reverse().join('/'));
+            return isAsc ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Não ordenar a coluna de ações
+        if (columnIndex === 5) {
+            return 0;
+        }
+        
+        // Ordenação alfabética
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    
+    // Reordenar elementos no DOM
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Atualizar ícones de ordenação
+    const headers = table.querySelectorAll('th i.bi-arrow-down-up');
+    headers.forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up text-muted';
+    });
+    
+    const currentIcon = table.querySelectorAll('th')[columnIndex].querySelector('i');
+    currentIcon.className = isAsc ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+}
+
+// Filtros e busca para despesas de evento
+function aplicarFiltrosDespesasEvento() {
+    const searchInput = document.getElementById('searchInputDespesasEvento');
+    const statusFilter = document.getElementById('statusFilterDespesasEvento');
+    const table = document.getElementById('despesasEventoTable');
+    
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const statusTerm = statusFilter.value.toLowerCase();
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length === 0) continue;
+        
+        let mostrarLinha = true;
+        
+        // Filtro de busca
+        if (searchTerm) {
+            const textoLinha = row.textContent.toLowerCase();
+            if (!textoLinha.includes(searchTerm)) {
+                mostrarLinha = false;
+            }
+        }
+        
+        // Filtro de status
+        if (statusTerm && mostrarLinha) {
+            const statusCell = cells[5];
+            if (statusCell) {
+                const statusText = statusCell.textContent.toLowerCase();
+                if (!statusText.includes(statusTerm)) {
+                    mostrarLinha = false;
+                }
+            }
+        }
+        
+        row.style.display = mostrarLinha ? '' : 'none';
+    }
+}
+
+// Filtros e busca para receitas de evento
+function aplicarFiltrosReceitasEvento() {
+    const searchInput = document.getElementById('searchInputReceitasEvento');
+    const table = document.getElementById('receitasEventoTable');
+    
+    if (!table || !searchInput) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length === 0) continue;
+        
+        let mostrarLinha = true;
+        
+        // Filtro de busca
+        if (searchTerm) {
+            const textoLinha = row.textContent.toLowerCase();
+            if (!textoLinha.includes(searchTerm)) {
+                mostrarLinha = false;
+            }
+        }
+        
+        row.style.display = mostrarLinha ? '' : 'none';
+    }
+}
+
+// Função para exportar despesas de evento
+function exportarDespesasEvento(formato) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/exportar/despesas_evento_mes/' + formato;
+    
+    // Adicionar dados do mês selecionado
+    const mesInput = document.createElement('input');
+    mesInput.type = 'hidden';
+    mesInput.name = 'mes';
+    mesInput.value = '{{ mes_selecionado or "" }}';
+    form.appendChild(mesInput);
+    
+    const anoInput = document.createElement('input');
+    anoInput.type = 'hidden';
+    anoInput.name = 'ano';
+    anoInput.value = '{{ ano_selecionado or "" }}';
+    form.appendChild(anoInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// Função para exportar receitas de evento
+function exportarReceitasEvento(formato) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/exportar/receitas_evento_mes/' + formato;
+    
+    // Adicionar dados do mês selecionado
+    const mesInput = document.createElement('input');
+    mesInput.type = 'hidden';
+    mesInput.name = 'mes';
+    mesInput.value = '{{ mes_selecionado or "" }}';
+    form.appendChild(mesInput);
+    
+    const anoInput = document.createElement('input');
+    anoInput.type = 'hidden';
+    anoInput.name = 'ano';
+    anoInput.value = '{{ ano_selecionado or "" }}';
+    form.appendChild(anoInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+// Função de ordenação de tabela de despesas de evento
+function sortTableDespesasEvento(columnIndex) {
+    const table = document.getElementById('despesasEventoTable');
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    
+    // Determinar direção da ordenação
+    let isAsc = table.getAttribute('data-sort-dir-despesas-evento') !== 'asc';
+    table.setAttribute('data-sort-dir-despesas-evento', isAsc ? 'asc' : 'desc');
+    
+    // Ordenar linhas
+    rows.sort((a, b) => {
+        const aVal = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+        const bVal = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+        
+        // Tratamento especial para valores monetários
+        if (columnIndex === 4) {
+            const aNum = parseFloat(aVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            const bNum = parseFloat(bVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            return isAsc ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Tratamento especial para datas
+        if (columnIndex === 0) {
+            const aDate = new Date(aVal.split('/').reverse().join('/'));
+            const bDate = new Date(bVal.split('/').reverse().join('/'));
+            return isAsc ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Ordenação alfabética
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    
+    // Reordenar elementos no DOM
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Atualizar ícones de ordenação
+    const headers = table.querySelectorAll('th i.bi-arrow-down-up');
+    headers.forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up text-muted';
+    });
+    
+    const currentIcon = table.querySelectorAll('th')[columnIndex].querySelector('i');
+    currentIcon.className = isAsc ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+}
+
+// Função de ordenação de tabela de receitas de evento
+function sortTableReceitasEvento(columnIndex) {
+    const table = document.getElementById('receitasEventoTable');
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    
+    // Determinar direção da ordenação
+    let isAsc = table.getAttribute('data-sort-dir-receitas-evento') !== 'asc';
+    table.setAttribute('data-sort-dir-receitas-evento', isAsc ? 'asc' : 'desc');
+    
+    // Ordenar linhas
+    rows.sort((a, b) => {
+        const aVal = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+        const bVal = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+        
+        // Tratamento especial para valores monetários
+        if (columnIndex === 4) {
+            const aNum = parseFloat(aVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            const bNum = parseFloat(bVal.replace(/[^\d,]/g, '').replace(',', '.'));
+            return isAsc ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Tratamento especial para datas
+        if (columnIndex === 0) {
+            const aDate = new Date(aVal.split('/').reverse().join('/'));
+            const bDate = new Date(bVal.split('/').reverse().join('/'));
+            return isAsc ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Ordenação alfabética
+        return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    
+    // Reordenar elementos no DOM
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Atualizar ícones de ordenação
+    const headers = table.querySelectorAll('th i.bi-arrow-down-up');
+    headers.forEach(icon => {
+        icon.className = 'bi bi-arrow-down-up text-muted';
+    });
+    
+    const currentIcon = table.querySelectorAll('th')[columnIndex].querySelector('i');
+    currentIcon.className = isAsc ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+}
+
+// Converter números dos meses para nomes
+document.addEventListener('DOMContentLoaded', function() {
+    const meses = [
+        '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    
+    const mesesAbrev = [
+        '', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+        'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ];
+    
+    // Converter todos os elementos com classe mes-nome-display
+    const mesNomes = document.querySelectorAll('.mes-nome-display');
+    mesNomes.forEach(element => {
+        const mesNumero = parseInt(element.textContent);
+        if (mesNumero >= 1 && mesNumero <= 12) {
+            element.textContent = meses[mesNumero];
+        }
+    });
+    
+    // Converter elementos específicos
+    const mesNome = document.getElementById('mes-nome');
+    const mesAbrev = document.getElementById('mes-abrev');
+    
+    if (mesNome) {
+        const mesNumero = parseInt(mesNome.textContent);
+        if (mesNumero >= 1 && mesNumero <= 12) {
+            mesNome.textContent = meses[mesNumero];
+        }
+    }
+    
+    if (mesAbrev) {
+        const mesNumero = parseInt(mesAbrev.textContent);
+        if (mesNumero >= 1 && mesNumero <= 12) {
+            mesAbrev.textContent = mesesAbrev[mesNumero];
+        }
+    }
+    
+    // Adicionar funcionalidade aos botões de colapso
+    const collapseButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+    collapseButtons.forEach(button => {
+        const icon = button.querySelector('i.bi-chevron-down');
+        const targetId = button.getAttribute('data-bs-target');
+        const targetElement = document.querySelector(targetId);
+        
+        if (targetElement && icon) {
+            targetElement.addEventListener('shown.bs.collapse', function() {
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-up');
+            });
+            
+            targetElement.addEventListener('hidden.bs.collapse', function() {
+                icon.classList.remove('bi-chevron-up');
+                icon.classList.add('bi-chevron-down');
+            });
+        }
+    });
+});
+</script>
+
+{% endblock %} 

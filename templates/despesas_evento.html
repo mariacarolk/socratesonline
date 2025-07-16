@@ -85,6 +85,56 @@
                         </div>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.flag_alimentacao(class="form-check-input", id="flag_alimentacao") }}
+                            {{ form.flag_alimentacao.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.flag_combustivel(class="form-check-input") }}
+                            {{ form.flag_combustivel.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campos de quantidade para despesas de alimentação -->
+                <div class="row" id="campos-alimentacao" style="display: none;">
+                    <div class="col-12 mb-2">
+                        <div class="alert alert-info alert-sm">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.qtd_dias.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.qtd_dias(class="form-control", min="1", placeholder="Ex: 5", id="qtd_dias") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a quantidade de dias.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.qtd_pessoas.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.qtd_pessoas(class="form-control", min="1", placeholder="Ex: 10", id="qtd_pessoas") }}
+                            <span class="input-group-text"><i class="bi bi-people"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a quantidade de pessoas.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Número de pessoas que serão alimentadas</small>
+                        </div>
+                    </div>
+                </div>
                 <div class="d-flex justify-content-end">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-save me-2"></i>Salvar
@@ -119,6 +169,8 @@
                             <th>Categoria</th>
                             <th>Tipo</th>
                             <th>Valor Médio</th>
+                            <th class="text-center">Alimentação</th>
+                            <th class="text-center">Combustível</th>
                             <th class="text-center" style="width: 150px;">Ações</th>
                         </tr>
                     </thead>
@@ -133,6 +185,20 @@
                                     R$ {{ "%.2f"|format(d.valor_medio_despesa)|replace('.', ',') }}
                                 {% else %}
                                     —
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if d.flag_alimentacao %}
+                                    <i class="bi bi-check-circle-fill text-success fs-5" title="Despesa de Alimentação"></i>
+                                {% else %}
+                                    <i class="bi bi-circle text-muted" title="Não é despesa de alimentação"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if d.flag_combustivel %}
+                                    <i class="bi bi-check-circle-fill text-success fs-5" title="Despesa de Combustível"></i>
+                                {% else %}
+                                    <i class="bi bi-circle text-muted" title="Não é despesa de combustível"></i>
                                 {% endif %}
                             </td>
                             <td class="text-center">
@@ -171,6 +237,10 @@
         const requiredIndicator = document.getElementById('required-indicator');
         const valorRequiredText = document.getElementById('valor-required-text');
         const valorHelpText = document.getElementById('valor-help-text');
+        const flagAlimentacao = document.getElementById('flag_alimentacao');
+        const camposAlimentacao = document.getElementById('campos-alimentacao');
+        const qtdDiasInput = document.getElementById('qtd_dias');
+        const qtdPessoasInput = document.getElementById('qtd_pessoas');
         
         // Função para verificar se é despesa fixa
         function isDespesaFixa(tipo) {
@@ -195,11 +265,33 @@
             }
         }
         
+        // Função para mostrar/esconder campos de alimentação
+        function toggleCamposAlimentacao() {
+            if (flagAlimentacao.checked) {
+                camposAlimentacao.style.display = 'block';
+                qtdDiasInput.setAttribute('required', 'required');
+                qtdPessoasInput.setAttribute('required', 'required');
+            } else {
+                camposAlimentacao.style.display = 'none';
+                qtdDiasInput.removeAttribute('required');
+                qtdPessoasInput.removeAttribute('required');
+                qtdDiasInput.value = '';
+                qtdPessoasInput.value = '';
+            }
+        }
+        
         // Atualizar indicação quando o tipo muda
         if (tipoSelect) {
             tipoSelect.addEventListener('change', updateRequiredIndication);
             // Atualizar na carga da página
             updateRequiredIndication();
+        }
+        
+        // Monitorar mudanças no checkbox de alimentação
+        if (flagAlimentacao) {
+            flagAlimentacao.addEventListener('change', toggleCamposAlimentacao);
+            // Verificar estado inicial
+            toggleCamposAlimentacao();
         }
         
         // Validação customizada do formulário

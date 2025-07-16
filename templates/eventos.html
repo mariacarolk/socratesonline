@@ -212,6 +212,13 @@
                   <i class="bi bi-shop"></i>
                   <span>Fornecedores</span>
                 </a>
+                
+                  <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-action-secondary-mobile btn-success-secondary"
+                   onclick="event.stopPropagation();">
+                  <i class="bi bi-car-front"></i>
+                  <span>Veículos</span>
+                </a>
               </div>
             </div>
             
@@ -283,6 +290,11 @@
                       <i class="bi bi-shop me-2 text-success"></i>Gerenciar Fornecedores
                     </a>
                   </li>
+                  <li>
+                    <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
+                      <i class="bi bi-car-front me-2 text-success"></i>Gerenciar Veículos
+                    </a>
+                  </li>
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <a href="#" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ evento.id_evento }}">
@@ -339,8 +351,14 @@
                   </div>
                   
                   <div class="col-md-6">
-                    <label class="form-label fw-medium">Data</label>
-                    <input type="date" name="data" class="form-control" required value="{{ current_date }}">
+                    <label class="form-label fw-medium">Data de Vencimento</label>
+                    <input type="date" name="data_vencimento" class="form-control" required value="{{ current_date }}">
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label class="form-label fw-medium">Data de Pagamento</label>
+                    <input type="date" name="data_pagamento" class="form-control">
+                    <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
                   </div>
                   
                   <div class="col-md-6">
@@ -423,6 +441,36 @@
                       <label class="form-check-label fw-medium" for="despesa_cabeca_{{ evento.id_evento }}">
                         Despesa da cabeça
                       </label>
+                    </div>
+                  </div>
+                  
+                  <!-- Campos de quantidade para despesas de alimentação -->
+                  <div class="row" id="modal-campos-alimentacao-{{ evento.id_evento }}" style="display: none;">
+                    <div class="col-12 mb-2">
+                      <div class="alert alert-info alert-sm">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-medium">Quantidade de Dias</label>
+                      <div class="input-group">
+                        <input type="number" name="qtd_dias" class="form-control" id="modal_qtd_dias_{{ evento.id_evento }}" min="1" placeholder="Ex: 5">
+                        <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                      </div>
+                      <div class="form-text">
+                        <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-medium">Quantidade de Pessoas</label>
+                      <div class="input-group">
+                        <input type="number" name="qtd_pessoas" class="form-control" id="modal_qtd_pessoas_{{ evento.id_evento }}" min="1" placeholder="Ex: 10">
+                        <span class="input-group-text"><i class="bi bi-people"></i></span>
+                      </div>
+                      <div class="form-text">
+                        <small class="text-muted">Número de pessoas que serão alimentadas</small>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1129,9 +1177,15 @@ function carregarDespesasPorCategoria(selectCategoria, eventoId) {
                 selectDespesa.appendChild(option);
             });
             
-            // Remover listeners existentes e adicionar novo
+            // Remover listeners existentes e adicionar novos
             selectDespesa.removeEventListener('change', preencherValorMedio);
+            selectDespesa.removeEventListener('change', function() { verificarDespesaAlimentacaoEventos(this, eventoId); });
+            
             selectDespesa.addEventListener('change', preencherValorMedio);
+            selectDespesa.addEventListener('change', function() { 
+                console.log('🔄 Despesa selecionada, verificando alimentação...');
+                verificarDespesaAlimentacaoEventos(this, eventoId); 
+            });
         })
         .catch(error => {
             console.error('❌ Erro ao carregar despesas:', error);
@@ -1156,6 +1210,109 @@ function preencherValorMedio() {
         inputValor.value = '';
         inputValor.placeholder = valorMedio ? `Sugestão: R$ ${valorMedio}` : '0,00';
     }
+}
+
+// Função para verificar se a despesa selecionada é de alimentação
+function verificarDespesaAlimentacaoEventos(selectDespesa, eventoId) {
+    console.log('🔍 === VERIFICANDO ALIMENTAÇÃO EVENTOS ===');
+    
+    const despesaId = selectDespesa.value;
+    const camposAlimentacao = document.getElementById(`modal-campos-alimentacao-${eventoId}`);
+    const qtdDiasInput = document.getElementById(`modal_qtd_dias_${eventoId}`);
+    const qtdPessoasInput = document.getElementById(`modal_qtd_pessoas_${eventoId}`);
+    
+    console.log('📋 Elementos encontrados:', {
+        eventoId: eventoId,
+        despesaId: despesaId,
+        camposAlimentacao: !!camposAlimentacao,
+        qtdDiasInput: !!qtdDiasInput,
+        qtdPessoasInput: !!qtdPessoasInput
+    });
+    
+    if (despesaId && despesaId != '0') {
+        console.log('🔄 Fazendo requisição para API...');
+        
+        // Buscar informações da despesa selecionada
+        fetch(`/api/despesa-detalhes/${despesaId}`)
+            .then(response => {
+                console.log('📡 Resposta da API recebida:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 Dados da API:', data);
+                
+                if (data.flag_alimentacao) {
+                    console.log('✅ É despesa de alimentação! Mostrando campos...');
+                    
+                    // Mostrar campos de quantidade
+                    if (camposAlimentacao) {
+                        console.log('🟡 Aplicando estilo ao elemento...');
+                        camposAlimentacao.style.display = 'block';
+                        camposAlimentacao.style.backgroundColor = '#ffffcc'; // Destaque amarelo para debug
+                        camposAlimentacao.style.border = '2px solid #ffc107'; // Borda amarela visível
+                        camposAlimentacao.style.padding = '15px'; // Padding para visibilidade
+                        camposAlimentacao.style.marginTop = '10px'; // Margem
+                        console.log('✅ Campos exibidos com destaque AMARELO');
+                    } else {
+                        console.error('❌ Elemento modal-campos-alimentacao não encontrado!');
+                    }
+                    
+                    // Tornar campos obrigatórios
+                    if (qtdDiasInput) {
+                        qtdDiasInput.setAttribute('required', 'required');
+                        console.log('✅ Campo qtd_dias marcado como obrigatório');
+                    }
+                    if (qtdPessoasInput) {
+                        qtdPessoasInput.setAttribute('required', 'required');
+                        console.log('✅ Campo qtd_pessoas marcado como obrigatório');
+                    }
+                } else {
+                    console.log('❌ NÃO é despesa de alimentação. Escondendo campos...');
+                    
+                    // Esconder campos de quantidade
+                    if (camposAlimentacao) {
+                        camposAlimentacao.style.display = 'none';
+                    }
+                    
+                    // Remover obrigatoriedade e limpar valores
+                    if (qtdDiasInput) {
+                        qtdDiasInput.removeAttribute('required');
+                        qtdDiasInput.value = '';
+                    }
+                    if (qtdPessoasInput) {
+                        qtdPessoasInput.removeAttribute('required');
+                        qtdPessoasInput.value = '';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erro ao verificar despesa:', error);
+                
+                // Em caso de erro, esconder campos
+                if (camposAlimentacao) {
+                    camposAlimentacao.style.display = 'none';
+                }
+                if (qtdDiasInput) qtdDiasInput.removeAttribute('required');
+                if (qtdPessoasInput) qtdPessoasInput.removeAttribute('required');
+            });
+    } else {
+        console.log('⚠️ Nenhuma despesa selecionada. Escondendo campos...');
+        
+        // Nenhuma despesa selecionada, esconder campos
+        if (camposAlimentacao) {
+            camposAlimentacao.style.display = 'none';
+        }
+        if (qtdDiasInput) {
+            qtdDiasInput.removeAttribute('required');
+            qtdDiasInput.value = '';
+        }
+        if (qtdPessoasInput) {
+            qtdPessoasInput.removeAttribute('required');
+            qtdPessoasInput.value = '';
+        }
+    }
+    
+    console.log('🏁 === FIM DA VERIFICAÇÃO EVENTOS ===');
 }
 
 // Função para carregar receitas por categoria

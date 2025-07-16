@@ -354,7 +354,7 @@
                             <td>
                               <span class="despesa-display">{{ despesa.data_atual|date_br if despesa.data_atual else '' }}</span>
                               <input type="date" class="form-control form-control-sm despesa-edit d-none" 
-                                     id="despesa_data_{{ despesa.id_despesa }}" 
+                                     id="despesa_data_vencimento_{{ despesa.id_despesa }}" 
                                      value="{{ despesa.data_atual }}">
                                 </td>
                                 <td>
@@ -420,6 +420,8 @@
                                         data-obs="{{ despesa.obs_atual or "" }}"
                                         data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
                                         data-comprovante="{{ despesa.comprovante_atual or "" }}"
+                                        data-qtd-dias="{{ despesa.qtd_dias_atual or "" }}"
+                                        data-qtd-pessoas="{{ despesa.qtd_pessoas_atual or "" }}"
                                         title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </button>
@@ -469,7 +471,7 @@
                             <td>
                               <span class="despesa-display">{{ despesa.data_atual|date_br if despesa.data_atual else '' }}</span>
                               <input type="date" class="form-control form-control-sm despesa-edit d-none" 
-                                     id="despesa_data_{{ despesa.id_despesa }}" 
+                                     id="despesa_data_vencimento_{{ despesa.id_despesa }}" 
                                      value="{{ despesa.data_atual }}">
                                 </td>
                             <td>
@@ -535,6 +537,8 @@
                                         data-obs="{{ despesa.obs_atual or "" }}"
                                         data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
                                         data-comprovante="{{ despesa.comprovante_atual or "" }}"
+                                        data-qtd-dias="{{ despesa.qtd_dias_atual or "" }}"
+                                        data-qtd-pessoas="{{ despesa.qtd_pessoas_atual or "" }}"
                                         title="Editar">
                                   <i class="bi bi-pencil"></i>
                                 </button>
@@ -755,8 +759,14 @@
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">Data</label>
-              <input type="date" name="data" class="form-control" id="modal_despesa_data" required value="{{ current_date }}">
+              <label class="form-label">Data de Vencimento</label>
+              <input type="date" name="data_vencimento" class="form-control" id="modal_despesa_data_vencimento" required value="{{ current_date }}">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Data de Pagamento</label>
+              <input type="date" name="data_pagamento" class="form-control" id="modal_despesa_data_pagamento">
+              <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
             </div>
             
             <div class="col-md-6">
@@ -841,6 +851,36 @@
               <div class="form-text">
                 <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
                 <br><small class="text-muted">Se anexar um novo arquivo, o anterior será substituído automaticamente.</small>
+              </div>
+            </div>
+            
+            <!-- Campos de quantidade para despesas de alimentação -->
+            <div class="row" id="modal-campos-alimentacao" style="display: none;">
+              <div class="col-12 mb-2">
+                <div class="alert alert-info alert-sm">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Quantidade de Dias</label>
+                <div class="input-group">
+                  <input type="number" name="qtd_dias" class="form-control" id="modal_qtd_dias" min="1" placeholder="Ex: 5">
+                  <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                </div>
+                <div class="form-text">
+                  <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Quantidade de Pessoas</label>
+                <div class="input-group">
+                  <input type="number" name="qtd_pessoas" class="form-control" id="modal_qtd_pessoas" min="1" placeholder="Ex: 10">
+                  <span class="input-group-text"><i class="bi bi-people"></i></span>
+                </div>
+                <div class="form-text">
+                  <small class="text-muted">Número de pessoas que serão alimentadas</small>
+                </div>
               </div>
             </div>
             
@@ -1261,7 +1301,7 @@ function abrirModalDespesa(despesaId, categoriaId, nomeDespesa, nomeCategoria, i
     }
     
     // Pré-preencher data
-    document.getElementById('modal_despesa_data').value = '{{ current_date }}';
+    document.getElementById('modal_despesa_data_vencimento').value = '{{ current_date }}';
     
     // Pré-preencher valor médio se disponível
     if (valorMedio) {
@@ -1354,11 +1394,129 @@ function carregarDespesasPorCategoriaModal(categoriaId, despesaIdSelecionada) {
                 }
                 selectDespesa.appendChild(option);
             });
+            
+            // Se uma despesa foi pré-selecionada, verificar se é de alimentação
+            if (despesaIdSelecionada) {
+                // Usar setTimeout para garantir que o DOM foi atualizado
+                setTimeout(() => {
+                    verificarDespesaAlimentacaoModal();
+                }, 100);
+            }
         })
         .catch(error => {
             console.error('Erro ao carregar despesas:', error);
             selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
         });
+}
+
+// Função para verificar se a despesa selecionada no modal é de alimentação
+function verificarDespesaAlimentacaoModal() {
+    console.log('🔍 === INICIANDO VERIFICAÇÃO MODAL ===');
+    
+    const despesaSelect = document.getElementById('modal_despesa_item');
+    const camposAlimentacao = document.getElementById('modal-campos-alimentacao');
+    const qtdDiasInput = document.getElementById('modal_qtd_dias');
+    const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
+    
+    console.log('📋 Elementos encontrados:', {
+        despesaSelect: !!despesaSelect,
+        camposAlimentacao: !!camposAlimentacao,
+        qtdDiasInput: !!qtdDiasInput,
+        qtdPessoasInput: !!qtdPessoasInput
+    });
+    
+    const despesaId = despesaSelect ? despesaSelect.value : 'ELEMENTO_NAO_ENCONTRADO';
+    console.log('🎯 Despesa ID selecionada:', despesaId);
+    
+    if (despesaId && despesaId != '0') {
+        console.log('🔄 Fazendo requisição para API...');
+        
+        // Buscar informações da despesa selecionada
+        fetch(`/api/despesa-detalhes/${despesaId}`)
+            .then(response => {
+                console.log('📡 Resposta da API recebida:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 Dados da API:', data);
+                
+                if (data.flag_alimentacao) {
+                    console.log('✅ É despesa de alimentação! Mostrando campos...');
+                    
+                    // Mostrar campos de quantidade
+                    if (camposAlimentacao) {
+                        console.log('🟡 Aplicando estilo ao elemento modal-campos-alimentacao...');
+                        camposAlimentacao.style.display = 'block';
+                        camposAlimentacao.style.backgroundColor = '#ffffcc'; // Destaque amarelo para debug
+                        camposAlimentacao.style.border = '2px solid #ffc107'; // Borda amarela visível
+                        camposAlimentacao.style.padding = '15px'; // Padding para visibilidade
+                        camposAlimentacao.style.marginTop = '10px'; // Margem
+                        console.log('✅ Campos exibidos com destaque AMARELO');
+                        console.log('🔍 Estado atual do elemento:', {
+                            display: camposAlimentacao.style.display,
+                            backgroundColor: camposAlimentacao.style.backgroundColor,
+                            visibility: getComputedStyle(camposAlimentacao).visibility
+                        });
+                    } else {
+                        console.error('❌ Elemento modal-campos-alimentacao não encontrado!');
+                    }
+                    
+                    // Tornar campos obrigatórios
+                    if (qtdDiasInput) {
+                        qtdDiasInput.setAttribute('required', 'required');
+                        console.log('✅ Campo qtd_dias marcado como obrigatório');
+                    }
+                    if (qtdPessoasInput) {
+                        qtdPessoasInput.setAttribute('required', 'required');
+                        console.log('✅ Campo qtd_pessoas marcado como obrigatório');
+                    }
+                } else {
+                    console.log('❌ NÃO é despesa de alimentação. Escondendo campos...');
+                    
+                    // Esconder campos de quantidade
+                    if (camposAlimentacao) {
+                        camposAlimentacao.style.display = 'none';
+                    }
+                    
+                    // Remover obrigatoriedade e limpar valores
+                    if (qtdDiasInput) {
+                        qtdDiasInput.removeAttribute('required');
+                        qtdDiasInput.value = '';
+                    }
+                    if (qtdPessoasInput) {
+                        qtdPessoasInput.removeAttribute('required');
+                        qtdPessoasInput.value = '';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erro ao verificar despesa:', error);
+                
+                // Em caso de erro, esconder campos
+                if (camposAlimentacao) {
+                    camposAlimentacao.style.display = 'none';
+                }
+                if (qtdDiasInput) qtdDiasInput.removeAttribute('required');
+                if (qtdPessoasInput) qtdPessoasInput.removeAttribute('required');
+            });
+    } else {
+        console.log('⚠️ Nenhuma despesa selecionada ou despesa inválida. Escondendo campos...');
+        
+        // Nenhuma despesa selecionada, esconder campos
+        if (camposAlimentacao) {
+            camposAlimentacao.style.display = 'none';
+        }
+        if (qtdDiasInput) {
+            qtdDiasInput.removeAttribute('required');
+            qtdDiasInput.value = '';
+        }
+        if (qtdPessoasInput) {
+            qtdPessoasInput.removeAttribute('required');
+            qtdPessoasInput.value = '';
+        }
+    }
+    
+    console.log('🏁 === FIM DA VERIFICAÇÃO MODAL ===');
 }
 
 // Função para adicionar receita do evento
@@ -1575,7 +1733,7 @@ function editarReceita(receitaId) {
 
 // Função para salvar despesa individual
 function salvarDespesa(despesaId, isFixa) {
-    var data = document.getElementById('despesa_data_' + despesaId).value;
+    var data = document.getElementById('despesa_data_vencimento_' + despesaId).value;
     var valor = document.getElementById('despesa_valor_' + despesaId).value;
     var fornecedor = document.getElementById('despesa_fornecedor_' + despesaId).value;
     var status = document.getElementById('despesa_status_' + despesaId).value;
@@ -1626,7 +1784,7 @@ function salvarDespesa(despesaId, isFixa) {
                 
                 // Criar objeto com os dados da despesa para passar para a função
                 var dadosDespesa = {
-                    data: document.getElementById('despesa_data_' + despesaId).value,
+                    data_vencimento: document.getElementById('despesa_data_vencimento_' + despesaId).value,
                     valor: document.getElementById('despesa_valor_' + despesaId).value,
                     status_pagamento: document.getElementById('despesa_status_' + despesaId).value,
                     forma_pagamento: document.getElementById('despesa_forma_' + despesaId).value,
@@ -1672,7 +1830,7 @@ function esconderCamposDespesa(despesaId, dadosDespesa, fornecedorNome) {
     var cells = linha.querySelectorAll('td');
     
     // Data (índice 1)
-    cells[1].querySelector('.despesa-display').innerHTML = formatarDataBR(dadosDespesa.data);
+    cells[1].querySelector('.despesa-display').innerHTML = formatarDataBR(dadosDespesa.data_vencimento);
     
     // Valor (índice 2)
     cells[2].querySelector('.despesa-display').innerHTML = 'R$ ' + dadosDespesa.valor;
@@ -1932,6 +2090,7 @@ function esconderCamposReceita(receitaEventoId, dadosReceita) {
 
 // Validação de formulário
 document.addEventListener('DOMContentLoaded', function() {
+    
     // Event listeners para mudanças nas categorias dos modais
     var modalReceitaCategoria = document.getElementById('modal_receita_categoria');
     var modalDespesaCategoria = document.getElementById('modal_despesa_categoria');
@@ -1946,6 +2105,23 @@ document.addEventListener('DOMContentLoaded', function() {
         modalDespesaCategoria.addEventListener('change', function() {
             carregarDespesasPorCategoriaModal(this.value);
         });
+    }
+    
+    // Event listener para verificar despesa de alimentação quando item for selecionado
+    var modalDespesaItem = document.getElementById('modal_despesa_item');
+    console.log('🎯 Configurando event listener para modal_despesa_item:', !!modalDespesaItem);
+    
+    if (modalDespesaItem) {
+        modalDespesaItem.addEventListener('change', function() {
+            console.log('🔄 Event listener DISPARADO - Valor selecionado:', this.value);
+            console.log('🔄 Chamando verificarDespesaAlimentacaoModal...');
+            verificarDespesaAlimentacaoModal();
+        });
+        console.log('✅ Event listener configurado com sucesso!');
+        
+
+    } else {
+        console.error('❌ Elemento modal_despesa_item NÃO ENCONTRADO!');
     }
     
     var forms = document.querySelectorAll('.needs-validation');
@@ -2158,7 +2334,7 @@ function editarDespesaModal(button) {
     
     // Preencher dados no modal
     document.getElementById('modal_despesa_categoria').value = categoriaId;
-    document.getElementById('modal_despesa_data').value = data;
+    document.getElementById('modal_despesa_data_vencimento').value = data;
     document.getElementById('modal_despesa_valor').value = valor ? valor.replace('.', ',') : '';
     document.getElementById('modal_despesa_fornecedor_nome').value = fornecedor || '';
     document.getElementById('modal_despesa_fornecedor').value = fornecedorId || '';
@@ -2166,6 +2342,20 @@ function editarDespesaModal(button) {
     document.getElementById('modal_despesa_forma').value = forma || 'débito';
     document.getElementById('modal_despesa_pago_por').value = pagoPor || '';
     document.getElementById('modal_despesa_obs').value = obs || '';
+    
+    // Preencher campos de quantidade se existirem
+    const qtdDias = button.getAttribute('data-qtd-dias');
+    const qtdPessoas = button.getAttribute('data-qtd-pessoas');
+    
+    console.log('Qtd Dias:', qtdDias);
+    console.log('Qtd Pessoas:', qtdPessoas);
+    
+    // Preencher campos de quantidade
+    document.getElementById('modal_qtd_dias').value = qtdDias || '';
+    document.getElementById('modal_qtd_pessoas').value = qtdPessoas || '';
+    
+    // Verificar se deve mostrar campos de alimentação (será feito quando as despesas carregarem)
+    // A verificação automática será feita pelo event listener após carregarDespesasPorCategoriaModal
     
     // Limpar campo de comprovante e exibir comprovante atual se existir
     const comprovanteField = document.getElementById('modal_despesa_comprovante');
@@ -2446,6 +2636,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+var forms = document.querySelectorAll('.needs-validation');
+
+// TESTE FINAL - VERIFICA SE SCRIPT CHEGOU ATÉ O FIM
+console.log('🏁 SCRIPT COMPLETAMENTE CARREGADO - Final do arquivo JavaScript');
+console.log('📋 Total de elementos form encontrados:', forms.length);
 </script>
 
 <!-- Script de cidades dinâmicas -->

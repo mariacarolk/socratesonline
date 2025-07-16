@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('relatorio_veiculos') }}">Relatórios</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Veículos e Eventos</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1 text-gray-900">
+            <i class="bi bi-car-front text-success me-2"></i>Relatório de Veículos e Eventos
+        </h2>
+        <p class="text-muted mb-0">Controle de uso de veículos nos eventos</p>
+    </div>
+    <div class="btn-toolbar">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('exportar_relatorio_veiculos', formato='excel') }}?categoria={{ categoria_filtro }}&data_inicio={{ data_inicio }}&data_fim={{ data_fim }}" 
+               class="btn btn-sm btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
+            <a href="{{ url_for('exportar_relatorio_veiculos', formato='pdf') }}?categoria={{ categoria_filtro }}&data_inicio={{ data_inicio }}&data_fim={{ data_fim }}" 
+               class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-medium">
+                    <i class="bi bi-funnel me-1"></i>Categoria
+                </label>
+                <select name="categoria" class="form-select form-select-sm">
+                    <option value="">Todas as categorias</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.id_categoria_veiculo }}" 
+                                {% if categoria_filtro == categoria.id_categoria_veiculo|string %}selected{% endif %}>
+                            {{ categoria.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-medium">
+                    <i class="bi bi-calendar-event me-1"></i>Data Início
+                </label>
+                <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ data_inicio }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-medium">
+                    <i class="bi bi-calendar-check me-1"></i>Data Fim
+                </label>
+                <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ data_fim }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-search me-1"></i>Filtrar
+                </button>
+                <a href="{{ url_for('relatorio_veiculos') }}" class="btn btn-outline-secondary btn-sm ms-2">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Limpar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h3 class="text-primary mb-1">{{ estatisticas.total_veiculos }}</h3>
+                <small class="text-muted">Total de Veículos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h3 class="text-success mb-1">{{ estatisticas.veiculos_com_eventos }}</h3>
+                <small class="text-muted">Com Eventos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h3 class="text-warning mb-1">{{ estatisticas.veiculos_sem_eventos }}</h3>
+                <small class="text-muted">Sem Eventos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h3 class="text-info mb-1">{{ estatisticas.total_eventos_veiculos }}</h3>
+                <small class="text-muted">Total de Usos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h3 class="text-secondary mb-1">{{ estatisticas.total_dias_uso }}</h3>
+                <small class="text-muted">Dias de Uso</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <h3 class="text-primary mb-1">{{ estatisticas.media_dias_por_veiculo }}</h3>
+                <small class="text-muted">Média por Veículo</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dados dos Veículos -->
+{% if dados_veiculos %}
+    {% for veiculo_id, dados in dados_veiculos.items() %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-light">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="mb-0">
+                            <i class="bi bi-car-front text-success me-2"></i>
+                            {{ dados.veiculo.nome }}
+                        </h5>
+                        <div class="mt-1">
+                            <span class="badge bg-secondary me-2">{{ dados.veiculo.categoria.nome if dados.veiculo.categoria else 'Sem categoria' }}</span>
+                            {% if dados.veiculo.placa %}
+                                <span class="badge bg-info me-2">{{ dados.veiculo.placa }}</span>
+                            {% endif %}
+                            {% if dados.veiculo.marca %}
+                                <span class="badge bg-light text-dark me-2">{{ dados.veiculo.marca }}</span>
+                            {% endif %}
+                            {% if dados.veiculo.modelo %}
+                                <span class="badge bg-light text-dark me-2">{{ dados.veiculo.modelo }}</span>
+                            {% endif %}
+                            {% if dados.veiculo.cor %}
+                                <span class="badge bg-light text-dark me-2">{{ dados.veiculo.cor }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex justify-content-end gap-3">
+                            <div class="text-center">
+                                <h6 class="mb-0 text-primary">{{ dados.total_eventos }}</h6>
+                                <small class="text-muted">Eventos</small>
+                            </div>
+                            <div class="text-center">
+                                <h6 class="mb-0 text-success">{{ dados.dias_uso }}</h6>
+                                <small class="text-muted">Dias</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                {% if dados.eventos %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="bi bi-calendar-event me-1"></i>Evento</th>
+                                    <th><i class="bi bi-person me-1"></i>Motorista</th>
+                                    <th><i class="bi bi-calendar-check me-1"></i>Data Início</th>
+                                    <th><i class="bi bi-calendar-x me-1"></i>Data Devolução</th>
+                                    <th><i class="bi bi-clock me-1"></i>Dias</th>
+                                    <th><i class="bi bi-chat-text me-1"></i>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for evento in dados.eventos %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-medium">{{ evento.evento.nome }}</div>
+                                            <small class="text-muted">{{ evento.evento.cidade }}/{{ evento.evento.estado }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-initial bg-primary text-white rounded-circle me-2" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 10px;">
+                                                    {{ evento.motorista.nome[0].upper() }}
+                                                </div>
+                                                <span>{{ evento.motorista.nome }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ evento.data_inicio.strftime('%d/%m/%Y') }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning">{{ evento.data_devolucao.strftime('%d/%m/%Y') }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">{{ (evento.data_devolucao - evento.data_inicio).days + 1 }} dias</span>
+                                        </td>
+                                        <td>
+                                            <small>{{ evento.observacoes or '—' }}</small>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-exclamation-triangle text-warning display-4"></i>
+                        <h6 class="mt-3 text-muted">Nenhum evento registrado</h6>
+                        <p class="text-muted">Este veículo não foi utilizado em nenhum evento no período selecionado.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-car-front display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">Nenhum veículo encontrado</h4>
+            <p class="text-muted">Não há veículos cadastrados ou que atendam aos filtros selecionados.</p>
+            <a href="{{ url_for('cadastrar_veiculo') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Cadastrar Veículo
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %} 

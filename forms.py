@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField
+from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField, BooleanField
 from wtforms.fields.datetime import DateField
 from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
@@ -145,6 +145,8 @@ class DespesaForm(FlaskForm):
         (4, 'Variáveis - SócratesOnline')
     ], validators=[InputRequired()])
     valor_medio_despesa = StringField('Valor Médio da Despesa')
+    flag_alimentacao = BooleanField('Despesa de Alimentação', default=False)
+    flag_combustivel = BooleanField('Despesa de Combustível', default=False)
     
     def validate_valor_medio_despesa(form, field):
         """Validar se o valor médio é obrigatório para despesas fixas"""
@@ -236,6 +238,13 @@ class FornecedorEventoForm(FlaskForm):
     id_fornecedor = SelectField('Fornecedor', coerce=int, validators=[InputRequired(message="Selecione um fornecedor")])
     observacoes = TextAreaField('Observações')
 
+class VeiculoEventoForm(FlaskForm):
+    id_veiculo = SelectField('Veículo', coerce=int, validators=[InputRequired(message="Selecione um veículo")])
+    id_motorista = SelectField('Motorista', coerce=int, validators=[InputRequired(message="Selecione um motorista")])
+    data_inicio = DateField('Data de Início', validators=[InputRequired(message="Data de início é obrigatória")])
+    data_devolucao = DateField('Data de Devolução', validators=[InputRequired(message="Data de devolução é obrigatória")])
+    observacoes = TextAreaField('Observações')
+
 class ReceitaEventoForm(FlaskForm):
     categoria_receita = SelectField('Categoria', coerce=int, validators=[DataRequired()])
     receita_id = SelectField('Receita', coerce=int, validators=[DataRequired()])
@@ -246,7 +255,8 @@ class ReceitaEventoForm(FlaskForm):
 class DespesaEventoForm(FlaskForm):
     categoria_despesa = SelectField('Categoria', coerce=int, validators=[DataRequired()])
     despesa_id = SelectField('Despesa', coerce=int, validators=[DataRequired()])
-    data = DateField('Data', validators=[DataRequired()])
+    data_vencimento = DateField('Data de Vencimento', validators=[DataRequired()])
+    data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
     valor = FloatField('Valor', validators=[DataRequired()])
     fornecedor_id = SelectField('Fornecedor', coerce=int, validators=[Optional()])
     status_pagamento = SelectField('Status', choices=[
@@ -262,11 +272,14 @@ class DespesaEventoForm(FlaskForm):
     pago_por = StringField('Pago por')
     observacoes = TextAreaField('Observações')
     comprovante = FileField('Comprovante', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 'Apenas arquivos de imagem, PDF ou documento são permitidos')])
+    qtd_dias = IntegerField('Quantidade de Dias', validators=[Optional()])
+    qtd_pessoas = IntegerField('Quantidade de Pessoas', validators=[Optional()])
 
 class DespesaEmpresaForm(FlaskForm):
     categoria_despesa = SelectField('Categoria', coerce=int, validators=[DataRequired()])
     despesa_id = SelectField('Despesa', coerce=int, validators=[DataRequired()])
-    data = DateField('Data', validators=[DataRequired()])
+    data_vencimento = DateField('Data de Vencimento', validators=[DataRequired()])
+    data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
     valor = StringField('Valor', validators=[DataRequired()])  # Mudou para StringField para aceitar formato brasileiro
     fornecedor_id = SelectField('Fornecedor', coerce=int, validators=[Optional()])
     status_pagamento = SelectField('Status', choices=[
@@ -282,6 +295,8 @@ class DespesaEmpresaForm(FlaskForm):
     pago_por = StringField('Pago por')
     observacoes = TextAreaField('Observações')
     comprovante = FileField('Comprovante', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], 'Apenas arquivos de imagem, PDF ou documento são permitidos')])
+    qtd_dias = IntegerField('Quantidade de Dias', validators=[Optional()])
+    qtd_pessoas = IntegerField('Quantidade de Pessoas', validators=[Optional()])
     
     def validate_valor(form, field):
         """Validar e converter valor do formato brasileiro para float"""
@@ -315,5 +330,33 @@ class ReceitaEmpresaForm(FlaskForm):
     categoria_receita = SelectField('Categoria', coerce=int, validators=[DataRequired()])
     receita_id = SelectField('Receita', coerce=int, validators=[DataRequired()])
     data = DateField('Data', validators=[DataRequired()])
-    valor = FloatField('Valor', validators=[DataRequired()])
+    valor = StringField('Valor', validators=[DataRequired()])  # Mudou para StringField para aceitar formato brasileiro
     observacoes = TextAreaField('Observações')
+    
+    def validate_valor(form, field):
+        """Validador personalizado para aceitar valores em formato brasileiro"""
+        if not field.data or field.data.strip() == '':
+            raise ValidationError('Valor é obrigatório.')
+        
+        try:
+            # Converter formato brasileiro (1.000,50) para formato americano (1000.50)
+            valor_str = str(field.data).strip()
+            
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
+            if '.' in valor_str and ',' in valor_str:
+                # Remover pontos de milhares e trocar vírgula por ponto
+                valor_str = valor_str.replace('.', '').replace(',', '.')
+            # Se contém apenas vírgula, trocar por ponto
+            elif ',' in valor_str and '.' not in valor_str:
+                valor_str = valor_str.replace(',', '.')
+            
+            valor_float = float(valor_str)
+            
+            if valor_float <= 0:
+                raise ValidationError('Valor deve ser maior que zero.')
+                
+            # Armazenar o valor convertido para uso posterior
+            field.data = valor_float
+            
+        except (ValueError, TypeError):
+            raise ValidationError('Valor deve ser um número válido. Use vírgula para separar decimais (ex: 10,50).')

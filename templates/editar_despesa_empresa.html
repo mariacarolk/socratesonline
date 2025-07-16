@@ -40,15 +40,30 @@
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        {{ form.data.label(class="form-label") }}
+                        {{ form.data_vencimento.label(class="form-label") }}
                         <div class="input-group">
-                            {{ form.data(class="form-control", required=true) }}
+                            {{ form.data_vencimento(class="form-control", required=true) }}
                             <span class="input-group-text"><i class="bi bi-calendar"></i></span>
                             <div class="invalid-feedback">
-                                Por favor, informe a data.
+                                Por favor, informe a data de vencimento.
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.data_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_pagamento(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                            <div class="invalid-feedback">
+                                Data de pagamento inválida.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.valor.label(class="form-label") }}
                         <div class="input-group">
@@ -59,8 +74,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.fornecedor_id.label(class="form-label") }}
                         <div class="input-group">
@@ -68,6 +81,8 @@
                             <span class="input-group-text"><i class="bi bi-shop"></i></span>
                         </div>
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.status_pagamento.label(class="form-label") }}
                         <div class="input-group">
@@ -78,8 +93,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.forma_pagamento.label(class="form-label") }}
                         <div class="input-group">
@@ -90,6 +103,8 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.pago_por.label(class="form-label") }}
                         <div class="input-group">
@@ -97,8 +112,6 @@
                             <span class="input-group-text"><i class="bi bi-person"></i></span>
                         </div>
                     </div>
-                </div>
-                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.comprovante.label(class="form-label") }}
                         <div class="input-group">
@@ -121,11 +134,49 @@
                         </div>
                         {% endif %}
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-md-6 mb-3">
                         {{ form.observacoes.label(class="form-label") }}
                         <div class="input-group">
                             {{ form.observacoes(class="form-control", rows="3", placeholder="Observações sobre a despesa") }}
                             <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campos de quantidade para despesas de alimentação -->
+                <div class="row" id="campos-alimentacao" style="display: none;">
+                    <div class="col-12 mb-2">
+                        <div class="alert alert-info alert-sm">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.qtd_dias.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.qtd_dias(class="form-control", min="1", placeholder="Ex: 5", id="qtd_dias") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a quantidade de dias.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.qtd_pessoas.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.qtd_pessoas(class="form-control", min="1", placeholder="Ex: 10", id="qtd_pessoas") }}
+                            <span class="input-group-text"><i class="bi bi-people"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a quantidade de pessoas.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Número de pessoas que serão alimentadas</small>
                         </div>
                     </div>
                 </div>
@@ -150,13 +201,96 @@
     document.addEventListener('DOMContentLoaded', function() {
         const categoriaSelect = document.getElementById('categoria_despesa');
         const despesaSelect = document.getElementById('despesa_id');
+        const camposAlimentacao = document.getElementById('campos-alimentacao');
+        const qtdDiasInput = document.getElementById('qtd_dias');
+        const qtdPessoasInput = document.getElementById('qtd_pessoas');
         
-        if (categoriaSelect && despesaSelect) {
+        // Verificar no carregamento inicial se já existem valores nos campos de quantidade
+        // Se existirem, significa que é uma despesa de alimentação e devemos mostrar os campos
+        function verificarValoresExistentes() {
+            const valorDias = qtdDiasInput.value;
+            const valorPessoas = qtdPessoasInput.value;
+            
+            // Se algum dos campos tem valor, mostrar a seção (é uma despesa de alimentação)
+            if ((valorDias && valorDias.trim() !== '') || (valorPessoas && valorPessoas.trim() !== '')) {
+                // Estilo definitivo para campos de alimentação
+                const estiloDefinitivo = `
+                    display: block !important;
+                    visibility: visible !important;
+                    background-color: #f8f9fa !important;
+                    border: 1px solid #dee2e6 !important;
+                    border-radius: 0.375rem !important;
+                    padding: 1rem !important;
+                    margin-top: 1rem !important;
+                `;
+                
+                camposAlimentacao.setAttribute('style', estiloDefinitivo);
+                camposAlimentacao.classList.remove('d-none');
+                
+                // Tornar campos obrigatórios
+                qtdDiasInput.setAttribute('required', 'required');
+                qtdPessoasInput.setAttribute('required', 'required');
+            }
+        }
+        
+        // Função para verificar se a despesa é de alimentação
+        function verificarDespesaAlimentacao() {
+            const despesaId = despesaSelect.value;
+            
+            if (despesaId && despesaId != '0') {
+                // Buscar informações da despesa selecionada
+                fetch(`/api/despesa-detalhes/${despesaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.flag_alimentacao) {
+                            // Mostrar campos de quantidade
+                            camposAlimentacao.style.display = 'block';
+                            camposAlimentacao.classList.remove('d-none');
+                            
+                            // Tornar campos obrigatórios
+                            qtdDiasInput.setAttribute('required', 'required');
+                            qtdPessoasInput.setAttribute('required', 'required');
+                            
+                            // Destaque visual sutil para indicar seção de alimentação
+                            camposAlimentacao.style.backgroundColor = '#f8f9fa';
+                            camposAlimentacao.style.border = '1px solid #dee2e6';
+                            camposAlimentacao.style.borderRadius = '0.375rem';
+                            camposAlimentacao.style.padding = '1rem';
+                            camposAlimentacao.style.marginTop = '1rem';
+                        } else {
+                            // Esconder campos de quantidade
+                            camposAlimentacao.style.display = 'none';
+                            // Remover obrigatoriedade
+                            qtdDiasInput.removeAttribute('required');
+                            qtdPessoasInput.removeAttribute('required');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar despesa:', error);
+                        // Em caso de erro, esconder campos
+                        camposAlimentacao.style.display = 'none';
+                        qtdDiasInput.removeAttribute('required');
+                        qtdPessoasInput.removeAttribute('required');
+                    });
+            } else {
+                // Esconder campos se nenhuma despesa selecionada
+                camposAlimentacao.style.display = 'none';
+                qtdDiasInput.removeAttribute('required');
+                qtdPessoasInput.removeAttribute('required');
+            }
+        }
+        
+        if (categoriaSelect && despesaSelect && camposAlimentacao && qtdDiasInput && qtdPessoasInput) {
             categoriaSelect.addEventListener('change', function() {
                 const categoriaId = this.value;
                 
                 // Limpar despesas
                 despesaSelect.innerHTML = '<option value="0">Carregando...</option>';
+                
+                // Esconder campos de alimentação
+                camposAlimentacao.style.display = 'none';
+                qtdDiasInput.removeAttribute('required');
+                qtdPessoasInput.removeAttribute('required');
                 
                 if (categoriaId && categoriaId != '0') {
                     fetch(`/api/despesas-empresa-por-categoria/${categoriaId}`)
@@ -183,6 +317,17 @@
                     despesaSelect.innerHTML = '<option value="0">Selecione uma categoria primeiro</option>';
                 }
             });
+            
+            // Verificar despesa de alimentação quando despesa mudar
+            despesaSelect.addEventListener('change', verificarDespesaAlimentacao);
+            
+            // Verificar no carregamento inicial se já tem uma despesa selecionada
+            if (despesaSelect.value && despesaSelect.value != '0') {
+                verificarDespesaAlimentacao();
+            }
+            
+            // Verificar valores existentes nos campos na inicialização
+            verificarValoresExistentes();
         }
     });
 
