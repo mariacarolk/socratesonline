@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Cadastro de Parâmetro</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        {{ form.parametro.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.parametro(class="form-control", placeholder="Nome do parâmetro", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-gear"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe o nome do parâmetro.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        {{ form.valor.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.valor(class="form-control", placeholder="Valor do parâmetro") }}
+                            <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        {{ form.observacoes.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.observacoes(class="form-control", placeholder="Observações", rows="3") }}
+                            <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Parâmetros</h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if parametros %}
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar parâmetros..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-striped sortable-table" id="parametrosTable">
+                <thead>
+                    <tr>
+                        <th>Parâmetro</th>
+                        <th>Valor</th>
+                        <th>Observações</th>
+                        <th class="text-center no-sort" style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for param in parametros %}
+                    <tr>
+                        <td>{{ param.parametro }}</td>
+                        <td>{{ param.valor or '-' }}</td>
+                        <td>{{ param.observacoes or '-' }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('editar_parametro', id=param.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if param.parametro.lower() != 'gasolina' %}
+                                <a href="{{ url_for('excluir_parametro', id=param.id) }}" class="btn btn-sm btn-outline-danger" 
+                                   onclick="return confirm('Tem certeza que deseja excluir este parâmetro?')" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled title="Este parâmetro não pode ser excluído">
+                                    <i class="bi bi-lock"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>Nenhum parâmetro cadastrado.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Script de filtros avançados -->
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar sistema de filtros avançados
+        if (document.getElementById('parametrosTable')) {
+            initializeAdvancedFilters('parametrosTable', 'Parâmetros');
+        }
+        
+        // Validação de formulário
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('parametrosTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
+</script>
+{% endblock %} 

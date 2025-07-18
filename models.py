@@ -224,6 +224,7 @@ class Veiculo(db.Model):
     cor = db.Column(db.String)
     combustivel = db.Column(db.String)
     capacidade_passageiros = db.Column(db.Integer)
+    media_km_litro = db.Column(db.Float)
     observacoes = db.Column(db.String)
     id_categoria_veiculo = db.Column(db.Integer, db.ForeignKey('categoria_veiculo.id_categoria_veiculo'))
 
@@ -296,10 +297,21 @@ class VeiculoEvento(db.Model):
     id_veiculo = db.Column(db.Integer, db.ForeignKey('veiculo.id_veiculo'), nullable=False)
     id_motorista = db.Column(db.Integer, db.ForeignKey('colaborador.id_colaborador'), nullable=False)
     data_inicio = db.Column(db.Date, nullable=False)
-    data_devolucao = db.Column(db.Date, nullable=False)
+    data_devolucao = db.Column(db.Date, nullable=True)
+    hora_inicio = db.Column(db.Time, nullable=True)
+    hora_fim = db.Column(db.Time, nullable=True)
+    km_inicio = db.Column(db.Integer, nullable=True)
+    km_fim = db.Column(db.Integer, nullable=True)
     observacoes = db.Column(db.String)
     
     # Relacionamentos
     veiculo = db.relationship('Veiculo', backref='veiculo_eventos')
     motorista = db.relationship('Colaborador', backref='motorista_eventos')
     evento = db.relationship('Evento', backref='evento_veiculos')
+
+class Parametro(db.Model):
+    __tablename__ = 'parametro'
+    id = db.Column(db.Integer, primary_key=True)
+    parametro = db.Column(db.String(100), nullable=False)
+    valor = db.Column(db.String(100))
+    observacoes = db.Column(db.Text)

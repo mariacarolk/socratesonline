@@ -1664,4 +1664,80 @@ body {
   .nav-link:hover {
     transform: none;
   }
+}
+
+/* ========================================
+   Funcionalidade de Valor Médio - Despesas
+   ======================================== */
+
+/* Campo com valor sugerido */
+.valor-sugerido {
+    background-color: var(--accent-50) !important;
+    border-color: var(--accent) !important;
+    font-weight: 500;
+    box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.15);
+}
+
+/* Indicação de valor médio sugerido */
+.valor-medio-indicacao {
+    margin-top: 4px;
+    display: block;
+    font-size: var(--font-size-sm);
+    color: var(--info) !important;
+    font-weight: 500;
+}
+
+.valor-medio-indicacao i {
+    font-size: 0.9em;
+}
+
+/* Alerta de variação no valor médio */
+.valor-medio-alerta {
+    font-size: var(--font-size-sm);
+    border-left: 4px solid var(--warning);
+    background-color: var(--warning-light);
+    border-color: transparent;
+    animation: fadeInAlert 0.3s ease-in-out;
+}
+
+.valor-medio-alerta .bi-exclamation-triangle {
+    color: var(--warning-dark);
+    font-size: 1.2em;
+}
+
+.valor-medio-alerta strong {
+    color: var(--warning-dark);
+}
+
+.valor-medio-alerta small {
+    color: var(--gray-700);
+    font-size: var(--font-size-xs);
+}
+
+/* Animação para o alerta */
+@keyframes fadeInAlert {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Transição suave para remoção do alerta */
+.valor-medio-alerta.removing {
+    animation: fadeOutAlert 0.2s ease-in-out forwards;
+}
+
+@keyframes fadeOutAlert {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
 } 
