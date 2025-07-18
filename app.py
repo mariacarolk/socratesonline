@@ -7,14 +7,14 @@ from models import (
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
     CategoriaDespesa, Despesa, Evento, DespesaEvento, ReceitaEvento,
     CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, 
-    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento
+    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento, Parametro
 )
 from forms import (
     UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
-    DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm
+    DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm, ParametroForm
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -839,6 +839,50 @@ def excluir_categoria_despesa(id):
     flash('Categoria excluÃ­da com sucesso!', 'success')
     return redirect(url_for('cadastrar_categoria_despesa'))
 
+@app.route('/cadastros/parametros', methods=['GET', 'POST'])
+def cadastrar_parametro():
+    form = ParametroForm()
+    if form.validate_on_submit():
+        novo = Parametro(
+            parametro=form.parametro.data,
+            valor=form.valor.data,
+            observacoes=form.observacoes.data
+        )
+        db.session.add(novo)
+        db.session.commit()
+        flash('Parâmetro cadastrado com sucesso!', 'success')
+        return redirect(url_for('cadastrar_parametro'))
+    parametros = Parametro.query.all()
+    return render_template('parametros.html', form=form, parametros=parametros)
+
+@app.route('/cadastros/parametros/editar/<int:id>', methods=['GET', 'POST'])
+def editar_parametro(id):
+    parametro = Parametro.query.get_or_404(id)
+    form = ParametroForm(obj=parametro)
+    if form.validate_on_submit():
+        parametro.parametro = form.parametro.data
+        parametro.valor = form.valor.data
+        parametro.observacoes = form.observacoes.data
+        db.session.commit()
+        flash('Parâmetro atualizado com sucesso!', 'success')
+        return redirect(url_for('cadastrar_parametro'))
+    parametros = Parametro.query.all()
+    return render_template('parametros.html', form=form, parametros=parametros)
+
+@app.route('/cadastros/parametros/excluir/<int:id>')
+def excluir_parametro(id):
+    parametro = Parametro.query.get_or_404(id)
+    
+    # Verificar se é o parâmetro 'gasolina' (não pode ser excluído)
+    if parametro.parametro.lower() == 'gasolina':
+        flash('O parâmetro "gasolina" não pode ser excluído.', 'danger')
+        return redirect(url_for('cadastrar_parametro'))
+    
+    db.session.delete(parametro)
+    db.session.commit()
+    flash('Parâmetro excluído com sucesso!', 'success')
+    return redirect(url_for('cadastrar_parametro'))
+
 @app.route('/eventos')
 def listar_eventos():
     if 'user_id' not in session:
@@ -1023,6 +1067,29 @@ def api_despesa_detalhes(despesa_id):
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/despesa-valor-medio/<int:despesa_id>')
+def api_despesa_valor_medio(despesa_id):
+    """API para buscar valor médio de uma despesa e validar percentuais"""
+    try:
+        despesa = Despesa.query.get(despesa_id)
+        if not despesa:
+            return jsonify({'error': 'Despesa não encontrada'}), 404
+        
+        valor_medio = float(despesa.valor_medio_despesa) if despesa.valor_medio_despesa else None
+        
+        return jsonify({
+            'success': True,
+            'valor_medio': valor_medio,
+            'valor_medio_formatado': f"{valor_medio:.2f}".replace('.', ',') if valor_medio else None,
+            'nome_despesa': despesa.nome,
+            'has_valor_medio': valor_medio is not None and valor_medio > 0
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/eventos/<int:id_evento>/salvar-receita', methods=['POST'])
 def salvar_receita_individual(id_evento):
@@ -1603,7 +1670,9 @@ def editar_evento(id):
                 'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else 'Despesa fixa automática',
                 'despesa_cabeca_atual': despesas_evento_dict[d.id_despesa].despesa_cabeca if d.id_despesa in despesas_ja_cadastradas else False,
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None,
-                'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else ''
+                'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else '',
+                'qtd_dias_atual': despesas_evento_dict[d.id_despesa].qtd_dias if d.id_despesa in despesas_ja_cadastradas else None,
+                'qtd_pessoas_atual': despesas_evento_dict[d.id_despesa].qtd_pessoas if d.id_despesa in despesas_ja_cadastradas else None
             } for d in despesas_fixas],  # TODAS as despesas fixas
             'variaveis': [{
                 'id_despesa': d.id_despesa, 
@@ -1624,7 +1693,9 @@ def editar_evento(id):
                 'obs_atual': despesas_evento_dict[d.id_despesa].observacoes if d.id_despesa in despesas_ja_cadastradas else '',
                 'despesa_cabeca_atual': despesas_evento_dict[d.id_despesa].despesa_cabeca if d.id_despesa in despesas_ja_cadastradas else False,
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None,
-                'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else ''
+                'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else '',
+                'qtd_dias_atual': despesas_evento_dict[d.id_despesa].qtd_dias if d.id_despesa in despesas_ja_cadastradas else None,
+                'qtd_pessoas_atual': despesas_evento_dict[d.id_despesa].qtd_pessoas if d.id_despesa in despesas_ja_cadastradas else None
             } for d in despesas_variaveis]  # TODAS as despesas variáveis (cadastradas e não cadastradas)
         }
 
@@ -1662,6 +1733,8 @@ def editar_evento(id):
                 'obs_atual': despesa_evento.observacoes or '',
                 'despesa_cabeca_atual': despesa_evento.despesa_cabeca,
                 'comprovante_atual': despesa_evento.comprovante or '',
+                'qtd_dias_atual': despesa_evento.qtd_dias,
+                'qtd_pessoas_atual': despesa_evento.qtd_pessoas,
                 'tipo': despesa_evento.despesa.id_tipo_despesa
             }
             
@@ -2324,6 +2397,7 @@ def cadastrar_veiculo():
             cor=form.cor.data,
             combustivel=form.combustivel.data,
             capacidade_passageiros=form.capacidade_passageiros.data,
+            media_km_litro=form.media_km_litro.data,
             observacoes=form.observacoes.data,
             id_categoria_veiculo=form.id_categoria_veiculo.data
         )
@@ -2354,6 +2428,7 @@ def editar_veiculo(id):
         veiculo.cor = form.cor.data
         veiculo.combustivel = form.combustivel.data
         veiculo.capacidade_passageiros = form.capacidade_passageiros.data
+        veiculo.media_km_litro = form.media_km_litro.data
         veiculo.observacoes = form.observacoes.data
         veiculo.id_categoria_veiculo = form.id_categoria_veiculo.data
         db.session.commit()
@@ -2763,6 +2838,209 @@ def excluir_equipe_evento(id_evento, id):
     flash('Colaborador removido da equipe com sucesso!', 'success')
     return redirect(url_for('equipe_evento', id_evento=id_evento))
 
+# =============== FUNÇÕES DE VALIDAÇÃO PARA VEÍCULOS ===============
+
+def verificar_conflito_veiculo(id_veiculo, data_inicio, hora_inicio, data_devolucao, hora_fim, id_exclusao=None):
+    """
+    Verifica se há conflito de uso do veículo no período informado
+    """
+    from datetime import datetime, time
+    
+    def obter_nome_motorista(uso):
+        """Função auxiliar para obter nome do motorista de forma segura"""
+        return uso.motorista.nome if uso.motorista else 'Motorista não identificado'
+    
+    # Verificar se dados obrigatórios estão presentes
+    if not id_veiculo or not data_inicio:
+        return None
+    
+    # Buscar usos existentes do veículo (excluindo o registro atual se for edição)
+    query = VeiculoEvento.query.filter(VeiculoEvento.id_veiculo == id_veiculo)
+    if id_exclusao:
+        query = query.filter(VeiculoEvento.id_veiculo_evento != id_exclusao)
+    
+    usos_existentes = query.all()
+    
+    for uso in usos_existentes:
+        # Se há uso em aberto (sem data_devolucao), há conflito
+        if not uso.data_devolucao:
+            return f"O veículo já está em uso por {obter_nome_motorista(uso)} desde {uso.data_inicio.strftime('%d/%m/%Y')} (uso em aberto)"
+        
+        # Se estamos criando um uso sem fim, verificar se há conflito com períodos fechados
+        if not data_devolucao:
+            # Novo uso sem fim: verificar se conflita com uso anterior
+            if data_inicio < uso.data_devolucao:
+                return f"O veículo foi usado por {obter_nome_motorista(uso)} até {uso.data_devolucao.strftime('%d/%m/%Y')}. Informe data posterior."
+            elif data_inicio == uso.data_devolucao:
+                # Mesmo dia: verificar horários se disponíveis
+                if hora_inicio and uso.hora_fim:
+                    if hora_inicio <= uso.hora_fim:
+                        return f"O veículo foi usado por {obter_nome_motorista(uso)} até {uso.hora_fim.strftime('%H:%M')} em {uso.data_devolucao.strftime('%d/%m/%Y')}. Informe horário posterior."
+                elif not uso.hora_fim:
+                    # Se uso anterior não tem hora fim, não podemos usar no mesmo dia
+                    return f"O veículo foi usado por {obter_nome_motorista(uso)} em {uso.data_devolucao.strftime('%d/%m/%Y')} sem horário de fim definido. Use data posterior."
+        else:
+            # Verificar sobreposição de períodos definidos com horários
+            conflito_periodo = False
+            
+            # Se temos horários completos, fazer comparação precisa
+            if hora_inicio and hora_fim and uso.hora_inicio and uso.hora_fim:
+                from datetime import datetime, time
+                
+                # Criar datetime completos para comparação
+                inicio_novo = datetime.combine(data_inicio, hora_inicio)
+                fim_novo = datetime.combine(data_devolucao, hora_fim)
+                inicio_existente = datetime.combine(uso.data_inicio, uso.hora_inicio)
+                fim_existente = datetime.combine(uso.data_devolucao, uso.hora_fim)
+                
+                # Verificar sobreposição temporal exata
+                conflito_periodo = not (fim_novo <= inicio_existente or inicio_novo >= fim_existente)
+            else:
+                # Sem horários completos, usar apenas datas (mais conservador)
+                conflito_periodo = not (data_devolucao < uso.data_inicio or data_inicio > uso.data_devolucao)
+            
+            if conflito_periodo:
+                if hora_inicio and uso.hora_inicio and data_inicio == uso.data_inicio and hora_inicio == uso.hora_inicio:
+                    return f"Conflito: mesmo horário de início ({hora_inicio.strftime('%H:%M')}) que {obter_nome_motorista(uso)}"
+                return f"Período conflita com uso por {obter_nome_motorista(uso)} de {uso.data_inicio.strftime('%d/%m/%Y')} a {uso.data_devolucao.strftime('%d/%m/%Y')}"
+    
+    return None
+
+def verificar_conflito_motorista(id_motorista, data_inicio, hora_inicio, data_devolucao, hora_fim, id_exclusao=None):
+    """
+    Verifica se o motorista já está usando outro veículo no período
+    """
+    # Verificar se dados obrigatórios estão presentes
+    if not id_motorista or not data_inicio:
+        return None
+    
+    # Buscar usos existentes do motorista (excluindo o registro atual se for edição)
+    query = VeiculoEvento.query.filter(VeiculoEvento.id_motorista == id_motorista)
+    if id_exclusao:
+        query = query.filter(VeiculoEvento.id_veiculo_evento != id_exclusao)
+    
+    usos_existentes = query.all()
+    
+    for uso in usos_existentes:
+        # Se há uso em aberto, há conflito
+        if not uso.data_devolucao:
+            return f"Motorista já está usando {uso.veiculo.nome} desde {uso.data_inicio.strftime('%d/%m/%Y')} (uso em aberto)"
+        
+        # Se estamos criando um uso sem fim, verificar conflito
+        if not data_devolucao:
+            if data_inicio < uso.data_devolucao:
+                return f"Motorista usou {uso.veiculo.nome} até {uso.data_devolucao.strftime('%d/%m/%Y')}. Informe data posterior."
+            elif data_inicio == uso.data_devolucao:
+                # Mesmo dia: verificar horários se disponíveis
+                if hora_inicio and uso.hora_fim:
+                    if hora_inicio <= uso.hora_fim:
+                        return f"Motorista usou {uso.veiculo.nome} até {uso.hora_fim.strftime('%H:%M')} em {uso.data_devolucao.strftime('%d/%m/%Y')}. Informe horário posterior."
+                elif not uso.hora_fim:
+                    # Se uso anterior não tem hora fim, não podemos usar no mesmo dia
+                    return f"Motorista usou {uso.veiculo.nome} em {uso.data_devolucao.strftime('%d/%m/%Y')} sem horário de fim definido. Use data posterior."
+        else:
+            # Verificar sobreposição de períodos definidos com horários
+            conflito_periodo = False
+            
+            # Se temos horários completos, fazer comparação precisa
+            if hora_inicio and hora_fim and uso.hora_inicio and uso.hora_fim:
+                from datetime import datetime, time
+                
+                # Criar datetime completos para comparação
+                inicio_novo = datetime.combine(data_inicio, hora_inicio)
+                fim_novo = datetime.combine(data_devolucao, hora_fim)
+                inicio_existente = datetime.combine(uso.data_inicio, uso.hora_inicio)
+                fim_existente = datetime.combine(uso.data_devolucao, uso.hora_fim)
+                
+                # Verificar sobreposição temporal exata
+                conflito_periodo = not (fim_novo <= inicio_existente or inicio_novo >= fim_existente)
+            else:
+                # Sem horários completos, usar apenas datas (mais conservador)
+                conflito_periodo = not (data_devolucao < uso.data_inicio or data_inicio > uso.data_devolucao)
+            
+            if conflito_periodo:
+                if hora_inicio and uso.hora_inicio and data_inicio == uso.data_inicio and hora_inicio == uso.hora_inicio:
+                    return f"Conflito: motorista já usou {uso.veiculo.nome} no mesmo horário ({hora_inicio.strftime('%H:%M')})"
+                return f"Motorista já usou {uso.veiculo.nome} de {uso.data_inicio.strftime('%d/%m/%Y')} a {uso.data_devolucao.strftime('%d/%m/%Y')}"
+    
+    return None
+
+def verificar_km_sequencial(id_veiculo, km_inicio, id_exclusao=None):
+    """
+    Verifica se a quilometragem inicial é válida baseada no último uso do veículo
+    """
+    if not id_veiculo or not km_inicio:
+        return None
+    
+    # Buscar último uso do veículo (excluindo o atual se for edição)
+    query = VeiculoEvento.query.filter(
+        VeiculoEvento.id_veiculo == id_veiculo,
+        VeiculoEvento.km_fim.isnot(None)
+    )
+    if id_exclusao:
+        query = query.filter(VeiculoEvento.id_veiculo_evento != id_exclusao)
+    
+    ultimo_uso = query.order_by(VeiculoEvento.data_inicio.desc()).first()
+    
+    if ultimo_uso and ultimo_uso.km_fim and km_inicio < ultimo_uso.km_fim:
+        km_inicio_fmt = f"{km_inicio:,}".replace(',', '.')
+        km_fim_fmt = f"{ultimo_uso.km_fim:,}".replace(',', '.')
+        return f"KM inicial ({km_inicio_fmt}) deve ser maior ou igual ao KM final do último uso ({km_fim_fmt})"
+    
+    return None
+
+def verificar_ultimo_uso_completo(id_veiculo, id_exclusao=None):
+    """
+    Verifica se o último uso do veículo está completo (data_devolucao, hora_fim, km_fim)
+    """
+    def obter_nome_motorista(uso):
+        """Função auxiliar para obter nome do motorista de forma segura"""
+        return uso.motorista.nome if uso.motorista else 'Motorista não identificado'
+    
+    # Verificar se dados obrigatórios estão presentes
+    if not id_veiculo:
+        return None
+    
+    # Buscar último uso do veículo (excluindo o atual se for edição)
+    query = VeiculoEvento.query.filter(VeiculoEvento.id_veiculo == id_veiculo)
+    if id_exclusao:
+        query = query.filter(VeiculoEvento.id_veiculo_evento != id_exclusao)
+    
+    ultimo_uso = query.order_by(VeiculoEvento.data_inicio.desc()).first()
+    
+    if ultimo_uso:
+        # Verificar se algum campo obrigatório de finalização está faltando
+        if not ultimo_uso.data_devolucao:
+            return f"O último uso do veículo por {obter_nome_motorista(ultimo_uso)} está em aberto (sem data de devolução)"
+        if not ultimo_uso.hora_fim:
+            return f"O último uso do veículo por {obter_nome_motorista(ultimo_uso)} está sem horário de fim"
+        if not ultimo_uso.km_fim:
+            return f"O último uso do veículo por {obter_nome_motorista(ultimo_uso)} está sem quilometragem final"
+    
+    return None
+
+def buscar_usos_em_aberto():
+    """
+    Busca usos de veículos que estão em aberto (sem data de devolução)
+    """
+    return VeiculoEvento.query.filter(VeiculoEvento.data_devolucao.is_(None)).all()
+
+def buscar_usos_em_aberto_para_evento(id_evento):
+    """
+    Busca usos em aberto que podem afetar o evento específico.
+    Retorna usos em aberto de qualquer evento, mas filtra veículos que já estão no evento atual
+    """
+    # Buscar todos os usos em aberto
+    usos_em_aberto = VeiculoEvento.query.filter(VeiculoEvento.data_devolucao.is_(None)).all()
+    
+    # Se não há usos em aberto, retorna lista vazia
+    if not usos_em_aberto:
+        return []
+    
+    # Se há usos em aberto, verificamos se algum impede novos usos no evento atual
+    # Para simplicidade, vamos mostrar todos os usos em aberto, mas com texto explicativo
+    return usos_em_aberto
+
 # =============== ROTAS PARA VEÍCULOS DO EVENTO ===============
 @app.route('/eventos/<int:id_evento>/veiculos', methods=['GET', 'POST'])
 def veiculos_evento(id_evento):
@@ -2781,57 +3059,76 @@ def veiculos_evento(id_evento):
         return redirect(url_for('cadastrar_colaborador'))
     
     form = VeiculoEventoForm()
+    # Repovoar choices sempre
     form.id_veiculo.choices = [(0, 'Selecione um veículo')] + [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
     form.id_motorista.choices = [(0, 'Selecione um motorista')] + [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
     
     if form.validate_on_submit():
-        # Validar se data de devolução é posterior à data de início
-        if form.data_devolucao.data <= form.data_inicio.data:
-            flash('A data de devolução deve ser posterior à data de início.', 'warning')
+        # Validações obrigatórias primeiro
+        if form.id_veiculo.data == 0:
+            flash('Por favor, selecione um veículo.', 'danger')
+        elif form.id_motorista.data == 0:
+            flash('Por favor, selecione um motorista.', 'danger')
         else:
-            # Verificar se o veículo já está sendo usado neste período
-            conflito = VeiculoEvento.query.filter(
-                VeiculoEvento.id_veiculo == form.id_veiculo.data,
-                VeiculoEvento.id_evento != id_evento,
-                db.or_(
-                    db.and_(
-                        VeiculoEvento.data_inicio <= form.data_inicio.data,
-                        VeiculoEvento.data_devolucao > form.data_inicio.data
-                    ),
-                    db.and_(
-                        VeiculoEvento.data_inicio < form.data_devolucao.data,
-                        VeiculoEvento.data_devolucao >= form.data_devolucao.data
-                    )
-                )
-            ).first()
+            # Aplicar validações robustas
+            erro_veiculo = verificar_conflito_veiculo(
+                form.id_veiculo.data, 
+                form.data_inicio.data, 
+                form.hora_inicio.data,
+                form.data_devolucao.data, 
+                form.hora_fim.data
+            )
             
-            if conflito:
-                flash('Este veículo já está sendo usado em outro evento no período informado.', 'warning')
+            erro_motorista = verificar_conflito_motorista(
+                form.id_motorista.data,
+                form.data_inicio.data,
+                form.hora_inicio.data, 
+                form.data_devolucao.data,
+                form.hora_fim.data
+            )
+            
+            erro_km = verificar_km_sequencial(
+                form.id_veiculo.data,
+                form.km_inicio.data
+            )
+            
+            erro_uso_anterior = verificar_ultimo_uso_completo(
+                form.id_veiculo.data
+            )
+            
+            if erro_veiculo:
+                flash(erro_veiculo, 'warning')
+            elif erro_motorista:
+                flash(erro_motorista, 'warning')
+            elif erro_km:
+                flash(erro_km, 'warning')
+            elif erro_uso_anterior:
+                flash(erro_uso_anterior, 'warning')
             else:
-                # Verificar se o veículo já está associado a este evento
-                veiculo_existente = VeiculoEvento.query.filter_by(
-                    id_evento=id_evento,
-                    id_veiculo=form.id_veiculo.data
-                ).first()
-                
-                if veiculo_existente:
-                    flash('Este veículo já está associado a este evento.', 'warning')
-                else:
                     novo_veiculo = VeiculoEvento(
                         id_evento=id_evento,
                         id_veiculo=form.id_veiculo.data,
                         id_motorista=form.id_motorista.data,
                         data_inicio=form.data_inicio.data,
                         data_devolucao=form.data_devolucao.data,
+                        hora_inicio=form.hora_inicio.data,
+                        hora_fim=form.hora_fim.data,
+                        km_inicio=form.km_inicio.data,
+                        km_fim=form.km_fim.data,
                         observacoes=form.observacoes.data
                     )
                     db.session.add(novo_veiculo)
                     db.session.commit()
                     flash('Veículo adicionado ao evento com sucesso!', 'success')
-        return redirect(url_for('veiculos_evento', id_evento=id_evento))
+                    return redirect(url_for('veiculos_evento', id_evento=id_evento))
     
     veiculos_evento = VeiculoEvento.query.filter_by(id_evento=id_evento).all()
-    return render_template('veiculos_evento.html', form=form, veiculos_evento=veiculos_evento, evento=evento)
+    usos_em_aberto = buscar_usos_em_aberto_para_evento(id_evento)
+    
+    # Filtrar usos em aberto apenas deste evento
+    usos_em_aberto_evento = [uso for uso in usos_em_aberto if uso.id_evento == id_evento]
+    
+    return render_template('veiculos_evento.html', form=form, veiculos_evento=veiculos_evento, evento=evento, usos_em_aberto=usos_em_aberto, usos_em_aberto_evento=usos_em_aberto_evento)
 
 @app.route('/eventos/<int:id_evento>/veiculos/editar/<int:id>', methods=['GET', 'POST'])
 def editar_veiculo_evento(id_evento, id):
@@ -2845,50 +3142,75 @@ def editar_veiculo_evento(id_evento, id):
     form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
     
     if form.validate_on_submit():
-        # Validar se data de devolução é posterior à data de início
-        if form.data_devolucao.data <= form.data_inicio.data:
-            flash('A data de devolução deve ser posterior à data de início.', 'warning')
+        # Validações obrigatórias primeiro  
+        if form.id_veiculo.data == 0:
+            flash('Por favor, selecione um veículo.', 'danger')
+        elif form.id_motorista.data == 0:
+            flash('Por favor, selecione um motorista.', 'danger')
         else:
-            # Verificar se o veículo já está sendo usado neste período (exceto o atual)
-            conflito = VeiculoEvento.query.filter(
-                VeiculoEvento.id_veiculo == form.id_veiculo.data,
-                VeiculoEvento.id_evento != id_evento,
-                VeiculoEvento.id_veiculo_evento != id,
-                db.or_(
-                    db.and_(
-                        VeiculoEvento.data_inicio <= form.data_inicio.data,
-                        VeiculoEvento.data_devolucao > form.data_inicio.data
-                    ),
-                    db.and_(
-                        VeiculoEvento.data_inicio < form.data_devolucao.data,
-                        VeiculoEvento.data_devolucao >= form.data_devolucao.data
-                    )
-                )
-            ).first()
+            # Aplicar validações robustas (excluindo o registro atual)
+            erro_veiculo = verificar_conflito_veiculo(
+                form.id_veiculo.data, 
+                form.data_inicio.data, 
+                form.hora_inicio.data,
+                form.data_devolucao.data, 
+                form.hora_fim.data,
+                id_exclusao=id
+            )
             
-            if conflito:
-                flash('Este veículo já está sendo usado em outro evento no período informado.', 'warning')
+            erro_motorista = verificar_conflito_motorista(
+                form.id_motorista.data,
+                form.data_inicio.data,
+                form.hora_inicio.data, 
+                form.data_devolucao.data,
+                form.hora_fim.data,
+                id_exclusao=id
+            )
+            
+            erro_km = verificar_km_sequencial(
+                form.id_veiculo.data,
+                form.km_inicio.data,
+                id_exclusao=id
+            )
+            
+            erro_uso_anterior = verificar_ultimo_uso_completo(
+                form.id_veiculo.data,
+                id_exclusao=id
+            )
+            
+            if erro_veiculo:
+                flash(erro_veiculo, 'warning')
+            elif erro_motorista:
+                flash(erro_motorista, 'warning')
+            elif erro_km:
+                flash(erro_km, 'warning')
+            elif erro_uso_anterior:
+                flash(erro_uso_anterior, 'warning')
             else:
-                # Verificar se outro veículo já está associado a este evento (exceto o atual)
-                veiculo_existente = VeiculoEvento.query.filter_by(
-                    id_evento=id_evento,
-                    id_veiculo=form.id_veiculo.data
-                ).filter(VeiculoEvento.id_veiculo_evento != id).first()
-                
-                if veiculo_existente:
-                    flash('Este veículo já está associado a este evento.', 'warning')
-                else:
-                    veiculo_evento.id_veiculo = form.id_veiculo.data
-                    veiculo_evento.id_motorista = form.id_motorista.data
-                    veiculo_evento.data_inicio = form.data_inicio.data
-                    veiculo_evento.data_devolucao = form.data_devolucao.data
-                    veiculo_evento.observacoes = form.observacoes.data
-                    db.session.commit()
-                    flash('Veículo do evento atualizado com sucesso!', 'success')
-        return redirect(url_for('veiculos_evento', id_evento=id_evento))
+                veiculo_evento.id_veiculo = form.id_veiculo.data
+                veiculo_evento.id_motorista = form.id_motorista.data
+                veiculo_evento.data_inicio = form.data_inicio.data
+                veiculo_evento.data_devolucao = form.data_devolucao.data
+                veiculo_evento.hora_inicio = form.hora_inicio.data
+                veiculo_evento.hora_fim = form.hora_fim.data
+                veiculo_evento.km_inicio = form.km_inicio.data
+                veiculo_evento.km_fim = form.km_fim.data
+                veiculo_evento.observacoes = form.observacoes.data
+                db.session.commit()
+                flash('Veículo do evento atualizado com sucesso!', 'success')
+                return redirect(url_for('veiculos_evento', id_evento=id_evento))
+    
+    # Sempre repovoar choices (mesmo em caso de erro de validação)
+    form.id_veiculo.choices = [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
+    form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
     
     veiculos_evento = VeiculoEvento.query.filter_by(id_evento=id_evento).all()
-    return render_template('veiculos_evento.html', form=form, veiculos_evento=veiculos_evento, evento=evento)
+    usos_em_aberto = buscar_usos_em_aberto_para_evento(id_evento)
+    
+    # Filtrar usos em aberto apenas deste evento
+    usos_em_aberto_evento = [uso for uso in usos_em_aberto if uso.id_evento == id_evento]
+    
+    return render_template('veiculos_evento.html', form=form, veiculos_evento=veiculos_evento, evento=evento, editando=True, veiculo_editando=veiculo_evento, usos_em_aberto=usos_em_aberto, usos_em_aberto_evento=usos_em_aberto_evento)
 
 @app.route('/eventos/<int:id_evento>/veiculos/excluir/<int:id>')
 def excluir_veiculo_evento(id_evento, id):
@@ -4943,6 +5265,179 @@ def adicionar_despesas_fixas():
     
     # Retornar para a página do financeiro com os parâmetros corretos
     return redirect(url_for('financeiro_mes') + f'?mes={mes_int}&ano={ano_int}')
+
+# ==================== RELATÓRIO CUSTO DA FROTA ====================
+
+@app.route('/relatorios/custo-frota')
+def relatorio_custo_frota():
+    """Relatório de custo da frota por evento"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se é administrador
+    if session.get('categoria', '').lower() != 'administrativo':
+        flash('Acesso restrito a administradores.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # Obter evento selecionado
+        evento_id = request.args.get('evento_id', '')
+        
+        # Buscar todos os eventos para o seletor
+        eventos = Evento.query.order_by(Evento.data_inicio.desc()).all()
+        
+        dados_relatorio = None
+        erro_parametro = False
+        
+        if evento_id:
+            # Verificar se o preço da gasolina está cadastrado
+            parametro_gasolina = Parametro.query.filter_by(parametro='gasolina').first()
+            
+            if not parametro_gasolina or not parametro_gasolina.valor:
+                erro_parametro = True
+            else:
+                try:
+                    preco_gasolina = float(parametro_gasolina.valor.replace(',', '.'))
+                    
+                    # Buscar veículos usados no evento
+                    veiculos_evento = db.session.query(VeiculoEvento).join(
+                        Veiculo, VeiculoEvento.id_veiculo == Veiculo.id_veiculo
+                    ).join(
+                        Colaborador, VeiculoEvento.id_motorista == Colaborador.id_colaborador
+                    ).filter(
+                        VeiculoEvento.id_evento == evento_id,
+                        VeiculoEvento.km_inicio.isnot(None),
+                        VeiculoEvento.km_fim.isnot(None)
+                    ).all()
+                    
+                    custos_veiculos = []
+                    custo_total = 0
+                    
+                    for veiculo_evento in veiculos_evento:
+                        if veiculo_evento.veiculo.media_km_litro and veiculo_evento.veiculo.media_km_litro > 0:
+                            km_rodados = veiculo_evento.km_fim - veiculo_evento.km_inicio
+                            
+                            if km_rodados > 0:
+                                litros_gastos = km_rodados / veiculo_evento.veiculo.media_km_litro
+                                custo_veiculo = litros_gastos * preco_gasolina
+                                
+                                custos_veiculos.append({
+                                    'veiculo': veiculo_evento.veiculo,
+                                    'motorista': veiculo_evento.motorista,
+                                    'km_inicial': veiculo_evento.km_inicio,
+                                    'km_final': veiculo_evento.km_fim,
+                                    'km_rodados': km_rodados,
+                                    'media_km_litro': veiculo_evento.veiculo.media_km_litro,
+                                    'litros_gastos': round(litros_gastos, 2),
+                                    'custo': round(custo_veiculo, 2),
+                                    'data_inicio': veiculo_evento.data_inicio,
+                                    'data_devolucao': veiculo_evento.data_devolucao
+                                })
+                                
+                                custo_total += custo_veiculo
+                    
+                    evento_selecionado = Evento.query.get(evento_id)
+                    dados_relatorio = {
+                        'evento': evento_selecionado,
+                        'custos_veiculos': custos_veiculos,
+                        'custo_total': round(custo_total, 2),
+                        'preco_gasolina': preco_gasolina,
+                        'total_veiculos': len(custos_veiculos)
+                    }
+                    
+                except ValueError:
+                    flash('Preço da gasolina inválido. Verifique o cadastro em Parâmetros.', 'danger')
+        
+        return render_template('relatorio_custo_frota.html',
+                             eventos=eventos,
+                             evento_id=evento_id,
+                             dados_relatorio=dados_relatorio,
+                             erro_parametro=erro_parametro)
+        
+    except Exception as e:
+        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+@app.route('/relatorios/custo-frota/exportar/<string:formato>')
+def exportar_custo_frota(formato):
+    """Exportar relatório de custo da frota"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    # Verificar se é administrador
+    if session.get('categoria', '').lower() != 'administrativo':
+        return jsonify({'error': 'Acesso restrito a administradores'}), 403
+    
+    try:
+        evento_id = request.args.get('evento_id', '')
+        
+        if not evento_id:
+            return jsonify({'error': 'Evento não selecionado'}), 400
+        
+        # Verificar preço da gasolina
+        parametro_gasolina = Parametro.query.filter_by(parametro='gasolina').first()
+        if not parametro_gasolina or not parametro_gasolina.valor:
+            return jsonify({'error': 'Preço da gasolina não cadastrado'}), 400
+        
+        preco_gasolina = float(parametro_gasolina.valor.replace(',', '.'))
+        
+        # Buscar dados do evento e veículos
+        evento = Evento.query.get_or_404(evento_id)
+        veiculos_evento = db.session.query(VeiculoEvento).join(
+            Veiculo, VeiculoEvento.id_veiculo == Veiculo.id_veiculo
+        ).join(
+            Colaborador, VeiculoEvento.id_motorista == Colaborador.id_colaborador
+        ).filter(
+            VeiculoEvento.id_evento == evento_id,
+            VeiculoEvento.km_inicio.isnot(None),
+            VeiculoEvento.km_fim.isnot(None)
+        ).all()
+        
+        # Preparar dados para exportação
+        headers = ['Veículo', 'Placa', 'Motorista', 'KM Inicial', 'KM Final', 'KM Rodados', 'Média KM/L', 'Litros Gastos', 'Custo (R$)']
+        data = []
+        custo_total = 0
+        
+        for veiculo_evento in veiculos_evento:
+            if veiculo_evento.veiculo.media_km_litro and veiculo_evento.veiculo.media_km_litro > 0:
+                km_rodados = veiculo_evento.km_fim - veiculo_evento.km_inicio
+                
+                if km_rodados > 0:
+                    litros_gastos = km_rodados / veiculo_evento.veiculo.media_km_litro
+                    custo_veiculo = litros_gastos * preco_gasolina
+                    custo_total += custo_veiculo
+                    
+                    data.append([
+                        veiculo_evento.veiculo.nome,
+                        veiculo_evento.veiculo.placa or 'Sem placa',
+                        veiculo_evento.motorista.nome,
+                        f"{veiculo_evento.km_inicio:,}".replace(',', '.'),
+                        f"{veiculo_evento.km_fim:,}".replace(',', '.'),
+                        f"{km_rodados:,}".replace(',', '.'),
+                        f"{veiculo_evento.veiculo.media_km_litro:,.1f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                        f"{litros_gastos:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                        f"R$ {custo_veiculo:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+                    ])
+        
+        # Adicionar linha de total
+        data.append(['', '', '', '', '', '', '', 'TOTAL GERAL:', 
+                    f"R$ {custo_total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')])
+        
+        today = datetime.now().strftime('%Y-%m-%d')
+        filename = f"custo_frota_{evento.nome.replace(' ', '_')}_{today}"
+        
+        # Título do relatório
+        titulo = f"Custo da Frota - {evento.nome}"
+        
+        if formato == 'excel':
+            return criar_excel_response(headers, data, filename)
+        elif formato == 'pdf':
+            return criar_pdf_response(headers, data, titulo, filename)
+        else:
+            return jsonify({'error': 'Formato não suportado'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

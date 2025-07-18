@@ -18,53 +18,255 @@
     </div>
 
     <div class="card-body">
+      
+      <!-- Usos em Aberto - Seção Destacada -->
+      {% if usos_em_aberto %}
+        <div class="card border-warning mb-4 shadow-sm" style="border-left: 5px solid #ffc107 !important;">
+          <div class="card-header bg-warning bg-opacity-10 border-0">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <div class="bg-warning rounded-circle p-2 me-3">
+                  <i class="bi bi-exclamation-triangle text-white fs-5"></i>
+                </div>
+                <div>
+                  <h5 class="mb-0 text-warning-emphasis">
+                    <strong>Atenção: {{ usos_em_aberto|length }} Veículo{{ 's' if usos_em_aberto|length != 1 else '' }} em Uso</strong>
+                  </h5>
+                  <p class="mb-0 text-muted small">
+                    É necessário encerrar todos os usos em aberto antes de adicionar novos registros
+                  </p>
+                </div>
+              </div>
+              <div class="badge bg-warning text-dark fs-6 px-3 py-2">
+                {{ usos_em_aberto|length }} Em Aberto
+              </div>
+            </div>
+          </div>
+          <div class="card-body bg-warning bg-opacity-5">
+            <div class="row g-3">
+              {% for uso in usos_em_aberto %}
+                <div class="col-md-6">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-3">
+                      <div class="d-flex align-items-start justify-content-between mb-2">
+                        <div class="flex-grow-1">
+                          <h6 class="mb-1 fw-bold text-dark">
+                            <i class="bi bi-car-front text-primary me-2"></i>{{ uso.veiculo.nome if uso.veiculo else 'Veículo não identificado' }}
+                          </h6>
+                          <div class="mb-2">
+                            {% if uso.veiculo and uso.veiculo.placa %}
+                              <span class="badge bg-secondary me-1">{{ uso.veiculo.placa }}</span>
+                            {% endif %}
+                            {% if uso.veiculo and uso.veiculo.marca %}
+                              <span class="badge bg-light text-dark me-1">{{ uso.veiculo.marca }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="badge bg-danger">EM USO</div>
+                      </div>
+                      
+                      <div class="mb-2">
+                        <small class="text-muted d-block">
+                          <i class="bi bi-person-fill me-1"></i>
+                          <strong>Motorista:</strong> {{ uso.motorista.nome if uso.motorista else 'Não identificado' }}
+                        </small>
+                        <small class="text-muted d-block">
+                          <i class="bi bi-calendar-event me-1"></i>
+                          <strong>Desde:</strong> {{ uso.data_inicio.strftime('%d/%m/%Y') if uso.data_inicio else 'Data não informada' }}
+                          {% if uso.hora_inicio %} às {{ uso.hora_inicio.strftime('%H:%M') }}{% endif %}
+                        </small>
+                        <small class="text-muted d-block">
+                          <i class="bi bi-geo-alt-fill me-1"></i>
+                          <strong>Evento:</strong> {{ uso.evento.nome if uso.evento else 'Evento não identificado' }}
+                        </small>
+                        {% if uso.km_inicio %}
+                          <small class="text-muted d-block">
+                            <i class="bi bi-speedometer me-1"></i>
+                            <strong>KM Inicial:</strong> {{ "{:,}".format(uso.km_inicio).replace(',', '.') }} km
+                          </small>
+                        {% endif %}
+                      </div>
+                      
+                      <div class="d-grid">
+                        <a href="{{ url_for('editar_veiculo_evento', id_evento=uso.id_evento, id=uso.id_veiculo_evento) }}" 
+                           class="btn btn-warning btn-sm"
+                           onclick="console.log('URL:', this.href); console.log('ID Evento:', {{ uso.id_evento }}); console.log('ID Uso:', {{ uso.id_veiculo_evento }}); return true;">
+                          <i class="bi bi-check-circle me-1"></i>Encerrar Este Uso
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            
+            <div class="alert alert-info mt-3 mb-0">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle me-2"></i>
+                <div>
+                  <strong>Como encerrar um uso:</strong> 
+                  Clique em "Encerrar Este Uso", preencha a data/hora de devolução e quilometragem final, depois salve.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
       <!-- Formulário de Cadastro -->
       <div class="row">
         <div class="col-md-12">
-          <form method="POST" class="needs-validation mb-4" novalidate>
-            {{ form.hidden_tag() }}
-            <div class="row g-3">
-              <div class="col-md-3">
-                {{ form.id_veiculo.label(class="form-label") }}
-                {{ form.id_veiculo(class="form-select", required=true) }}
-                <div class="invalid-feedback">
-                  Por favor, selecione um veículo.
-                </div>
+          {% if usos_em_aberto and not editando %}
+            <!-- Formulário Desabilitado -->
+            <div class="card border-secondary bg-light">
+              <div class="card-header bg-secondary bg-opacity-10">
+                <h6 class="mb-0 text-muted">
+                  <i class="bi bi-lock me-2"></i>Formulário Bloqueado
+                </h6>
               </div>
-              <div class="col-md-3">
-                {{ form.id_motorista.label(class="form-label") }}
-                {{ form.id_motorista(class="form-select", required=true) }}
-                <div class="invalid-feedback">
-                  Por favor, selecione um motorista.
+              <div class="card-body">
+                <div class="text-center py-4">
+                  <i class="bi bi-lock-fill display-1 text-muted mb-3"></i>
+                  <h5 class="text-muted">Cadastro Temporariamente Bloqueado</h5>
+                  <p class="text-muted mb-3">
+                    Para manter a integridade dos dados, é necessário encerrar todos os usos em aberto<br>
+                    antes de adicionar novos registros de veículos.
+                  </p>
+                  <div class="d-flex justify-content-center gap-2">
+                    <span class="badge bg-warning text-dark px-3 py-2">
+                      <i class="bi bi-exclamation-triangle me-1"></i>
+                      {{ usos_em_aberto|length }} uso{{ 's' if usos_em_aberto|length != 1 else '' }} pendente{{ 's' if usos_em_aberto|length != 1 else '' }}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-2">
-                {{ form.data_inicio.label(class="form-label") }}
-                {{ form.data_inicio(class="form-control", required=true) }}
-                <div class="invalid-feedback">
-                  Por favor, informe a data de início.
-                </div>
-              </div>
-              <div class="col-md-2">
-                {{ form.data_devolucao.label(class="form-label") }}
-                {{ form.data_devolucao(class="form-control", required=true) }}
-                <div class="invalid-feedback">
-                  Por favor, informe a data de devolução.
-                </div>
-              </div>
-              <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                  <i class="bi bi-plus-circle me-1"></i>Adicionar
-                </button>
               </div>
             </div>
-            <div class="row mt-3">
-              <div class="col-md-12">
-                {{ form.observacoes.label(class="form-label") }}
-                {{ form.observacoes(class="form-control", rows=2, placeholder="Observações sobre o uso do veículo") }}
+          {% else %}
+            <!-- Formulário Ativo -->
+            {% if editando %}
+            <div class="alert alert-info mb-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi bi-pencil-square me-2"></i>
+                  <strong>Editando Uso de Veículo</strong> - Preencha a data/hora de devolução e quilometragem final para encerrar o uso
+                </div>
+                <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" class="btn btn-sm btn-secondary">
+                  <i class="bi bi-x me-1"></i>Cancelar
+                </a>
               </div>
             </div>
-          </form>
+            {% endif %}
+            <form method="POST" class="needs-validation mb-4" novalidate>
+              {{ form.hidden_tag() }}
+              <div class="row g-3">
+                <div class="col-md-6">
+                  {{ form.id_veiculo.label(class="form-label") }}
+                  {{ form.id_veiculo(class="form-select", required=true) }}
+                  <div class="invalid-feedback">
+                    Por favor, selecione um veículo.
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  {{ form.id_motorista.label(class="form-label") }}
+                  {{ form.id_motorista(class="form-select", required=true) }}
+                  <div class="invalid-feedback">
+                    Por favor, selecione um motorista.
+                  </div>
+                </div>
+              </div>
+              <div class="row g-3 mt-2">
+                <div class="col-md-3">
+                  {{ form.data_inicio.label(class="form-label") }}
+                  {{ form.data_inicio(class="form-control", required=true) }}
+                  <div class="invalid-feedback">
+                    Por favor, informe a data de início.
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  {{ form.data_devolucao.label(class="form-label") }}
+                  {{ form.data_devolucao(class="form-control") }}
+                  {% if form.data_devolucao.errors %}
+                    <div class="text-danger small">
+                      {% for error in form.data_devolucao.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <small class="text-muted">Campo opcional</small>
+                  {% endif %}
+                </div>
+                <div class="col-md-3">
+                  {{ form.hora_inicio.label(class="form-label") }}
+                  {{ form.hora_inicio(class="form-control", required=true) }}
+                  {% if form.hora_inicio.errors %}
+                    <div class="text-danger small">
+                      {% for error in form.hora_inicio.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <small class="text-muted">Campo obrigatório</small>
+                  {% endif %}
+                </div>
+                <div class="col-md-3">
+                  {{ form.hora_fim.label(class="form-label") }}
+                  {{ form.hora_fim(class="form-control") }}
+                  {% if form.hora_fim.errors %}
+                    <div class="text-danger small">
+                      {% for error in form.hora_fim.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <small class="text-muted">Campo opcional</small>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="row g-3 mt-2">
+                <div class="col-md-3">
+                  {{ form.km_inicio.label(class="form-label") }}
+                  {{ form.km_inicio(class="form-control", placeholder="Ex: 50000", required=true) }}
+                  {% if form.km_inicio.errors %}
+                    <div class="text-danger small">
+                      {% for error in form.km_inicio.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <small class="text-muted">Campo obrigatório</small>
+                  {% endif %}
+                </div>
+                <div class="col-md-3">
+                  {{ form.km_fim.label(class="form-label") }}
+                  {{ form.km_fim(class="form-control", placeholder="Ex: 50500") }}
+                  {% if form.km_fim.errors %}
+                    <div class="text-danger small">
+                      {% for error in form.km_fim.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <small class="text-muted">Campo opcional</small>
+                  {% endif %}
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                  <button type="submit" class="btn btn-primary">
+                    {% if editando %}
+                      <i class="bi bi-check-circle me-1"></i>Salvar Alterações
+                    {% else %}
+                      <i class="bi bi-plus-circle me-1"></i>Adicionar
+                    {% endif %}
+                  </button>
+                </div>
+              </div>
+              <div class="row mt-3">
+                <div class="col-md-12">
+                  {{ form.observacoes.label(class="form-label") }}
+                  {{ form.observacoes(class="form-control", rows=2, placeholder="Observações sobre o uso do veículo") }}
+                </div>
+              </div>
+            </form>
+          {% endif %}
         </div>
       </div>
 
@@ -78,6 +280,9 @@
                 <th><i class="bi bi-person me-1"></i>Motorista</th>
                 <th><i class="bi bi-calendar-event me-1"></i>Data Início</th>
                 <th><i class="bi bi-calendar-check me-1"></i>Data Devolução</th>
+                <th class="text-end"><i class="bi bi-speedometer me-1"></i>KM Inicial</th>
+                <th class="text-end"><i class="bi bi-speedometer2 me-1"></i>KM Final</th>
+                <th class="text-end"><i class="bi bi-arrow-left-right me-1"></i>KM Rodados</th>
                 <th><i class="bi bi-chat-text me-1"></i>Observações</th>
                 <th class="text-center" width="120">Ações</th>
               </tr>
@@ -122,10 +327,40 @@
                     </div>
                   </td>
                   <td>
-                    <span class="badge bg-info">{{ veiculo.data_inicio.strftime('%d/%m/%Y') }}</span>
+                    {% if veiculo.data_inicio %}
+                      <span class="badge bg-info">{{ veiculo.data_inicio.strftime('%d/%m/%Y') }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Sem data</span>
+                    {% endif %}
                   </td>
                   <td>
-                    <span class="badge bg-warning">{{ veiculo.data_devolucao.strftime('%d/%m/%Y') }}</span>
+                    {% if veiculo.data_devolucao %}
+                      <span class="badge bg-warning">{{ veiculo.data_devolucao.strftime('%d/%m/%Y') }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Em uso</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    {% if veiculo.km_inicio %}
+                      <span class="badge bg-info">{{ "{:,}".format(veiculo.km_inicio).replace(',', '.') }} km</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    {% if veiculo.km_fim %}
+                      <span class="badge bg-success">{{ "{:,}".format(veiculo.km_fim).replace(',', '.') }} km</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    {% if veiculo.km_inicio and veiculo.km_fim %}
+                      {% set km_rodados = veiculo.km_fim - veiculo.km_inicio %}
+                      <span class="badge bg-primary fw-bold">{{ "{:,}".format(km_rodados).replace(',', '.') }} km</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
                   </td>
                   <td>
                     <small>{{ veiculo.observacoes or '—' }}</small>
@@ -155,17 +390,42 @@
             <div class="card bg-light">
               <div class="card-body">
                 <div class="row text-center">
-                  <div class="col-md-4">
-                    <h5 class="text-success">{{ veiculos_evento|length }}</h5>
-                    <small class="text-muted">Veículo{{ 's' if veiculos_evento|length != 1 else '' }} no evento</small>
+                  <div class="col-md-2">
+                    <h5 class="text-danger">{{ usos_em_aberto_evento|length if usos_em_aberto_evento else 0 }}</h5>
+                    <small class="text-muted">Em Uso Agora</small>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-2">
+                    <h5 class="text-success">{{ (veiculos_evento|selectattr('data_devolucao')|list)|length }}</h5>
+                    <small class="text-muted">Usos Finalizados</small>
+                  </div>
+                  <div class="col-md-2">
                     <h5 class="text-info">{{ veiculos_evento|map(attribute='veiculo.categoria.nome')|unique|list|length if veiculos_evento else 0 }}</h5>
                     <small class="text-muted">Categoria{{ 's' if (veiculos_evento|map(attribute='veiculo.categoria.nome')|unique|list|length if veiculos_evento else 0) != 1 else '' }} diferentes</small>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-2">
                     <h5 class="text-warning">{{ veiculos_evento|map(attribute='motorista.nome')|unique|list|length if veiculos_evento else 0 }}</h5>
                     <small class="text-muted">Motorista{{ 's' if (veiculos_evento|map(attribute='motorista.nome')|unique|list|length if veiculos_evento else 0) != 1 else '' }} diferentes</small>
+                  </div>
+                  <div class="col-md-2">
+                    {% set usos_com_km = veiculos_evento|selectattr('km_inicio')|selectattr('km_fim')|list %}
+                    <h5 class="text-primary">{{ usos_com_km|length }}</h5>
+                    <small class="text-muted">Com KM Completo</small>
+                  </div>
+                  <div class="col-md-2">
+                    {% set total_km = 0 %}
+                    {% for veiculo in veiculos_evento %}
+                      {% if veiculo.km_inicio and veiculo.km_fim %}
+                        {% set total_km = total_km + (veiculo.km_fim - veiculo.km_inicio) %}
+                      {% endif %}
+                    {% endfor %}
+                    <h5 class="text-secondary">
+                      {% if total_km > 0 %}
+                        {{ "{:,}".format(total_km).replace(',', '.') }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </h5>
+                    <small class="text-muted">Total KM Rodados</small>
                   </div>
                 </div>
               </div>

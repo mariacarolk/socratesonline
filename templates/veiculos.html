@@ -88,14 +88,21 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     {{ form.capacidade_passageiros.label(class="form-label") }}
                     <div class="input-group">
                         {{ form.capacidade_passageiros(class="form-control", placeholder="Número de passageiros") }}
                         <span class="input-group-text"><i class="bi bi-people"></i></span>
                     </div>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
+                    {{ form.media_km_litro.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.media_km_litro(class="form-control", placeholder="Ex: 8,5") }}
+                        <span class="input-group-text">km/L</span>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
                     {{ form.observacoes.label(class="form-label") }}
                     <div class="input-group">
                         {{ form.observacoes(class="form-control", placeholder="Observações", rows=3) }}
@@ -143,6 +150,7 @@
                         <th>Ano</th>
                         <th>Placa</th>
                         <th>Categoria</th>
+                        <th>Média km/L</th>
                         <th class="text-center no-sort" style="width: 150px;">Ações</th>
                     </tr>
                 </thead>
@@ -154,6 +162,7 @@
                         <td>{{ v.ano or '—' }}</td>
                         <td>{{ v.placa or '—' }}</td>
                         <td>{{ v.categoria.nome if v.categoria else '—' }}</td>
+                        <td>{{ "{:.1f}".format(v.media_km_litro) if v.media_km_litro else '—' }}</td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
                                 <a href="{{ url_for('editar_veiculo', id=v.id_veiculo) }}" class="btn btn-sm btn-outline-primary" title="Editar">

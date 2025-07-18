@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('relatorio_custo_frota') }}">Relatórios</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Custo da Frota</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1 text-gray-900">
+            <i class="bi bi-fuel-pump text-primary me-2"></i>Relatório de Custo da Frota
+        </h2>
+        <p class="text-muted mb-0">Análise de custos de combustível por evento</p>
+    </div>
+    {% if dados_relatorio %}
+    <div class="btn-toolbar">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('exportar_custo_frota', formato='excel') }}?evento_id={{ evento_id }}" 
+               class="btn btn-sm btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
+            <a href="{{ url_for('exportar_custo_frota', formato='pdf') }}?evento_id={{ evento_id }}" 
+               class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Seleção de Evento -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-funnel text-primary me-2"></i>
+                <span class="fw-medium text-dark me-3">Selecionar evento:</span>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                <select name="evento_id" class="form-select" style="max-width: 400px;" required>
+                    <option value="">Selecione um evento</option>
+                    {% for evento in eventos %}
+                        <option value="{{ evento.id_evento }}" {% if evento.id_evento|string == evento_id %}selected{% endif %}>
+                            {{ evento.nome }} - {{ evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Sem data' }}
+                        </option>
+                    {% endfor %}
+                </select>
+                
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-search me-1"></i>Gerar Relatório
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Aviso se parâmetro gasolina não estiver cadastrado -->
+{% if erro_parametro %}
+<div class="alert alert-warning border-0 shadow-sm">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle-fill text-warning me-3 fs-4"></i>
+        <div>
+            <h5 class="alert-heading mb-1">Parâmetro não encontrado</h5>
+            <p class="mb-2">O preço da gasolina não está cadastrado no sistema.</p>
+            <p class="mb-0">
+                <a href="{{ url_for('parametros') }}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-gear me-1"></i>Cadastrar em Parâmetros
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Resultados do Relatório -->
+{% if dados_relatorio %}
+<div class="row mb-4">
+    <!-- Informações do Evento -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-event me-2"></i>{{ dados_relatorio.evento.nome }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Data:</strong> 
+                            {% if dados_relatorio.evento.data_inicio %}
+                                {{ dados_relatorio.evento.data_inicio.strftime('%d/%m/%Y') }}
+                                {% if dados_relatorio.evento.data_fim %}
+                                    a {{ dados_relatorio.evento.data_fim.strftime('%d/%m/%Y') }}
+                                {% endif %}
+                            {% else %}
+                                Não informada
+                            {% endif %}
+                        </p>
+                        <p><strong>Cidade:</strong> {{ dados_relatorio.evento.cidade or 'Não informada' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Estado:</strong> {{ dados_relatorio.evento.estado or 'Não informado' }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge bg-secondary">{{ dados_relatorio.evento.status or 'Não definido' }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resumo de Custos -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calculator me-2"></i>Resumo de Custos
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <h6 class="text-muted">Preço da Gasolina</h6>
+                    <h4 class="text-primary">R$ {{ "%.2f"|format(dados_relatorio.preco_gasolina)|replace('.', ',') }}</h4>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-muted">Veículos Utilizados</h6>
+                    <h4 class="text-info">{{ dados_relatorio.total_veiculos }}</h4>
+                </div>
+                <div>
+                    <h6 class="text-muted">Custo Total</h6>
+                    <h3 class="text-success fw-bold">R$ {{ "%.2f"|format(dados_relatorio.custo_total)|replace('.', ',') }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Custos por Veículo -->
+{% if dados_relatorio.custos_veiculos %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-table me-2"></i>Detalhamento por Veículo
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Veículo</th>
+                        <th>Placa</th>
+                        <th>Motorista</th>
+                        <th class="text-center">Período</th>
+                        <th class="text-end">KM Inicial</th>
+                        <th class="text-end">KM Final</th>
+                        <th class="text-end">KM Rodados</th>
+                        <th class="text-end">Média KM/L</th>
+                        <th class="text-end">Litros</th>
+                        <th class="text-end">Custo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in dados_relatorio.custos_veiculos %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-car-front text-primary me-2"></i>
+                                <div>
+                                    <div class="fw-medium">{{ item.veiculo.nome }}</div>
+                                    {% if item.veiculo.modelo %}
+                                        <small class="text-muted">{{ item.veiculo.modelo }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ item.veiculo.placa or '<span class="text-muted">Sem placa</span>' | safe }}</td>
+                        <td>{{ item.motorista.nome }}</td>
+                        <td class="text-center">
+                            <small>
+                                {{ item.data_inicio.strftime('%d/%m') if item.data_inicio else '-' }}
+                                {% if item.data_devolucao %}
+                                    a {{ item.data_devolucao.strftime('%d/%m') }}
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td class="text-end">{{ "{:,}".format(item.km_inicial).replace(',', '.') }}</td>
+                        <td class="text-end">{{ "{:,}".format(item.km_final).replace(',', '.') }}</td>
+                        <td class="text-end fw-medium">{{ "{:,}".format(item.km_rodados).replace(',', '.') }}</td>
+                        <td class="text-end">{{ "%.1f"|format(item.media_km_litro)|replace('.', ',') }}</td>
+                        <td class="text-end">{{ "%.2f"|format(item.litros_gastos)|replace('.', ',') }}</td>
+                        <td class="text-end">
+                            <span class="fw-medium text-success">
+                                R$ {{ "%.2f"|format(item.custo)|replace('.', ',') }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th colspan="9" class="text-end">Total Geral:</th>
+                        <th class="text-end">
+                            <span class="fs-5 fw-bold text-success">
+                                R$ {{ "%.2f"|format(dados_relatorio.custo_total)|replace('.', ',') }}
+                            </span>
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info border-0 shadow-sm">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle-fill text-info me-3 fs-4"></i>
+        <div>
+            <h5 class="alert-heading mb-1">Nenhum veículo encontrado</h5>
+            <p class="mb-0">Não foram encontrados veículos com dados completos de quilometragem para este evento.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% elif evento_id and not erro_parametro %}
+<div class="alert alert-info border-0 shadow-sm">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle-fill text-info me-3 fs-4"></i>
+        <div>
+            <h5 class="alert-heading mb-1">Evento sem dados</h5>
+            <p class="mb-0">Este evento não possui veículos com dados completos de quilometragem.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %} 

@@ -2354,8 +2354,27 @@ function editarDespesaModal(button) {
     document.getElementById('modal_qtd_dias').value = qtdDias || '';
     document.getElementById('modal_qtd_pessoas').value = qtdPessoas || '';
     
-    // Verificar se deve mostrar campos de alimentação (será feito quando as despesas carregarem)
-    // A verificação automática será feita pelo event listener após carregarDespesasPorCategoriaModal
+    // Verificar se deve mostrar campos de alimentação
+    // Se já temos valores de quantidade, mostrar os campos imediatamente
+    if ((qtdDias && qtdDias.trim() !== '') || (qtdPessoas && qtdPessoas.trim() !== '')) {
+        console.log('🟡 Despesa já tem valores de alimentação, mostrando campos...');
+        const camposAlimentacao = document.getElementById('modal-campos-alimentacao');
+        if (camposAlimentacao) {
+            camposAlimentacao.style.display = 'block';
+            camposAlimentacao.style.backgroundColor = '#ffffcc';
+            camposAlimentacao.style.border = '2px solid #ffc107';
+            camposAlimentacao.style.padding = '15px';
+            camposAlimentacao.style.marginTop = '10px';
+            
+            // Tornar campos obrigatórios
+            const qtdDiasInput = document.getElementById('modal_qtd_dias');
+            const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
+            if (qtdDiasInput) qtdDiasInput.setAttribute('required', 'required');
+            if (qtdPessoasInput) qtdPessoasInput.setAttribute('required', 'required');
+            
+            console.log('✅ Campos de alimentação exibidos para edição');
+        }
+    }
     
     // Limpar campo de comprovante e exibir comprovante atual se existir
     const comprovanteField = document.getElementById('modal_despesa_comprovante');

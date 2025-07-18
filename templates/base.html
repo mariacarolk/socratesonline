@@ -96,6 +96,9 @@
                     <a class="nav-link {% if request.endpoint == 'cadastrar_categoria_despesa' %}active{% endif %}" href="{{ url_for('cadastrar_categoria_despesa') }}">
                         <i class="bi bi-tags"></i> Categorias Despesa
                     </a>
+                    <a class="nav-link {% if request.endpoint == 'cadastrar_parametro' %}active{% endif %}" href="{{ url_for('cadastrar_parametro') }}">
+                        <i class="bi bi-gear"></i> Parâmetros
+                    </a>
                 </div>
             </div>
             {% endif %}
@@ -141,6 +144,9 @@
                     </a>
                     <a class="nav-link {% if request.endpoint == 'relatorio_veiculos' %}active{% endif %}" href="{{ url_for('relatorio_veiculos') }}">
                         <i class="bi bi-car-front"></i> Veículos e Eventos
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'relatorio_custo_frota' %}active{% endif %}" href="{{ url_for('relatorio_custo_frota') }}">
+                        <i class="bi bi-fuel-pump"></i> Custo da Frota
                     </a>
                 </div>
             </div>
@@ -218,6 +224,8 @@
             });
         });
     </script>
+    <!-- Script para funcionalidade de valor médio das despesas -->
+    <script src="{{ url_for('static', filename='js/valor-medio-despesas.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

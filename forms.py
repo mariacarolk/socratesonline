@@ -1,9 +1,10 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField, BooleanField
-from wtforms.fields.datetime import DateField
+from wtforms.fields.datetime import DateField, TimeField
 from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
+from datetime import date, datetime
 
 class MultiCheckboxField(SelectMultipleField):
     widget = ListWidget(prefix_label=False)
@@ -222,8 +223,35 @@ class VeiculoForm(FlaskForm):
     cor = StringField('Cor')
     combustivel = StringField('Combustível')
     capacidade_passageiros = IntegerField('Capacidade de Passageiros')
+    media_km_litro = StringField('Média KM/Litro')
     observacoes = StringField('Observações')
     id_categoria_veiculo = SelectField('Categoria', coerce=int)
+    
+    def validate_media_km_litro(form, field):
+        """Validador personalizado para aceitar valores em formato brasileiro"""
+        if field.data and field.data.strip() != '':
+            try:
+                # Converter formato brasileiro (8,5) para formato americano (8.5)
+                valor_str = str(field.data).strip()
+                
+                # Se contém ponto e vírgula, é formato brasileiro (ex: 10,5)
+                if '.' in valor_str and ',' in valor_str:
+                    # Remover pontos de milhares e trocar vírgula por ponto
+                    valor_str = valor_str.replace('.', '').replace(',', '.')
+                # Se contém apenas vírgula, trocar por ponto
+                elif ',' in valor_str and '.' not in valor_str:
+                    valor_str = valor_str.replace(',', '.')
+                
+                valor_float = float(valor_str)
+                
+                if valor_float <= 0:
+                    raise ValidationError('Média km/litro deve ser maior que zero.')
+                    
+                # Armazenar o valor convertido para uso posterior
+                field.data = valor_float
+                
+            except (ValueError, TypeError):
+                raise ValidationError('Média km/litro deve ser um número válido. Use vírgula para separar decimais (ex: 8,5).')
 
 class EquipeEventoForm(FlaskForm):
     id_colaborador = SelectField('Colaborador', coerce=int, validators=[InputRequired(message="Selecione um colaborador")])
@@ -241,9 +269,60 @@ class FornecedorEventoForm(FlaskForm):
 class VeiculoEventoForm(FlaskForm):
     id_veiculo = SelectField('Veículo', coerce=int, validators=[InputRequired(message="Selecione um veículo")])
     id_motorista = SelectField('Motorista', coerce=int, validators=[InputRequired(message="Selecione um motorista")])
-    data_inicio = DateField('Data de Início', validators=[InputRequired(message="Data de início é obrigatória")])
-    data_devolucao = DateField('Data de Devolução', validators=[InputRequired(message="Data de devolução é obrigatória")])
+    data_inicio = DateField('Data de Início', validators=[InputRequired(message="Data de início é obrigatória")], default=date.today)
+    data_devolucao = DateField('Data de Devolução (opcional)', validators=[Optional()])
+    hora_inicio = TimeField('Hora de Início', validators=[InputRequired(message="Hora de início é obrigatória")], default=lambda: datetime.now().time())
+    hora_fim = TimeField('Hora de Fim (opcional)', validators=[Optional()])
+    km_inicio = IntegerField('KM Inicial', validators=[InputRequired(message="KM inicial é obrigatório")])
+    km_fim = IntegerField('KM Final (opcional)', validators=[Optional()])
     observacoes = TextAreaField('Observações')
+    
+    def validate_data_devolucao(self, field):
+        if field.data and self.data_inicio.data and field.data < self.data_inicio.data:
+            raise ValidationError('A data de devolução não pode ser anterior à data de início.')
+    
+    def validate_hora_fim(self, field):
+        if field.data and self.hora_inicio.data:
+            # Se é o mesmo dia, hora fim deve ser posterior à hora início
+            if not self.data_devolucao.data or self.data_devolucao.data == self.data_inicio.data:
+                if field.data <= self.hora_inicio.data:
+                    raise ValidationError('A hora de fim deve ser posterior à hora de início.')
+    
+    def validate_km_fim(self, field):
+        if field.data and self.km_inicio.data and field.data <= self.km_inicio.data:
+            raise ValidationError('A quilometragem final deve ser maior que a inicial.')
+    
+    def validate(self, extra_validators=None):
+        # Chamar validação padrão primeiro
+        if not super().validate(extra_validators):
+            return False
+        
+        # Validação customizada: se qualquer um dos 3 campos de "finalização" for preenchido,
+        # todos devem ser preenchidos
+        campos_finalizacao = [
+            (self.data_devolucao.data, 'data de devolução'),
+            (self.hora_fim.data, 'hora de fim'),
+            (self.km_fim.data, 'quilometragem final')
+        ]
+        
+        # Verificar quais campos foram preenchidos
+        preenchidos = [(valor, nome) for valor, nome in campos_finalizacao if valor is not None]
+        
+        # Se pelo menos um foi preenchido, todos devem estar preenchidos
+        if preenchidos and len(preenchidos) < 3:
+            campos_faltando = [nome for valor, nome in campos_finalizacao if valor is None]
+            
+            # Adicionar erros nos campos que faltam
+            if not self.data_devolucao.data:
+                self.data_devolucao.errors.append('Campo obrigatório quando há informações de finalização.')
+            if not self.hora_fim.data:
+                self.hora_fim.errors.append('Campo obrigatório quando há informações de finalização.')
+            if not self.km_fim.data:
+                self.km_fim.errors.append('Campo obrigatório quando há informações de finalização.')
+                
+            return False
+        
+        return True
 
 class ReceitaEventoForm(FlaskForm):
     categoria_receita = SelectField('Categoria', coerce=int, validators=[DataRequired()])
@@ -360,3 +439,8 @@ class ReceitaEmpresaForm(FlaskForm):
             
         except (ValueError, TypeError):
             raise ValidationError('Valor deve ser um número válido. Use vírgula para separar decimais (ex: 10,50).')
+
+class ParametroForm(FlaskForm):
+    parametro = StringField('Parâmetro', validators=[InputRequired()])
+    valor = StringField('Valor')
+    observacoes = TextAreaField('Observações')
