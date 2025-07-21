@@ -203,8 +203,23 @@ function converterValorBrasileiroParaNumero(valorFormatado) {
 function configurarValidacaoValorMedio(selectDespesa, valorInput) {
     if (!selectDespesa || !valorInput) return;
     
+    // REMOVER event listeners anteriores para evitar duplicação
+    const oldChangeListener = selectDespesa._valorMedioChangeListener;
+    const oldInputListener = valorInput._valorMedioInputListener;
+    const oldBlurListener = valorInput._valorMedioBlurListener;
+    
+    if (oldChangeListener) {
+        selectDespesa.removeEventListener('change', oldChangeListener);
+    }
+    if (oldInputListener) {
+        valorInput.removeEventListener('input', oldInputListener);
+    }
+    if (oldBlurListener) {
+        valorInput.removeEventListener('blur', oldBlurListener);
+    }
+    
     // Event listener para mudança na seleção da despesa
-    selectDespesa.addEventListener('change', async function() {
+    const changeListener = async function() {
         const despesaId = this.value;
         
         // Limpar valor médio atual e alertas
@@ -224,14 +239,18 @@ function configurarValidacaoValorMedio(selectDespesa, valorInput) {
                 console.error('Erro ao buscar valor médio:', error);
             }
         }
-    });
+    };
     
-    // Event listener para validação enquanto digita
-    valorInput.addEventListener('input', function() {
+        // Event listener para quando usuário digita (apenas remove indicação sugerida)
+    const inputListener = function() {
         // Remover indicação de valor sugerido quando usuário digita
         removerIndicacaoValorSugerido(this);
-        
-        // Validar apenas se temos um valor médio definido
+        // Remover alerta anterior enquanto está digitando
+        removerAlertaVariacao(this);
+    };
+
+    // Event listener para quando o campo perde o foco (validação completa)
+    const blurListener = function() {
         if (valorMedioAtual && valorMedioAtual > 0) {
             const valorDigitado = converterValorBrasileiroParaNumero(this.value);
             
@@ -247,22 +266,35 @@ function configurarValidacaoValorMedio(selectDespesa, valorInput) {
                 removerAlertaVariacao(this);
             }
         }
+    };
+    
+    // Adicionar os event listeners e armazenar suas referências
+    selectDespesa.addEventListener('change', changeListener);
+    valorInput.addEventListener('input', inputListener);
+    valorInput.addEventListener('blur', blurListener);
+    
+    // Armazenar referências para remoção futura
+    selectDespesa._valorMedioChangeListener = changeListener;
+    valorInput._valorMedioInputListener = inputListener;
+    valorInput._valorMedioBlurListener = blurListener;
+}
+
+/**
+ * Limpa todos os alertas e indicações de valor médio
+ */
+function limparAlertasValorMedio() {
+    // Remover todos os alertas ativos
+    document.querySelectorAll('.valor-medio-alerta').forEach(alerta => alerta.remove());
+    document.querySelectorAll('.valor-medio-indicacao').forEach(indicacao => indicacao.remove());
+    
+    // Remover classes de valor sugerido
+    document.querySelectorAll('.valor-sugerido').forEach(input => {
+        input.classList.remove('valor-sugerido');
     });
     
-    // Event listener para quando o campo perde o foco (validação final)
-    valorInput.addEventListener('blur', function() {
-        if (valorMedioAtual && valorMedioAtual > 0) {
-            const valorDigitado = converterValorBrasileiroParaNumero(this.value);
-            
-            if (valorDigitado > 0) {
-                const validacao = validarVariacaoValorMedio(valorDigitado, valorMedioAtual);
-                
-                if (!validacao.isValid) {
-                    mostrarAlertaVariacao(validacao, this);
-                }
-            }
-        }
-    });
+    // Resetar variável global
+    valorMedioAtual = null;
+    alertaAtivo = null;
 }
 
 /**
@@ -319,18 +351,114 @@ function inicializarValidacaoValorMedio() {
             }
         }
     });
+    
+    // Configurar limpeza quando modais são abertos
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('show.bs.modal', limparAlertasValorMedio);
+    });
 }
 
 // Auto-inicializar quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', inicializarValidacaoValorMedio);
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarValidacaoValorMedio();
+    
+    // Também limpar alertas quando a página é carregada
+    limparAlertasValorMedio();
+});
 
 // Também inicializar quando HTMX ou outros frameworks carregarem conteúdo dinamicamente
 document.addEventListener('htmx:afterSwap', inicializarValidacaoValorMedio);
+
+/**
+ * Valida variação de valor médio em um input específico
+ * @param {Element} valorInput - Input do valor
+ * @param {number} valorMedio - Valor médio da despesa
+ */
+function validarVariacaoValorMedioInput(valorInput, valorMedio) {
+    if (!valorInput || !valorMedio) {
+        return;
+    }
+    
+    // Obter valor digitado do input (convertendo formato brasileiro)
+    let valorDigitadoStr = valorInput.value.trim();
+    if (!valorDigitadoStr) {
+        return;
+    }
+    
+    // Converter valor do formato brasileiro para número
+    let valorDigitado;
+    try {
+        // Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
+        if (valorDigitadoStr.includes('.') && valorDigitadoStr.includes(',')) {
+            valorDigitadoStr = valorDigitadoStr.replace(/\./g, '').replace(',', '.');
+        }
+        // Se contém apenas vírgula, trocar por ponto
+        else if (valorDigitadoStr.includes(',') && !valorDigitadoStr.includes('.')) {
+            valorDigitadoStr = valorDigitadoStr.replace(',', '.');
+        }
+        
+        valorDigitado = parseFloat(valorDigitadoStr);
+        
+        if (isNaN(valorDigitado) || valorDigitado <= 0) {
+            return;
+        }
+    } catch (error) {
+        console.log('Erro ao converter valor digitado:', error);
+        return;
+    }
+    
+    // Executar validação
+    const validacao = validarVariacaoValorMedio(valorDigitado, valorMedio);
+    
+    // Remover alertas anteriores
+    removerAlertaVariacao(valorInput);
+    
+    // Mostrar alerta se necessário
+    if (!validacao.isValid) {
+        mostrarAlertaVariacao(validacao, valorInput);
+    }
+}
+
+/**
+ * Configura validação para disparar ao sair do campo de valor
+ * @param {Element} valorInput - Input do valor
+ * @param {number} valorMedio - Valor médio da despesa
+ * @returns {Element} - O novo input com listener configurado
+ */
+function configurarValidacaoTempoReal(valorInput, valorMedio) {
+    if (!valorInput || !valorMedio) {
+        return valorInput;
+    }
+    
+    // Armazenar valor médio no dataset do input
+    valorInput.dataset.valorMedio = valorMedio;
+    
+    // Aplicar validação inicial
+    validarVariacaoValorMedioInput(valorInput, valorMedio);
+    
+    // Remover listeners anteriores clonando o elemento
+    const novoInput = valorInput.cloneNode(true);
+    valorInput.parentNode.replaceChild(novoInput, valorInput);
+    
+    // Adicionar listener para validação quando sair do campo
+    novoInput.addEventListener('blur', function() {
+        const valorMedioAtual = parseFloat(this.dataset.valorMedio);
+        if (valorMedioAtual) {
+            validarVariacaoValorMedioInput(this, valorMedioAtual);
+        }
+    });
+    
+    console.log('✅ Validação configurada para disparar ao sair do campo');
+    return novoInput;
+}
 
 // Exportar funções para uso global
 window.ValorMedioDespesas = {
     inicializar: inicializarValidacaoValorMedio,
     configurar: configurarValidacaoValorMedio,
     buscarValorMedio: buscarValorMedio,
-    validarVariacao: validarVariacaoValorMedio
+    validarVariacao: validarVariacaoValorMedio,
+    validarVariacaoInput: validarVariacaoValorMedioInput,
+    configurarValidacao: configurarValidacaoTempoReal,
+    limparAlertas: limparAlertasValorMedio
 }; 

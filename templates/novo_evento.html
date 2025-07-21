@@ -594,7 +594,7 @@
                             </td>
                             <td colspan="6">
                               <button type="button" class="btn btn-sm btn-success w-100" 
-                                      onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'true', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
+                                      onclick="abrirModalDespesaUnificado('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'true', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
                                 <i class="bi bi-plus me-2"></i>Cadastrar esta despesa fixa
                               </button>
@@ -613,7 +613,7 @@
                             </td>
                             <td colspan="6">
                               <button type="button" class="btn btn-sm btn-success w-100" 
-                                      onclick="abrirModalDespesa('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'false', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
+                                      onclick="abrirModalDespesaUnificado('{{ despesa.id_despesa }}', '{{ categoria.id_categoria_despesa }}', '{{ despesa.nome }}', '{{ categoria.nome }}', 'false', '{{ despesa.valor_medio if despesa.valor_medio else "" }}')" 
                                       title="Cadastrar Despesa">
                                 <i class="bi bi-plus me-2"></i>Cadastrar esta despesa variável
                               </button>
@@ -639,7 +639,7 @@
                           <tr class="table-light">
                             <td colspan="7">
                               <button type="button" class="btn btn-sm btn-outline-danger w-100" 
-                                      onclick="abrirModalDespesa('', '{{ categoria.id_categoria_despesa }}', '', '{{ categoria.nome }}', 'false', '')" 
+                                      onclick="abrirModalDespesaUnificado('', '{{ categoria.id_categoria_despesa }}', '', '{{ categoria.nome }}', 'false', '')" 
                                       title="Incluir Nova Despesa">
                                 <i class="bi bi-plus me-2"></i>Incluir nova despesa
                               </button>
@@ -730,19 +730,19 @@
 
 <!-- Modal Adicionar Despesa -->
 <div class="modal fade" id="modalAdicionarDespesa" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white border-0">
+        <h5 class="modal-title fw-bold">
           <i class="bi bi-credit-card me-2"></i>Adicionar Despesa
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form onsubmit="adicionarDespesaEvento(event)" enctype="multipart/form-data">
-        <div class="modal-body">
+        <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label">Categoria da Despesa</label>
+                <label class="form-label fw-medium">Categoria da Despesa</label>
               <select name="categoria_despesa" class="form-select" id="modal_despesa_categoria" required>
                 <option value="">Selecione uma categoria...</option>
                 {% for categoria in categorias_despesa %}
@@ -752,31 +752,30 @@
             </div>
             
             <div class="col-12">
-              <label class="form-label">Despesa</label>
+                <label class="form-label fw-medium">Despesa</label>
               <select name="despesa_id" class="form-select" id="modal_despesa_item" required>
                 <option value="">Primeiro selecione a categoria...</option>
               </select>
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">Data de Vencimento</label>
+                <label class="form-label fw-medium">Data de Vencimento</label>
               <input type="date" name="data_vencimento" class="form-control" id="modal_despesa_data_vencimento" required value="{{ current_date }}">
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">Data de Pagamento</label>
+                <label class="form-label fw-medium">Data de Pagamento</label>
               <input type="date" name="data_pagamento" class="form-control" id="modal_despesa_data_pagamento">
               <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">Valor (R$)</label>
-              <input type="text" name="valor" class="form-control" id="modal_despesa_valor" required placeholder="0,00"
-                     oninput="formatarMoeda(this)">
+                <label class="form-label fw-medium">Valor (R$)</label>
+                <input type="text" name="valor" class="form-control" id="modal_despesa_valor" required placeholder="0,00">
             </div>
             
             <div class="col-12">
-              <label class="form-label">Fornecedor</label>
+                <label class="form-label fw-medium">Fornecedor</label>
               <div class="input-group">
                 <input type="text" class="form-control" id="modal_despesa_fornecedor_nome" 
                        placeholder="Clique para buscar fornecedor..." readonly>
@@ -791,7 +790,7 @@
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">Status</label>
+                <label class="form-label fw-medium">Status</label>
               <select name="status_pagamento" class="form-select" id="modal_despesa_status" required>
                 <option value="pendente">Pendente</option>
                 <option value="pago">Pago</option>
@@ -799,7 +798,7 @@
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">Forma de Pagamento</label>
+                <label class="form-label fw-medium">Forma de Pagamento</label>
               <select name="forma_pagamento" class="form-select" id="modal_despesa_forma" required>
                 <option value="débito">Débito</option>
                 <option value="crédito">Crédito</option>
@@ -809,12 +808,12 @@
             </div>
             
             <div class="col-12">
-              <label class="form-label">Pago Por</label>
+                <label class="form-label fw-medium">Pago por</label>
               <input type="text" name="pago_por" class="form-control" id="modal_despesa_pago_por" placeholder="Nome da pessoa que pagou">
             </div>
             
             <div class="col-12">
-              <label class="form-label">Comprovante</label>
+                <label class="form-label fw-medium">Comprovante</label>
               
               <!-- Comprovante atual (se existir) -->
               <div id="comprovante_atual_info" class="mb-3 d-none">
@@ -863,7 +862,7 @@
                 </div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Quantidade de Dias</label>
+                  <label class="form-label fw-medium">Quantidade de Dias</label>
                 <div class="input-group">
                   <input type="number" name="qtd_dias" class="form-control" id="modal_qtd_dias" min="1" placeholder="Ex: 5">
                   <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
@@ -873,7 +872,7 @@
                 </div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Quantidade de Pessoas</label>
+                  <label class="form-label fw-medium">Quantidade de Pessoas</label>
                 <div class="input-group">
                   <input type="number" name="qtd_pessoas" class="form-control" id="modal_qtd_pessoas" min="1" placeholder="Ex: 10">
                   <span class="input-group-text"><i class="bi bi-people"></i></span>
@@ -885,13 +884,24 @@
             </div>
             
             <div class="col-12">
-              <label class="form-label">Observações</label>
-              <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="2"></textarea>
+                <label class="form-label fw-medium">Observações</label>
+                <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="3"></textarea>
             </div>
+              
+              <div class="col-12">
+                <div class="form-check">
+                  <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_modal" value="1">
+                  <label class="form-check-label fw-medium" for="despesa_cabeca_modal">
+                    Despesa da cabeça
+                  </label>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+          </div>
+        <div class="modal-footer border-0 bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-2"></i>Cancelar
+          </button>
           <button type="submit" class="btn btn-danger">
             <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
           </button>
@@ -1305,7 +1315,13 @@ function abrirModalDespesa(despesaId, categoriaId, nomeDespesa, nomeCategoria, i
     
     // Pré-preencher valor médio se disponível
     if (valorMedio) {
-        document.getElementById('modal_despesa_valor').value = valorMedio.replace('.', ',');
+        const inputValor = document.getElementById('modal_despesa_valor');
+        inputValor.value = valorMedio.replace('.', ',');
+        inputValor.setAttribute('data-valor-medio', valorMedio);
+        
+        // Configurar validação de valor médio
+        inputValor.removeEventListener('input', validarValorAoDigitarModal);
+        inputValor.addEventListener('input', validarValorAoDigitarModal);
     }
     
     // Atualizar título do modal
@@ -1408,6 +1424,10 @@ function carregarDespesasPorCategoriaModal(categoriaId, despesaIdSelecionada) {
             selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
         });
 }
+
+// Funções de valor médio removidas - agora gerenciadas pelo arquivo valor-medio-despesas.js
+
+
 
 // Função para verificar se a despesa selecionada no modal é de alimentação
 function verificarDespesaAlimentacaoModal() {
@@ -1793,15 +1813,11 @@ function salvarDespesa(despesaId, isFixa) {
                 };
                 
                 // Esconder campos e mostrar valores
-                esconderCamposDespesa(despesaId, dadosDespesa, data.fornecedor_nome);
+                esconderCamposDespesa(despesaId, dadosDespesa);
                 
-                // Trocar botões: esconder salvar, mostrar editar
-                var btnSalvar = linha.querySelector('.despesa-btn-salvar');
-                var btnEditar = linha.querySelector('.despesa-btn-editar');
-                btnSalvar.classList.add('d-none');
-                btnEditar.classList.remove('d-none');
+                console.log('Despesa salva:', data);
             } else {
-                alert('Erro ao salvar despesa: ' + data.message);
+                alert('Erro: ' + data.message);
             }
         })
         .catch(error => {
@@ -1887,6 +1903,37 @@ function editarDespesaFixa(despesaId) {
     var btnSalvar = linha.querySelector('.despesa-btn-salvar');
     btnEditar.classList.add('d-none');
     btnSalvar.classList.remove('d-none');
+    
+    // ✅ CONFIGURAR VALIDAÇÃO EM TEMPO REAL PARA EDIÇÃO INLINE
+    const valorInput = document.getElementById('despesa_valor_' + despesaId);
+    if (valorInput && typeof buscarValorMedio === 'function' && typeof validarVariacaoValorMedioInput === 'function') {
+        // Buscar valor médio e configurar validação
+        buscarValorMedio(despesaId).then(response => {
+            if (response.success && response.valor_medio) {
+                // Armazenar valor médio
+                valorInput.dataset.valorMedio = response.valor_medio;
+                
+                // Aplicar validação inicial
+                validarVariacaoValorMedioInput(valorInput, response.valor_medio);
+                
+                // Remover listeners anteriores
+                const novoInput = valorInput.cloneNode(true);
+                valorInput.parentNode.replaceChild(novoInput, valorInput);
+                
+                // Adicionar listener para validação em tempo real
+                novoInput.addEventListener('input', function() {
+                    const valorMedio = parseFloat(this.dataset.valorMedio);
+                    if (valorMedio) {
+                        validarVariacaoValorMedioInput(this, valorMedio);
+                    }
+                });
+                
+                console.log('✅ Validação em tempo real configurada para edição inline fixa');
+            }
+        }).catch(error => {
+            console.log('ℹ️ Erro ao configurar validação inline fixa:', error);
+        });
+    }
 }
 
 // Função para editar despesa variável
@@ -1910,6 +1957,37 @@ function editarDespesaVariavel(despesaId) {
     var btnSalvar = linha.querySelector('.despesa-btn-salvar');
     btnEditar.classList.add('d-none');
     btnSalvar.classList.remove('d-none');
+    
+    // ✅ CONFIGURAR VALIDAÇÃO EM TEMPO REAL PARA EDIÇÃO INLINE
+    const valorInput = document.getElementById('despesa_valor_' + despesaId);
+    if (valorInput && typeof buscarValorMedio === 'function' && typeof validarVariacaoValorMedioInput === 'function') {
+        // Buscar valor médio e configurar validação
+        buscarValorMedio(despesaId).then(response => {
+            if (response.success && response.valor_medio) {
+                // Armazenar valor médio
+                valorInput.dataset.valorMedio = response.valor_medio;
+                
+                // Aplicar validação inicial
+                validarVariacaoValorMedioInput(valorInput, response.valor_medio);
+                
+                // Remover listeners anteriores
+                const novoInput = valorInput.cloneNode(true);
+                valorInput.parentNode.replaceChild(novoInput, valorInput);
+                
+                // Adicionar listener para validação em tempo real
+                novoInput.addEventListener('input', function() {
+                    const valorMedio = parseFloat(this.dataset.valorMedio);
+                    if (valorMedio) {
+                        validarVariacaoValorMedioInput(this, valorMedio);
+                    }
+                });
+                
+                console.log('✅ Validação em tempo real configurada para edição inline variável');
+            }
+        }).catch(error => {
+            console.log('ℹ️ Erro ao configurar validação inline variável:', error);
+        });
+    }
     
     // Voltar cor para cinza
     linha.className = 'table-light';
@@ -2104,6 +2182,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modalDespesaCategoria) {
         modalDespesaCategoria.addEventListener('change', function() {
             carregarDespesasPorCategoriaModal(this.value);
+            // Limpar campo de valor quando trocar categoria
+            const inputValor = document.getElementById('modal_despesa_valor');
+            if (inputValor) {
+                inputValor.value = '';
+                inputValor.placeholder = '0,00';
+            }
         });
     }
     
@@ -2116,6 +2200,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('🔄 Event listener DISPARADO - Valor selecionado:', this.value);
             console.log('🔄 Chamando verificarDespesaAlimentacaoModal...');
             verificarDespesaAlimentacaoModal();
+            
+            // A validação de valor médio é gerenciada pelo arquivo valor-medio-despesas.js
         });
         console.log('✅ Event listener configurado com sucesso!');
         
@@ -2349,10 +2435,14 @@ function editarDespesaModal(button) {
     
     console.log('Qtd Dias:', qtdDias);
     console.log('Qtd Pessoas:', qtdPessoas);
+    console.log('Despesa da Cabeça:', despesaCabeca);
     
     // Preencher campos de quantidade
     document.getElementById('modal_qtd_dias').value = qtdDias || '';
     document.getElementById('modal_qtd_pessoas').value = qtdPessoas || '';
+    
+    // Preencher campo despesa da cabeça
+    document.getElementById('despesa_cabeca_modal').checked = despesaCabeca;
     
     // Verificar se deve mostrar campos de alimentação
     // Se já temos valores de quantidade, mostrar os campos imediatamente
@@ -2413,6 +2503,50 @@ function editarDespesaModal(button) {
     // Adicionar atributo para identificar que é edição
     form.setAttribute('data-editing', 'true');
     form.setAttribute('data-despesa-evento-id', despesaEventoId);
+    
+    // ✅ VALIDAÇÃO DE VALOR MÉDIO PARA EDIÇÃO
+    // Aguardar um pouco para garantir que os campos foram preenchidos, depois aplicar validação
+    setTimeout(() => {
+        // Limpar alertas anteriores
+        if (typeof limparAlertasValorMedio === 'function') {
+            limparAlertasValorMedio();
+        }
+        
+        // Buscar valor médio e aplicar validação se a função existir
+        if (typeof buscarValorMedio === 'function' && despesaId) {
+            buscarValorMedio(despesaId).then(response => {
+                if (response.success && response.valor_medio) {
+                    console.log('🔄 Valor médio encontrado para edição:', response.valor_medio_formatado);
+                    
+                                            // Aplicar validação no valor atual se a função existir
+                        const valorInput = document.getElementById('modal_despesa_valor');
+                        if (valorInput && typeof validarVariacaoValorMedioInput === 'function') {
+                            // Armazenar valor médio atual para validação
+                            window.valorMedioAtual = response.valor_medio;
+                            
+                            // Aplicar validação no valor atual
+                            validarVariacaoValorMedioInput(valorInput, response.valor_medio);
+                            
+                            // ✅ CONFIGURAR VALIDAÇÃO EM TEMPO REAL
+                            // Remover listeners anteriores para evitar duplicação
+                            const novoInput = valorInput.cloneNode(true);
+                            valorInput.parentNode.replaceChild(novoInput, valorInput);
+                            
+                            // Adicionar novo listener para validação em tempo real
+                            novoInput.addEventListener('input', function() {
+                                if (window.valorMedioAtual) {
+                                    validarVariacaoValorMedioInput(this, window.valorMedioAtual);
+                                }
+                            });
+                            
+                            console.log('✅ Validação de valor médio aplicada na edição com tempo real');
+                        }
+                }
+            }).catch(error => {
+                console.log('ℹ️ Erro ao buscar valor médio para edição:', error);
+            });
+        }
+    }, 300);
     
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('modalAdicionarDespesa'));

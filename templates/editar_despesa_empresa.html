@@ -233,6 +233,51 @@
             }
         }
         
+        // ✅ VALIDAÇÃO DE VALOR MÉDIO NA INICIALIZAÇÃO (EDIÇÃO)
+        // Verificar se há uma despesa já selecionada e aplicar validação de valor médio
+        function aplicarValidacaoInicialValorMedio() {
+            const despesaIdAtual = despesaSelect.value;
+            
+            if (despesaIdAtual && despesaIdAtual != '0' && typeof buscarValorMedio === 'function') {
+                // Limpar alertas anteriores
+                if (typeof limparAlertasValorMedio === 'function') {
+                    limparAlertasValorMedio();
+                }
+                
+                buscarValorMedio(despesaIdAtual).then(response => {
+                    if (response.success && response.valor_medio) {
+                        console.log('🔄 Valor médio inicial encontrado para edição empresa:', response.valor_medio_formatado);
+                        
+                        // Aplicar validação no campo de valor
+                        const valorInput = document.getElementById('valor');
+                        if (valorInput && typeof validarVariacaoValorMedioInput === 'function') {
+                            // Armazenar valor médio atual para validação
+                            window.valorMedioAtual = response.valor_medio;
+                            
+                            // Aplicar validação no valor atual
+                            validarVariacaoValorMedioInput(valorInput, response.valor_medio);
+                            
+                            // ✅ CONFIGURAR VALIDAÇÃO EM TEMPO REAL
+                            // Remover listeners anteriores (clonar elemento)
+                            const novoInput = valorInput.cloneNode(true);
+                            valorInput.parentNode.replaceChild(novoInput, valorInput);
+                            
+                            // Adicionar listener para validação em tempo real
+                            novoInput.addEventListener('input', function() {
+                                if (window.valorMedioAtual) {
+                                    validarVariacaoValorMedioInput(this, window.valorMedioAtual);
+                                }
+                            });
+                            
+                            console.log('✅ Validação inicial de valor médio aplicada na edição empresa com tempo real');
+                        }
+                    }
+                }).catch(error => {
+                    console.log('ℹ️ Erro ao buscar valor médio inicial para edição empresa:', error);
+                });
+            }
+        }
+        
         // Função para verificar se a despesa é de alimentação
         function verificarDespesaAlimentacao() {
             const despesaId = despesaSelect.value;
@@ -264,6 +309,42 @@
                             qtdDiasInput.removeAttribute('required');
                             qtdPessoasInput.removeAttribute('required');
                         }
+                        
+                        // ✅ VALIDAÇÃO DE VALOR MÉDIO PARA EDIÇÃO DE DESPESAS DA EMPRESA
+                        // Buscar valor médio e aplicar validação
+                        if (typeof buscarValorMedio === 'function') {
+                            buscarValorMedio(despesaId).then(response => {
+                                if (response.success && response.valor_medio) {
+                                    console.log('🔄 Valor médio encontrado para edição empresa:', response.valor_medio_formatado);
+                                    
+                                    // Aplicar validação no campo de valor
+                                    const valorInput = document.getElementById('valor');
+                                    if (valorInput && typeof validarVariacaoValorMedioInput === 'function') {
+                                        // Armazenar valor médio atual para validação
+                                        window.valorMedioAtual = response.valor_medio;
+                                        
+                                        // Aplicar validação no valor atual
+                                        validarVariacaoValorMedioInput(valorInput, response.valor_medio);
+                                        
+                                        // ✅ CONFIGURAR VALIDAÇÃO EM TEMPO REAL
+                                        // Remover listeners anteriores (clonar elemento)
+                                        const novoInput = valorInput.cloneNode(true);
+                                        valorInput.parentNode.replaceChild(novoInput, valorInput);
+                                        
+                                        // Adicionar listener para validação em tempo real
+                                        novoInput.addEventListener('input', function() {
+                                            if (window.valorMedioAtual) {
+                                                validarVariacaoValorMedioInput(this, window.valorMedioAtual);
+                                            }
+                                        });
+                                        
+                                        console.log('✅ Validação de valor médio aplicada na edição empresa com tempo real');
+                                    }
+                                }
+                            }).catch(error => {
+                                console.log('ℹ️ Erro ao buscar valor médio para edição empresa:', error);
+                            });
+                        }
                     })
                     .catch(error => {
                         console.error('Erro ao verificar despesa:', error);
@@ -281,6 +362,10 @@
         }
         
         if (categoriaSelect && despesaSelect && camposAlimentacao && qtdDiasInput && qtdPessoasInput) {
+            // Aplicar validações na inicialização
+            verificarValoresExistentes();
+            aplicarValidacaoInicialValorMedio();
+            
             categoriaSelect.addEventListener('change', function() {
                 const categoriaId = this.value;
                 
@@ -319,7 +404,50 @@
             });
             
             // Verificar despesa de alimentação quando despesa mudar
-            despesaSelect.addEventListener('change', verificarDespesaAlimentacao);
+            despesaSelect.addEventListener('change', function() {
+                verificarDespesaAlimentacao();
+                
+                // ✅ APLICAR VALIDAÇÃO DE VALOR MÉDIO QUANDO TROCAR DESPESA
+                const despesaIdSelecionada = this.value;
+                if (despesaIdSelecionada && despesaIdSelecionada != '0' && typeof buscarValorMedio === 'function') {
+                    // Limpar alertas anteriores
+                    if (typeof limparAlertasValorMedio === 'function') {
+                        limparAlertasValorMedio();
+                    }
+                    
+                    buscarValorMedio(despesaIdSelecionada).then(response => {
+                        if (response.success && response.valor_medio) {
+                            console.log('🔄 Valor médio encontrado ao trocar despesa:', response.valor_medio_formatado);
+                            
+                            // Aplicar validação no campo de valor
+                            const valorInput = document.getElementById('valor');
+                            if (valorInput && typeof validarVariacaoValorMedioInput === 'function') {
+                                // Armazenar valor médio atual para validação
+                                window.valorMedioAtual = response.valor_medio;
+                                
+                                // Aplicar validação no valor atual
+                                validarVariacaoValorMedioInput(valorInput, response.valor_medio);
+                                
+                                // ✅ CONFIGURAR VALIDAÇÃO EM TEMPO REAL
+                                // Remover listeners anteriores (clonar elemento)
+                                const novoInput = valorInput.cloneNode(true);
+                                valorInput.parentNode.replaceChild(novoInput, valorInput);
+                                
+                                // Adicionar listener para validação em tempo real
+                                novoInput.addEventListener('input', function() {
+                                    if (window.valorMedioAtual) {
+                                        validarVariacaoValorMedioInput(this, window.valorMedioAtual);
+                                    }
+                                });
+                                
+                                console.log('✅ Validação de valor médio aplicada ao trocar despesa com tempo real');
+                            }
+                        }
+                    }).catch(error => {
+                        console.log('ℹ️ Erro ao buscar valor médio ao trocar despesa:', error);
+                    });
+                }
+            });
             
             // Verificar no carregamento inicial se já tem uma despesa selecionada
             if (despesaSelect.value && despesaSelect.value != '0') {

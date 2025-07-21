@@ -10,52 +10,52 @@
 {% endblock %}
 
 {% block content %}
-<!-- Header com melhor design -->
+<!-- Header moderno e clean -->
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h2 class="mb-1 fw-bold text-primary">
+    <h2 class="mb-2 fw-bold text-dark">
       {% if is_admin %}
-        <i class="bi bi-calendar-event me-2"></i>Todos os Eventos
+        <i class="bi bi-calendar-event me-2 text-primary"></i>Todos os Eventos
       {% else %}
-        <i class="bi bi-calendar-heart me-2"></i>Meus Eventos
+        <i class="bi bi-calendar-heart me-2 text-primary"></i>Meus Eventos
       {% endif %}
     </h2>
-    <p class="text-muted mb-0">Gerencie e acompanhe seus eventos de forma eficiente</p>
+    <p class="text-muted mb-0 fs-6">Gerencie e acompanhe seus eventos de forma eficiente</p>
   </div>
-  <a href="{{ url_for('novo_evento') }}" class="btn btn-primary btn-lg shadow-sm">
+  <a href="{{ url_for('novo_evento') }}" class="btn btn-primary btn-lg shadow-sm rounded-3 px-4">
     <i class="bi bi-plus-circle me-2"></i>Novo Evento
   </a>
 </div>
 
-<!-- Filtros aprimorados -->
+<!-- Filtros refinados -->
 {% set period = request.args.get('period', '90dias') %}
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-body py-3">
+<div class="card border-0 shadow-sm mb-4 rounded-4">
+  <div class="card-body py-3 px-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between">
       <div class="d-flex align-items-center mb-2 mb-md-0">
-        <i class="bi bi-funnel text-primary me-2"></i>
-        <span class="fw-medium text-dark me-3">Filtrar por período:</span>
+        <i class="bi bi-funnel text-primary me-2 fs-5"></i>
+        <span class="fw-semibold text-dark me-3">Filtrar por período:</span>
         <div class="btn-group btn-group-sm" role="group">
-          <a href="?period=hoje" class="btn btn-outline-primary {% if period == 'hoje' %}active{% endif %}">Hoje</a>
+          <a href="?period=hoje" class="btn btn-outline-primary rounded-start-3 {% if period == 'hoje' %}active{% endif %}">Hoje</a>
           <a href="?period=ontem" class="btn btn-outline-primary {% if period == 'ontem' %}active{% endif %}">Ontem</a>
           <a href="?period=7dias" class="btn btn-outline-primary {% if period == '7dias' %}active{% endif %}">7 Dias</a>
           <a href="?period=mes" class="btn btn-outline-primary {% if period == 'mes' %}active{% endif %}">Este Mês</a>
           <a href="?period=90dias" class="btn btn-outline-primary {% if period == '90dias' %}active{% endif %}">90 Dias</a>
-          <a href="?period=custom" class="btn btn-outline-primary {% if period == 'custom' %}active{% endif %}">Personalizado</a>
+          <a href="?period=custom" class="btn btn-outline-primary rounded-end-3 {% if period == 'custom' %}active{% endif %}">Personalizado</a>
         </div>
       </div>
       
       {% if period == 'custom' %}
         <form method="get" class="d-flex align-items-center gap-2">
           <input type="hidden" name="period" value="custom">
-          <input type="date" name="data_inicio" class="form-control form-control-sm" 
+          <input type="date" name="data_inicio" class="form-control form-control-sm rounded-3" 
                  value="{{ data_inicio or request.args.get('data_inicio', '') }}" 
                  style="width: 140px;">
-          <span class="text-muted">até</span>
-          <input type="date" name="data_fim" class="form-control form-control-sm" 
+          <span class="text-muted small">até</span>
+          <input type="date" name="data_fim" class="form-control form-control-sm rounded-3" 
                  value="{{ data_fim or request.args.get('data_fim', '') }}" 
                  style="width: 140px;">
-          <button type="submit" class="btn btn-sm btn-primary">
+          <button type="submit" class="btn btn-sm btn-primary rounded-3 px-3">
             <i class="bi bi-search me-1"></i>Filtrar
           </button>
         </form>
@@ -65,10 +65,10 @@
 </div>
 
 {% if eventos %}
-  <!-- Contador de eventos -->
-  <div class="d-flex align-items-center mb-3">
-    <div class="badge bg-light text-dark fs-6 px-3 py-2">
-      <i class="bi bi-calendar-check me-1"></i>
+  <!-- Contador de eventos refinado -->
+  <div class="d-flex align-items-center mb-4">
+    <div class="badge bg-light text-dark fs-6 px-3 py-2 rounded-4 border">
+      <i class="bi bi-calendar-check me-2 text-primary"></i>
       {{ eventos|length }} evento{{ 's' if eventos|length != 1 else '' }} encontrado{{ 's' if eventos|length != 1 else '' }}
     </div>
   </div>
@@ -76,23 +76,23 @@
   <div class="row g-4">
     {% for evento in eventos %}
       <div class="col-12 col-md-6 col-xl-4">
-        <div class="card evento-card h-100 border-0 shadow-sm" 
+        <div class="card evento-card-refined h-100 border-0 shadow-sm rounded-4" 
              data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
           
-          <!-- Header do card com gradiente padronizado (CLICÁVEL) -->
-          <div class="card-header border-0 p-0 position-relative clickable-zone" 
+          <!-- Header do card mais elegante (CLICÁVEL) -->
+          <div class="card-header border-0 p-0 position-relative clickable-zone-refined" 
                data-bs-toggle="modal" 
                data-bs-target="#modalDetalhes{{ evento.id_evento }}"
                style="cursor: pointer;">
-            <div class="evento-header bg-primary-gradient text-white p-4 rounded-top">
+            <div class="evento-header-refined bg-gradient-primary text-white p-4 rounded-top-4">
               
-              <!-- Status badge no canto superior direito -->
-              <div class="position-absolute top-0 end-0 mt-2 me-2">
-                <span class="badge 
-                  {% if evento.status == 'a realizar' %}bg-warning text-dark
-                  {% elif evento.status == 'em andamento' %}bg-info
-                  {% elif evento.status == 'realizado' %}bg-success
-                  {% else %}bg-secondary{% endif %} fw-medium px-2 py-1">
+              <!-- Status badge mais discreto -->
+              <div class="position-absolute top-0 end-0 mt-3 me-3">
+                <span class="badge badge-refined fw-medium px-3 py-2 rounded-pill
+                  {% if evento.status == 'a realizar' %}bg-warning bg-opacity-90 text-dark
+                  {% elif evento.status == 'em andamento' %}bg-info bg-opacity-90 text-white
+                  {% elif evento.status == 'realizado' %}bg-success bg-opacity-90 text-white
+                  {% else %}bg-secondary bg-opacity-90 text-white{% endif %}">
                   {% if evento.status == 'a realizar' %}
                     <i class="bi bi-clock me-1"></i>A Realizar
                   {% elif evento.status == 'em andamento' %}
@@ -105,14 +105,14 @@
                 </span>
               </div>
               
-              <h5 class="card-title mb-2 fw-bold text-truncate" title="{{ evento.nome }}">
+              <h5 class="card-title mb-3 fw-bold text-truncate fs-5" title="{{ evento.nome }}">
                 {{ evento.nome }}
               </h5>
               
-              <!-- Datas em destaque -->
-              <div class="d-flex align-items-center text-white-50">
-                <i class="bi bi-calendar3 me-2"></i>
-                <span class="small">
+              <!-- Datas em destaque mais refinadas -->
+              <div class="d-flex align-items-center text-white text-opacity-90">
+                <i class="bi bi-calendar3 me-2 fs-6"></i>
+                <span class="small fw-medium">
                   {{ evento.data_inicio.strftime('%d/%m/%Y') }} 
                   {% if evento.data_inicio != evento.data_fim %}
                     - {{ evento.data_fim.strftime('%d/%m/%Y') }}
@@ -123,367 +123,195 @@
           </div>
           
           <div class="card-body p-4">
-            <!-- Informações básicas com ícones (CLICÁVEL) -->
-            <div class="evento-info mb-4 clickable-zone" 
+            <!-- Informações básicas mais clean (CLICÁVEL) -->
+            <div class="evento-info-refined mb-4 clickable-zone-refined" 
                  data-bs-toggle="modal" 
                  data-bs-target="#modalDetalhes{{ evento.id_evento }}"
                  style="cursor: pointer;">
-              <div class="info-item d-flex align-items-center mb-2">
-                <div class="info-icon bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
-                  <i class="bi bi-geo-alt"></i>
+              <div class="info-item-refined d-flex align-items-center mb-3">
+                <div class="info-icon-refined bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 36px; height: 36px;">
+                  <i class="bi bi-geo-alt fs-6"></i>
                 </div>
                 <div class="flex-grow-1">
-                  <div class="fw-medium text-dark">{{ evento.cidade }}/{{ evento.estado }}</div>
+                  <div class="fw-semibold text-dark fs-6">{{ evento.cidade }}/{{ evento.estado }}</div>
                   {% if evento.endereco %}
                     <div class="text-muted small">{{ evento.endereco }}</div>
                   {% endif %}
                 </div>
               </div>
               
-              <div class="info-item d-flex align-items-center mb-2">
-                <div class="info-icon bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
-                  <i class="bi bi-building"></i>
+              <div class="info-item-refined d-flex align-items-center mb-3">
+                <div class="info-icon-refined bg-success bg-opacity-10 text-success rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 36px; height: 36px;">
+                  <i class="bi bi-building fs-6"></i>
                 </div>
                 <div class="flex-grow-1">
-                  <div class="fw-medium text-dark">{{ evento.circo.nome if evento.circo else 'Circo não definido' }}</div>
+                  <div class="fw-semibold text-dark fs-6">{{ evento.circo.nome if evento.circo else 'Circo não definido' }}</div>
                   <div class="text-muted small">Circo responsável</div>
                 </div>
               </div>
               
-              <div class="info-item d-flex align-items-center">
-                <div class="info-icon bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 32px; height: 32px;">
-                  <i class="bi bi-person-badge"></i>
+              <div class="info-item-refined d-flex align-items-center">
+                <div class="info-icon-refined bg-info bg-opacity-10 text-info rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 36px; height: 36px;">
+                  <i class="bi bi-person-badge fs-6"></i>
                 </div>
                 <div class="flex-grow-1">
-                  <div class="fw-medium text-dark">{{ evento.produtor.nome if evento.produtor else 'Produtor não definido' }}</div>
+                  <div class="fw-semibold text-dark fs-6">{{ evento.produtor.nome if evento.produtor else 'Produtor não definido' }}</div>
                   <div class="text-muted small">Produtor responsável</div>
                 </div>
               </div>
             </div>
             
-            <!-- Ações rápidas otimizadas para mobile (NÃO CLICÁVEL) -->
-            <div class="evento-actions mb-3 non-clickable-zone">
-              <!-- Ações principais com foco mobile -->
-              <div class="action-grid-primary mb-3">
-                <button type="button" class="btn-action-mobile btn-danger-mobile" 
-                        data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}"
-                        data-action="despesa" data-evento="{{ evento.id_evento }}"
-                        onclick="event.stopPropagation();">
-                  <div class="btn-action-mobile-content">
-                    <i class="bi bi-credit-card"></i>
-                    <span class="btn-action-mobile-text">Despesa</span>
-                    <div class="btn-action-mobile-subtitle">Adicionar gasto</div>
+            <!-- Ações principais redesenhadas (NÃO CLICÁVEL) -->
+            <div class="evento-actions-refined mb-4 non-clickable-zone">
+              <!-- Botões principais com design mais sofisticado -->
+              <div class="action-grid-refined mb-3">
+                <button type="button" class="btn-action-refined btn-despesa-refined" 
+                        onclick="event.stopPropagation(); abrirModalDespesaUnificado('{{ evento.id_evento }}');"
+                        data-action="despesa" data-evento="{{ evento.id_evento }}">
+                  <div class="btn-content-refined">
+                    <div class="btn-icon-refined">
+                      <i class="bi bi-credit-card fs-4"></i>
+                    </div>
+                    <div class="btn-text-refined">
+                      <span class="btn-title-refined">Despesa</span>
+                      <span class="btn-subtitle-refined">Adicionar gasto</span>
+                    </div>
                   </div>
-                  <div class="btn-action-mobile-ripple"></div>
-                  </button>
+                  <div class="btn-overlay-refined"></div>
+                </button>
                 
-                <button type="button" class="btn-action-mobile btn-success-mobile" 
+                <button type="button" class="btn-action-refined btn-receita-refined" 
                         data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}"
                         data-action="receita" data-evento="{{ evento.id_evento }}"
                         onclick="event.stopPropagation();">
-                  <div class="btn-action-mobile-content">
-                    <i class="bi bi-cash-coin"></i>
-                    <span class="btn-action-mobile-text">Receita</span>
-                    <div class="btn-action-mobile-subtitle">Adicionar entrada</div>
-                </div>
-                  <div class="btn-action-mobile-ripple"></div>
-                  </button>
+                  <div class="btn-content-refined">
+                    <div class="btn-icon-refined">
+                      <i class="bi bi-cash-coin fs-4"></i>
+                    </div>
+                    <div class="btn-text-refined">
+                      <span class="btn-title-refined">Receita</span>
+                      <span class="btn-subtitle-refined">Adicionar entrada</span>
+                    </div>
+                  </div>
+                  <div class="btn-overlay-refined"></div>
+                </button>
               </div>
               
-              <!-- Ações secundárias com design simplificado -->
-              <div class="action-grid-secondary">
-                  <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-primary-secondary"
+              <!-- Ações secundárias mais discretas -->
+              <div class="action-grid-secondary-refined">
+                <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-secondary-refined btn-primary-accent"
                    onclick="event.stopPropagation();">
-                  <i class="bi bi-people"></i>
+                  <i class="bi bi-people fs-6"></i>
                   <span>Equipe</span>
                 </a>
                 
-                  <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-warning-secondary"
+                <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-secondary-refined btn-warning-accent"
                    onclick="event.stopPropagation();">
-                  <i class="bi bi-person-video"></i>
+                  <i class="bi bi-person-video fs-6"></i>
                   <span>Elenco</span>
                 </a>
                 
-                  <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-info-secondary"
+                <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-secondary-refined btn-info-accent"
                    onclick="event.stopPropagation();">
-                  <i class="bi bi-shop"></i>
-                  <span>Fornecedores</span>
+                  <i class="bi bi-shop fs-6"></i>
+                  <span>Fornecedor</span>
                 </a>
                 
-                  <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" 
-                   class="btn-action-secondary-mobile btn-success-secondary"
+                <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" 
+                   class="btn-secondary-refined btn-success-accent"
                    onclick="event.stopPropagation();">
-                  <i class="bi bi-car-front"></i>
+                  <i class="bi bi-car-front fs-6"></i>
                   <span>Veículos</span>
                 </a>
               </div>
             </div>
             
-            <!-- Footer com menu de ações mobile-friendly (NÃO CLICÁVEL) -->
-            <div class="evento-footer pt-3 border-top non-clickable-zone">
+            <!-- Footer com estilo mais clean (NÃO CLICÁVEL) -->
+            <div class="evento-footer-refined pt-3 border-top border-light non-clickable-zone">
               <div class="d-flex justify-content-between align-items-center">
-                <button class="btn-mobile-secondary" 
+                <button class="btn-footer-refined" 
                         data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ evento.id_evento }}"
                         onclick="event.stopPropagation();">
-                  <i class="bi bi-eye"></i>
+                  <i class="bi bi-eye fs-6"></i>
                   <span>Detalhes</span>
-              </button>
+                </button>
                 
                 <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" 
-                   class="btn-mobile-primary"
+                   class="btn-footer-refined btn-footer-primary"
                    onclick="event.stopPropagation();">
-                  <i class="bi bi-pencil-square"></i>
+                  <i class="bi bi-pencil-square fs-6"></i>
                   <span>Editar</span>
                 </a>
               
-              <div class="dropdown">
-                  <button class="btn-mobile-menu" type="button" 
+                <div class="dropdown">
+                  <button class="btn-footer-refined" type="button" 
                           data-bs-toggle="dropdown" aria-expanded="false" 
                           id="dropdownMenuButton{{ evento.id_evento }}"
                           onclick="event.stopPropagation();">
-                    <i class="bi bi-three-dots-vertical"></i>
+                    <i class="bi bi-three-dots-vertical fs-6"></i>
                     <span>Menu</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
-                  <li>
-                    <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-pencil me-2 text-primary"></i>Editar Evento
-                    </a>
-                  </li>
-                  <li>
-                    <a href="{{ url_for('relatorio_faturamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-bar-chart me-2 text-info"></i>Relatório Financeiro
-                    </a>
-                  </li>
-                  <li>
-                    <a href="{{ url_for('relatorio_fechamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-clipboard-check me-2 text-warning"></i>Fechamento de Evento
-                    </a>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalAdicionarDespesa{{ evento.id_evento }}">
-                      <i class="bi bi-credit-card me-2 text-danger"></i>Adicionar Despesa
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}">
-                      <i class="bi bi-cash-coin me-2 text-info"></i>Adicionar Receita
-                    </a>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-people me-2 text-primary"></i>Gerenciar Equipe
-                    </a>
-                  </li>
-                  <li>
-                    <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-person-video me-2 text-warning"></i>Gerenciar Elenco
-                    </a>
-                  </li>
-                  <li>
-                    <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-shop me-2 text-success"></i>Gerenciar Fornecedores
-                    </a>
-                  </li>
-                  <li>
-                    <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" class="dropdown-item">
-                      <i class="bi bi-car-front me-2 text-success"></i>Gerenciar Veículos
-                    </a>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <a href="#" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ evento.id_evento }}">
-                      <i class="bi bi-trash me-2"></i>Excluir Evento
-                    </a>
-                  </li>
-                </ul>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-3 border-0" aria-labelledby="dropdownMenuButton{{ evento.id_evento }}">
+                    <li>
+                      <a href="{{ url_for('editar_evento', id=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-pencil me-2 text-primary"></i>Editar Evento
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{{ url_for('relatorio_faturamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-bar-chart me-2 text-info"></i>Relatório Financeiro
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{{ url_for('relatorio_fechamento_evento', id_evento=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-clipboard-check me-2 text-warning"></i>Fechamento de Evento
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-2"></li>
+                    <li>
+                      <a href="#" class="dropdown-item rounded-2" onclick="abrirModalDespesaUnificado('{{ evento.id_evento }}'); return false;">
+                        <i class="bi bi-credit-card me-2 text-danger"></i>Adicionar Despesa
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="dropdown-item rounded-2" data-bs-toggle="modal" data-bs-target="#modalAdicionarReceita{{ evento.id_evento }}">
+                        <i class="bi bi-cash-coin me-2 text-success"></i>Adicionar Receita
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-2"></li>
+                    <li>
+                      <a href="{{ url_for('equipe_evento', id_evento=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-people me-2 text-primary"></i>Gerenciar Equipe
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{{ url_for('elenco_evento', id_evento=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-person-video me-2 text-warning"></i>Gerenciar Elenco
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{{ url_for('fornecedor_evento', id_evento=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-shop me-2 text-success"></i>Gerenciar Fornecedores
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{{ url_for('veiculos_evento', id_evento=evento.id_evento) }}" class="dropdown-item rounded-2">
+                        <i class="bi bi-car-front me-2 text-success"></i>Gerenciar Veículos
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-2"></li>
+                    <li>
+                      <a href="#" class="dropdown-item text-danger rounded-2" data-bs-toggle="modal" data-bs-target="#modalExcluir{{ evento.id_evento }}">
+                        <i class="bi bi-trash me-2"></i>Excluir Evento
+                      </a>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Adicionar Despesa -->
-      <div class="modal fade" id="modalAdicionarDespesa{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-          <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-danger text-white border-0">
-              <h5 class="modal-title fw-bold">
-                <i class="bi bi-credit-card me-2"></i>Adicionar Despesa
-              </h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form onsubmit="adicionarDespesaCompleta(event, '{{ evento.id_evento }}')" enctype="multipart/form-data">
-              <div class="modal-body p-4">
-                <div class="alert alert-light border-start border-danger border-4 mb-4">
-                  <div class="d-flex align-items-center">
-                    <i class="bi bi-info-circle text-danger me-2"></i>
-                    <div>
-                      <strong>{{ evento.nome }}</strong>
-                      <div class="text-muted small">{{ evento.cidade }}/{{ evento.estado }} • {{ evento.data_inicio.strftime('%d/%m/%Y') }}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="row g-3">
-                  <div class="col-12">
-                    <label class="form-label fw-medium">Categoria da Despesa</label>
-                    <select name="categoria_despesa" class="form-select" required 
-                            onchange="carregarDespesasPorCategoria(this, '{{ evento.id_evento }}')">
-                      <option value="">Selecione uma categoria...</option>
-                      {% for categoria in categorias_despesa %}
-                      <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  
-                  <div class="col-12">
-                    <label class="form-label fw-medium">Despesa</label>
-                    <select name="despesa_id" class="form-select" required>
-                      <option value="">Primeiro selecione a categoria...</option>
-                    </select>
-                  </div>
-                  
-                  <div class="col-md-6">
-                    <label class="form-label fw-medium">Data de Vencimento</label>
-                    <input type="date" name="data_vencimento" class="form-control" required value="{{ current_date }}">
-                  </div>
-                  
-                  <div class="col-md-6">
-                    <label class="form-label fw-medium">Data de Pagamento</label>
-                    <input type="date" name="data_pagamento" class="form-control">
-                    <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
-                  </div>
-                  
-                  <div class="col-md-6">
-                    <label class="form-label fw-medium">Valor (R$)</label>
-                    <input type="text" name="valor" class="form-control" required placeholder="0,00"
-                           oninput="formatarMoeda(this)">
-                  </div>
-                  
-                  <div class="col-12">
-                    <label class="form-label fw-medium">Fornecedor</label>
-                    <select name="fornecedor_id" class="form-select">
-                      <option value="">Selecione um fornecedor...</option>
-                      {% for fornecedor in fornecedores %}
-                      <option value="{{ fornecedor.id_fornecedor }}">{{ fornecedor.nome }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  
-                  <div class="col-md-6">
-                    <label class="form-label fw-medium">Status</label>
-                    <select name="status_pagamento" class="form-select" required>
-                      <option value="pendente">Pendente</option>
-                      <option value="pago">Pago</option>
-                    </select>
-                  </div>
-                  
-                  <div class="col-md-6">
-                    <label class="form-label fw-medium">Forma de Pagamento</label>
-                    <select name="forma_pagamento" class="form-select" required>
-                      <option value="débito">Débito</option>
-                      <option value="crédito">Crédito</option>
-                      <option value="espécie">Espécie</option>
-                      <option value="pix">Pix</option>
-                    </select>
-                  </div>
-                  
-                  <div class="col-12">
-                    <label class="form-label fw-medium">Pago por</label>
-                    <input type="text" name="pago_por" class="form-control">
-                  </div>
-                  
-                  <div class="col-12">
-                    <label class="form-label fw-medium">Comprovante</label>
-                    <!-- Comprovante atual (se existir) -->
-                    <div id="comprovante_atual_info_{{ evento.id_evento }}" class="mb-3 d-none">
-                      <div class="alert alert-info d-flex align-items-center">
-                        <i class="bi bi-file-earmark-text text-info me-2"></i>
-                        <div class="flex-grow-1">
-                          <small class="text-muted d-block">Comprovante anexado:</small>
-                          <span class="fw-medium" id="comprovante_atual_nome_{{ evento.id_evento }}">arquivo_atual.pdf</span>
-                        </div>
-                        <div class="btn-group">
-                          <button type="button" class="btn btn-sm btn-outline-primary" onclick="visualizarComprovante('{{ evento.id_evento }}')" title="Visualizar arquivo">
-                            <i class="bi bi-eye"></i>
-                          </button>
-                          <button type="button" class="btn btn-sm btn-outline-danger" onclick="excluirComprovanteAtual('{{ evento.id_evento }}')" title="Remover arquivo">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Input para novo comprovante -->
-                    <input type="file" name="comprovante" class="form-control" id="modal_despesa_comprovante_{{ evento.id_evento }}"
-                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-                    <input type="hidden" id="comprovante_atual_arquivo_{{ evento.id_evento }}" name="comprovante_atual">
-                    <div class="form-text">
-                      <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
-                    </div>
-                  </div>
-                  
-                  <div class="col-12">
-                    <label class="form-label fw-medium">Observações</label>
-                    <textarea name="observacoes" class="form-control" rows="3"></textarea>
-                  </div>
-                  
-                  <div class="col-12">
-                    <div class="form-check">
-                      <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_{{ evento.id_evento }}" value="1">
-                      <label class="form-check-label fw-medium" for="despesa_cabeca_{{ evento.id_evento }}">
-                        Despesa da cabeça
-                      </label>
-                    </div>
-                  </div>
-                  
-                  <!-- Campos de quantidade para despesas de alimentação -->
-                  <div class="row" id="modal-campos-alimentacao-{{ evento.id_evento }}" style="display: none;">
-                    <div class="col-12 mb-2">
-                      <div class="alert alert-info alert-sm">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label fw-medium">Quantidade de Dias</label>
-                      <div class="input-group">
-                        <input type="number" name="qtd_dias" class="form-control" id="modal_qtd_dias_{{ evento.id_evento }}" min="1" placeholder="Ex: 5">
-                        <span class="input-group-text"><i class="bi bi-calendar-range"></i></span>
-                      </div>
-                      <div class="form-text">
-                        <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label fw-medium">Quantidade de Pessoas</label>
-                      <div class="input-group">
-                        <input type="number" name="qtd_pessoas" class="form-control" id="modal_qtd_pessoas_{{ evento.id_evento }}" min="1" placeholder="Ex: 10">
-                        <span class="input-group-text"><i class="bi bi-people"></i></span>
-                      </div>
-                      <div class="form-text">
-                        <small class="text-muted">Número de pessoas que serão alimentadas</small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                  <i class="bi bi-x-circle me-2"></i>Cancelar
-                </button>
-                <button type="submit" class="btn btn-danger">
-                  <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       </div>
@@ -491,9 +319,9 @@
       <!-- Modal Adicionar Receita -->
       <div class="modal fade" id="modalAdicionarReceita{{ evento.id_evento }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-          <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-info text-white border-0">
-              <h5 class="modal-title fw-bold">
+          <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header text-white border-0 rounded-top-4" style="background: linear-gradient(135deg, #10b981, #059669)">
+              <h5 class="modal-title fw-bold fs-5">
                 <i class="bi bi-cash-coin me-2"></i>Adicionar Receita
               </h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -546,11 +374,11 @@
                   </div>
                 </div>
               </div>
-              <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <div class="modal-footer border-0 bg-light bg-opacity-50 rounded-bottom-4">
+                <button type="button" class="btn btn-light border rounded-3" data-bs-dismiss="modal">
                   <i class="bi bi-x-circle me-2"></i>Cancelar
                 </button>
-                <button type="submit" class="btn btn-info">
+                <button type="submit" class="btn text-white rounded-3 px-4" style="background: linear-gradient(135deg, #10b981, #059669)">
                   <i class="bi bi-plus-circle me-2"></i>Adicionar Receita
                 </button>
               </div>
@@ -874,50 +702,251 @@
     {% endfor %}
   </div>
 {% else %}
-  <!-- Estado vazio aprimorado -->
+  <!-- Estado vazio refinado -->
   <div class="text-center py-5">
     <div class="mb-4">
-      <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+      <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light" style="width: 120px; height: 120px;">
+        <i class="bi bi-calendar-x text-muted" style="font-size: 3.5rem;"></i>
+      </div>
     </div>
-    <h4 class="text-muted mb-3">Nenhum evento encontrado</h4>
-    <p class="text-muted mb-4">
+    <h4 class="text-dark mb-3 fw-bold">Nenhum evento encontrado</h4>
+    <p class="text-muted mb-4 fs-6">
       {% if period == 'custom' %}
         Não há eventos no período selecionado.
       {% else %}
         Não há eventos para o filtro "{{ period }}" selecionado.
       {% endif %}
     </p>
-    <div class="d-flex justify-content-center gap-2">
-      <a href="{{ url_for('novo_evento') }}" class="btn btn-primary">
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+      <a href="{{ url_for('novo_evento') }}" class="btn btn-primary btn-lg rounded-3 px-4">
         <i class="bi bi-plus-circle me-2"></i>Criar Primeiro Evento
       </a>
-      <a href="?period=90dias" class="btn btn-outline-secondary">
+      <a href="?period=90dias" class="btn btn-outline-secondary btn-lg rounded-3 px-4">
         <i class="bi bi-arrow-clockwise me-2"></i>Ver Últimos 90 Dias
       </a>
     </div>
   </div>
 {% endif %}
 
-<!-- Estilos específicos da página -->
+<!-- Modal Unificado Adicionar Despesa -->
+<div class="modal fade" id="modalAdicionarDespesa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow rounded-4">
+      <div class="modal-header text-white border-0 rounded-top-4" style="background: linear-gradient(135deg, #dc2626, #b91c1c)">
+        <h5 class="modal-title fw-bold fs-5">
+          <i class="bi bi-credit-card me-2"></i>Adicionar Despesa
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form enctype="multipart/form-data">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+                            <div class="col-12">
+                  <label class="form-label fw-semibold">Categoria da Despesa</label>
+                  <select name="categoria_despesa" class="form-select rounded-3" required>
+                    <option value="">Selecione uma categoria...</option>
+                    {% for categoria in categorias_despesa %}
+                    <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Despesa</label>
+                  <select name="despesa_id" class="form-select rounded-3" required>
+                    <option value="">Primeiro selecione a categoria...</option>
+                  </select>
+                </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Data de Vencimento</label>
+              <input type="date" name="data_vencimento" class="form-control" required value="{{ current_date }}">
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Data de Pagamento</label>
+              <input type="date" name="data_pagamento" class="form-control">
+              <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Valor (R$)</label>
+              <input type="text" name="valor" class="form-control" required placeholder="0,00">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-medium">Fornecedor</label>
+              <select name="fornecedor_id" class="form-select">
+                <option value="">Selecione um fornecedor...</option>
+                {% for fornecedor in fornecedores %}
+                <option value="{{ fornecedor.id_fornecedor }}">{{ fornecedor.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Status</label>
+              <select name="status_pagamento" class="form-select" required>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Forma de Pagamento</label>
+              <select name="forma_pagamento" class="form-select" required>
+                <option value="débito">Débito</option>
+                <option value="crédito">Crédito</option>
+                <option value="espécie">Espécie</option>
+                <option value="pix">Pix</option>
+              </select>
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-medium">Pago por</label>
+              <input type="text" name="pago_por" class="form-control">
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-medium">Comprovante</label>
+              <input type="file" name="comprovante" class="form-control" 
+                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+              <div class="form-text">
+                <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
+              </div>
+            </div>
+            
+            <div class="col-12">
+              <label class="form-label fw-medium">Observações</label>
+              <textarea name="observacoes" class="form-control" rows="3"></textarea>
+            </div>
+            
+            <div class="col-12">
+              <div class="form-check">
+                <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_modal" value="1">
+                <label class="form-check-label fw-medium" for="despesa_cabeca_modal">
+                  Despesa da cabeça
+                </label>
+              </div>
+            </div>
+            
+            <!-- Campos de quantidade para despesas de alimentação -->
+            <div class="row" id="modal-campos-alimentacao" style="display: none;">
+              <div class="col-12 mb-3">
+                <div class="alert alert-info border-0 rounded-3" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
+                  <i class="bi bi-info-circle me-2 text-blue-600"></i>
+                  <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Quantidade de Dias</label>
+                <div class="input-group">
+                  <input type="number" name="qtd_dias" class="form-control rounded-3" id="modal_qtd_dias" min="1" placeholder="Ex: 5">
+                  <span class="input-group-text rounded-end-3"><i class="bi bi-calendar-range text-primary"></i></span>
+                </div>
+                <div class="form-text">
+                  <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Quantidade de Pessoas</label>
+                <div class="input-group">
+                  <input type="number" name="qtd_pessoas" class="form-control rounded-3" id="modal_qtd_pessoas" min="1" placeholder="Ex: 10">
+                  <span class="input-group-text rounded-end-3"><i class="bi bi-people text-primary"></i></span>
+                </div>
+                <div class="form-text">
+                  <small class="text-muted">Número de pessoas que serão alimentadas</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+                      <div class="modal-footer border-0 bg-light bg-opacity-50 rounded-bottom-4">
+                <button type="button" class="btn btn-light border rounded-3" data-bs-dismiss="modal">
+                  <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="submit" class="btn text-white rounded-3 px-4" style="background: linear-gradient(135deg, #dc2626, #b91c1c)">
+                  <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
+                </button>
+              </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Estilos refinados da página -->
 <style>
-/* Gradiente padronizado para headers dos cards */
-.bg-primary-gradient {
-  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+/* ========================================
+   DESIGN REFINADO PARA EVENTOS
+   ======================================== */
+
+/* Gradientes modernos */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
 }
 
-/* Zonas clicáveis e não-clicáveis */
-.clickable-zone {
+.rounded-top-4 {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+.rounded-4 {
+  border-radius: 1rem;
+}
+
+/* Cards refinados */
+.evento-card-refined {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem !important;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.evento-card-refined:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(14, 165, 233, 0.15) !important;
+}
+
+/* Header refinado */
+.evento-header-refined {
+  position: relative;
+  overflow: hidden;
+}
+
+.evento-header-refined::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Badge refinado */
+.badge-refined {
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Zonas clicáveis refinadas */
+.clickable-zone-refined {
   cursor: pointer;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.clickable-zone:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.clickable-zone-refined:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  transform: scale(1.01);
 }
 
-.clickable-zone:active {
-  background-color: rgba(255, 255, 255, 0.2);
+.clickable-zone-refined:active {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(0.99);
 }
 
 .non-clickable-zone {
@@ -926,136 +955,398 @@
   cursor: default;
 }
 
-/* Animações e transições */
-.evento-card {
-  transition: all 0.3s ease;
-  border-radius: 16px !important;
-  overflow: hidden;
+/* Info items refinados */
+.info-item-refined {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  padding: 4px;
 }
 
-.evento-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+.info-item-refined:hover {
+  transform: translateX(3px);
+  background-color: rgba(14, 165, 233, 0.03);
 }
 
-.evento-header {
+.info-icon-refined {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.info-item-refined:hover .info-icon-refined {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   BOTÕES PRINCIPAIS REFINADOS
+   ======================================== */
+
+.action-grid-refined {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.btn-action-refined {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 75px;
+  border-radius: 16px;
+  border: none;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  cursor: pointer;
+  background: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 2px solid transparent;
 }
 
-.evento-header::before {
-  content: '';
+.btn-content-refined {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 2;
+  position: relative;
+}
+
+.btn-icon-refined {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.btn-text-refined {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.btn-title-refined {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.btn-subtitle-refined {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.85;
+  line-height: 1;
+}
+
+.btn-overlay-refined {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4));
+  opacity: 0;
+  transition: opacity 0.3s ease;
   pointer-events: none;
+  z-index: 1;
 }
 
-/* Botões de ação */
-.btn-action {
-  padding: 12px 8px;
+/* Botão Despesa - Destaque Refinado */
+.btn-despesa-refined {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  border-color: #dc2626;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.25);
+}
+
+.btn-despesa-refined .btn-icon-refined {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-despesa-refined:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(220, 38, 38, 0.35);
+  border-color: #991b1b;
+}
+
+.btn-despesa-refined:hover .btn-overlay-refined {
+  opacity: 0.1;
+}
+
+.btn-despesa-refined:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+/* Botão Receita - Mais Discreto */
+.btn-receita-refined {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border-color: #10b981;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
+}
+
+.btn-receita-refined .btn-icon-refined {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-receita-refined:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+  border-color: #047857;
+}
+
+.btn-receita-refined:hover .btn-overlay-refined {
+  opacity: 0.1;
+}
+
+/* ========================================
+   BOTÕES SECUNDÁRIOS REFINADOS
+   ======================================== */
+
+.action-grid-secondary-refined {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.btn-secondary-refined {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 55px;
   border-radius: 12px;
-  transition: all 0.2s ease;
-  border-width: 2px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  color: #6b7280;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.btn-action:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.btn-secondary-refined i {
+  margin-bottom: 0.25rem;
 }
 
-.btn-action-sm {
-  padding: 8px 4px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+.btn-secondary-refined:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  color: #374151;
+  border-color: #d1d5db;
 }
 
-.btn-action-sm:hover {
+.btn-secondary-refined:active {
+  transform: scale(0.98);
+}
+
+/* Variantes de cor para botões secundários */
+.btn-primary-accent:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.btn-warning-accent:hover {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.btn-info-accent:hover {
+  border-color: #67e8f9;
+  background: #f0fdfa;
+  color: #0891b2;
+}
+
+.btn-success-accent:hover {
+  border-color: #6ee7b7;
+  background: #f0fdf4;
+  color: #059669;
+}
+
+/* ========================================
+   FOOTER REFINADO
+   ======================================== */
+
+.evento-footer-refined {
+  border-color: #f3f4f6 !important;
+}
+
+.btn-footer-refined {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 45px;
+  min-width: 65px;
+  padding: 0.5rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.btn-footer-refined i {
+  margin-bottom: 0.125rem;
+}
+
+.btn-footer-refined:hover {
+  background: #f3f4f6;
+  color: #374151;
   transform: translateY(-1px);
 }
 
-/* Info items */
-.info-item {
-  transition: all 0.2s ease;
-}
-
-.info-item:hover {
-  transform: translateX(4px);
-}
-
-.info-icon {
-  transition: all 0.2s ease;
-}
-
-.info-item:hover .info-icon {
-  transform: scale(1.1);
-}
-
-/* Modais */
-.modal-content {
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.modal-header {
-  padding: 24px;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.modal-footer {
-  padding: 20px 24px;
-}
-
-/* Filtros */
-.btn-outline-primary.active {
-  background-color: var(--bs-primary);
-  border-color: var(--bs-primary);
+.btn-footer-primary {
+  background: #0ea5e9;
   color: white;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
 }
 
-/* Responsividade aprimorada */
+.btn-footer-primary:hover {
+  background: #0284c7;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+/* Dropdown refinado */
+.dropdown-menu {
+  border-radius: 12px !important;
+  border: none !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+  padding: 0.5rem 0 !important;
+  backdrop-filter: blur(10px);
+}
+
+.dropdown-item {
+  padding: 0.625rem 1.25rem !important;
+  font-size: 0.875rem !important;
+  color: #374151 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 8px !important;
+  margin: 0 0.5rem !important;
+}
+
+.dropdown-item:hover {
+  background-color: #f8fafc !important;
+  color: #111827 !important;
+  transform: translateX(2px) !important;
+}
+
+.dropdown-item i {
+  width: 16px !important;
+  font-size: 0.875rem !important;
+}
+
+.dropdown-divider {
+  margin: 0.5rem 0 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* ========================================
+   RESPONSIVIDADE REFINADA
+   ======================================== */
+
 @media (max-width: 768px) {
-  .evento-card {
-    margin-bottom: 1rem;
+  .evento-card-refined {
+    margin-bottom: 1.25rem;
   }
   
-  .btn-action {
-    padding: 10px 6px;
-    font-size: 0.85rem;
+  .evento-card-refined .card-body {
+    padding: 1.25rem;
   }
   
-  .btn-action-sm {
-    padding: 6px 3px;
+  .evento-header-refined {
+    padding: 1.25rem;
+  }
+
+  .btn-action-refined {
+    height: 70px;
+    border-radius: 14px;
+  }
+
+  .btn-icon-refined {
+    width: 40px;
+    height: 40px;
+  }
+
+  .btn-title-refined {
+    font-size: 0.9rem;
+  }
+
+  .btn-subtitle-refined {
     font-size: 0.7rem;
   }
-  
-  .info-icon {
-    width: 28px !important;
-    height: 28px !important;
+
+  .action-grid-secondary-refined {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
   }
-  
-  .modal-dialog {
-    margin: 0.5rem;
+
+  .btn-secondary-refined {
+    height: 50px;
+    font-size: 0.7rem;
+  }
+
+  .btn-footer-refined {
+    height: 42px;
+    min-width: 60px;
+    font-size: 0.7rem;
+  }
+
+  .info-icon-refined {
+    width: 32px !important;
+    height: 32px !important;
   }
 }
 
-/* Loading states */
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+@media (max-width: 576px) {
+  .action-grid-refined {
+    gap: 0.75rem;
+  }
+
+  .btn-action-refined {
+    height: 65px;
+  }
+
+  .btn-content-refined {
+    gap: 0.5rem;
+  }
+
+  .btn-icon-refined {
+    width: 36px;
+    height: 36px;
+  }
+
+  .btn-title-refined {
+    font-size: 0.85rem;
+  }
+
+  .btn-subtitle-refined {
+    font-size: 0.65rem;
+  }
 }
 
-/* Animações de entrada */
+/* ========================================
+   ANIMAÇÕES SUAVES
+   ======================================== */
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -1064,36 +1355,31 @@
 }
 
 .fade-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* Badges personalizados */
-.badge {
-  border-radius: 20px;
-  padding: 6px 12px;
-  font-weight: 500;
+/* Loading states refinados */
+.btn-action-refined:disabled,
+.btn-secondary-refined:disabled,
+.btn-footer-refined:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
-/* Dropdowns */
-.dropdown-menu {
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-  padding: 8px 0;
-}
+/* Melhor feedback tátil para touch */
+@media (hover: none) and (pointer: coarse) {
+  .btn-action-refined:active {
+    transform: scale(0.96);
+  }
 
-.dropdown-item {
-  padding: 10px 20px;
-  transition: all 0.2s ease;
-}
+  .btn-secondary-refined:active {
+    transform: scale(0.94);
+  }
 
-.dropdown-item:hover {
-  background-color: #f8fafc;
-  transform: translateX(4px);
-}
-
-.dropdown-divider {
-  margin: 8px 0;
+  .btn-footer-refined:active {
+    transform: scale(0.94);
+  }
 }
 </style>
 
@@ -1177,15 +1463,13 @@ function carregarDespesasPorCategoria(selectCategoria, eventoId) {
                 selectDespesa.appendChild(option);
             });
             
-            // Remover listeners existentes e adicionar novos
-            selectDespesa.removeEventListener('change', preencherValorMedio);
-            selectDespesa.removeEventListener('change', function() { verificarDespesaAlimentacaoEventos(this, eventoId); });
-            
-            selectDespesa.addEventListener('change', preencherValorMedio);
+            // Adicionar listener para verificação de alimentação
             selectDespesa.addEventListener('change', function() { 
                 console.log('🔄 Despesa selecionada, verificando alimentação...');
                 verificarDespesaAlimentacaoEventos(this, eventoId); 
             });
+            
+            // A validação de valor médio é gerenciada pelo arquivo valor-medio-despesas.js
         })
         .catch(error => {
             console.error('❌ Erro ao carregar despesas:', error);
@@ -1194,32 +1478,19 @@ function carregarDespesasPorCategoria(selectCategoria, eventoId) {
         });
 }
 
-// Função separada para preencher valor médio
-function preencherValorMedio() {
-    const selectedOption = this.selectedOptions[0];
-    const valorMedio = selectedOption.getAttribute('data-valor-medio');
-    const inputValor = this.closest('form').querySelector('[name="valor"]');
-    
-    // Não preencher automaticamente - deixar o campo limpo para o usuário inserir
-    // if (valorMedio && inputValor && !inputValor.value) {
-    //     inputValor.value = valorMedio;
-    // }
-    
-    // Apenas limpar o campo quando trocar de despesa
-    if (inputValor) {
-        inputValor.value = '';
-        inputValor.placeholder = valorMedio ? `Sugestão: R$ ${valorMedio}` : '0,00';
-    }
-}
+// Funções de valor médio removidas - agora gerenciadas pelo arquivo valor-medio-despesas.js
 
-// Função para verificar se a despesa selecionada é de alimentação
+
+
+// Função para verificar se a despesa selecionada é de alimentação (Modal Unificado)
 function verificarDespesaAlimentacaoEventos(selectDespesa, eventoId) {
-    console.log('🔍 === VERIFICANDO ALIMENTAÇÃO EVENTOS ===');
+    console.log('🔍 === VERIFICANDO ALIMENTAÇÃO EVENTOS (Modal Unificado) ===');
     
     const despesaId = selectDespesa.value;
-    const camposAlimentacao = document.getElementById(`modal-campos-alimentacao-${eventoId}`);
-    const qtdDiasInput = document.getElementById(`modal_qtd_dias_${eventoId}`);
-    const qtdPessoasInput = document.getElementById(`modal_qtd_pessoas_${eventoId}`);
+    // Usar IDs do modal unificado (sem sufixo de evento)
+    const camposAlimentacao = document.getElementById('modal-campos-alimentacao');
+    const qtdDiasInput = document.getElementById('modal_qtd_dias');
+    const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
     
     console.log('📋 Elementos encontrados:', {
         eventoId: eventoId,
@@ -1246,13 +1517,14 @@ function verificarDespesaAlimentacaoEventos(selectDespesa, eventoId) {
                     
                     // Mostrar campos de quantidade
                     if (camposAlimentacao) {
-                        console.log('🟡 Aplicando estilo ao elemento...');
+                        console.log('🟢 Exibindo campos de alimentação...');
                         camposAlimentacao.style.display = 'block';
-                        camposAlimentacao.style.backgroundColor = '#ffffcc'; // Destaque amarelo para debug
-                        camposAlimentacao.style.border = '2px solid #ffc107'; // Borda amarela visível
-                        camposAlimentacao.style.padding = '15px'; // Padding para visibilidade
-                        camposAlimentacao.style.marginTop = '10px'; // Margem
-                        console.log('✅ Campos exibidos com destaque AMARELO');
+                        // Remover estilos de debug
+                        camposAlimentacao.style.backgroundColor = '';
+                        camposAlimentacao.style.border = '';
+                        camposAlimentacao.style.padding = '';
+                        camposAlimentacao.style.marginTop = '';
+                        console.log('✅ Campos de alimentação exibidos');
                     } else {
                         console.error('❌ Elemento modal-campos-alimentacao não encontrado!');
                     }
