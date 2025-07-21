@@ -78,7 +78,7 @@
                         {{ form.valor.label(class="form-label") }}
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
-                            {{ form.valor(class="form-control", placeholder="0,00", required=true, id="valor_input", oninput="formatarMoedaBrasil(this)") }}
+                            {{ form.valor(class="form-control", placeholder="0,00", required=true, id="valor_input") }}
                             <div class="invalid-feedback">
                                 Por favor, informe o valor no formato 0,00.
                             </div>
@@ -333,6 +333,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+<script src="{{ url_for('static', filename='js/valor-medio-despesas.js') }}"></script>
 <script>
     // Filtro dinâmico de despesas por categoria
     document.addEventListener('DOMContentLoaded', function() {
@@ -359,6 +360,90 @@
         
         // Aplicar filtros iniciais
         aplicarFiltros();
+        
+        // Função para preencher valor médio
+        function preencherValorMedioEmpresa() {
+            const selectedOption = despesaSelect.selectedOptions[0];
+            const valorMedio = selectedOption ? selectedOption.getAttribute('data-valor-medio') : null;
+            const inputValor = document.getElementById('valor_input');
+            
+            if (inputValor && valorMedio) {
+                // Preencher automaticamente o valor médio se disponível
+                inputValor.value = valorMedio;
+                inputValor.placeholder = '0,00';
+                
+                // Armazenar valor médio para validação posterior
+                inputValor.setAttribute('data-valor-medio', valorMedio.replace(',', '.'));
+                
+                // Aplicar formatação de moeda
+                formatarMoedaBrasil(inputValor);
+                
+                console.log('Valor médio preenchido:', valorMedio);
+            } else if (inputValor) {
+                inputValor.value = '';
+                inputValor.placeholder = '0,00';
+                inputValor.removeAttribute('data-valor-medio');
+                console.log('Valor médio limpo');
+            }
+        }
+        
+        // Função para validar valor em relação ao valor médio
+        function validarValorMedioEmpresa(inputValor) {
+            const valorMedioStr = inputValor.getAttribute('data-valor-medio');
+            if (!valorMedioStr) return;
+            
+            const valorMedio = parseFloat(valorMedioStr);
+            const valorDigitado = converterMoedaParaNumero(inputValor.value);
+            
+            if (valorDigitado && valorMedio) {
+                const diferenca = Math.abs(valorDigitado - valorMedio);
+                const percentual = (diferenca / valorMedio) * 100;
+                
+                // Remover avisos anteriores
+                removerAvisoValorMedioEmpresa(inputValor);
+                
+                if (percentual > 10) {
+                    const tipo = valorDigitado > valorMedio ? 'acima' : 'abaixo';
+                    const cor = valorDigitado > valorMedio ? 'warning' : 'info';
+                    mostrarAvisoValorMedioEmpresa(inputValor, tipo, percentual.toFixed(1), valorMedio, cor);
+                }
+            }
+        }
+        
+        // Função para mostrar aviso de valor médio
+        function mostrarAvisoValorMedioEmpresa(inputValor, tipo, percentual, valorMedio, cor) {
+            const avisoId = 'aviso-valor-medio-empresa-' + Date.now();
+            const valorMedioFormatado = valorMedio.toFixed(2).replace('.', ',');
+            
+            const avisoHtml = `
+                <div id="${avisoId}" class="alert alert-${cor} alert-sm mt-2 mb-0" style="font-size: 0.875rem;">
+                    <i class="bi bi-${tipo === 'acima' ? 'arrow-up' : 'arrow-down'}-circle me-2"></i>
+                    <strong>Atenção:</strong> Valor ${percentual}% ${tipo} da média (R$ ${valorMedioFormatado})
+                </div>
+            `;
+            
+            inputValor.closest('.col-md-6').insertAdjacentHTML('beforeend', avisoHtml);
+            inputValor.setAttribute('data-aviso-id', avisoId);
+        }
+        
+        // Função para remover aviso de valor médio
+        function removerAvisoValorMedioEmpresa(inputValor) {
+            const avisoId = inputValor.getAttribute('data-aviso-id');
+            if (avisoId) {
+                const avisoElement = document.getElementById(avisoId);
+                if (avisoElement) {
+                    avisoElement.remove();
+                }
+                inputValor.removeAttribute('data-aviso-id');
+            }
+        }
+        
+        // Função para converter moeda brasileira para número
+        function converterMoedaParaNumero(valor) {
+            if (!valor) return 0;
+            // Remove espaços e converte vírgula para ponto
+            return parseFloat(valor.toString().replace(/\s/g, '').replace(',', '.'));
+        }
         
         // Função para verificar se a despesa é de alimentação
         function verificarDespesaAlimentacao() {
@@ -419,6 +504,15 @@
                 qtdDiasInput.removeAttribute('required');
                 qtdPessoasInput.removeAttribute('required');
                 
+                // Limpar valor e avisos de valor médio
+                const inputValor = document.getElementById('valor_input');
+                if (inputValor) {
+                    inputValor.value = '';
+                    inputValor.placeholder = '0,00';
+                    inputValor.removeAttribute('data-valor-medio');
+                    removerAvisoValorMedioEmpresa(inputValor);
+                }
+                
                 if (categoriaId && categoriaId != '0') {
                     fetch(`/api/despesas-empresa-por-categoria/${categoriaId}`)
                         .then(response => response.json())
@@ -429,6 +523,10 @@
                                 const option = document.createElement('option');
                                 option.value = despesa.id_despesa;
                                 option.textContent = despesa.nome;
+                                // Adicionar valor médio ao data attribute
+                                if (despesa.valor_medio) {
+                                    option.setAttribute('data-valor-medio', despesa.valor_medio.toFixed(2).replace('.', ','));
+                                }
                                 despesaSelect.appendChild(option);
                             });
                             
@@ -445,8 +543,21 @@
                 }
             });
             
-            // Verificar despesa de alimentação quando despesa mudar
-            despesaSelect.addEventListener('change', verificarDespesaAlimentacao);
+            // Verificar despesa de alimentação e preencher valor médio quando despesa mudar
+            despesaSelect.addEventListener('change', function() {
+                verificarDespesaAlimentacao();
+                preencherValorMedioEmpresa();
+            });
+            
+            // Adicionar validação de valor médio ao campo valor
+            const inputValor = document.getElementById('valor_input');
+            if (inputValor) {
+                // Adicionar formatação de moeda e validação
+                inputValor.addEventListener('input', function() {
+                    formatarMoedaBrasil(this);
+                    validarValorMedioEmpresa(this);
+                });
+            }
         }
     });
 

@@ -1022,9 +1022,21 @@ def api_despesas_empresa_por_categoria(categoria_id):
         despesas_data = []
         
         for despesa in despesas:
+            # Usar o valor médio já cadastrado na despesa ou calcular dinamicamente
+            valor_medio = despesa.valor_medio_despesa
+            
+            # Se não tem valor médio cadastrado, calcular baseado nas despesas da empresa
+            if not valor_medio:
+                despesas_empresa = DespesaEmpresa.query.filter_by(id_despesa=despesa.id_despesa).all()
+                if despesas_empresa:
+                    valores = [de.valor for de in despesas_empresa if de.valor]
+                    if valores:
+                        valor_medio = sum(valores) / len(valores)
+            
             despesas_data.append({
                 'id_despesa': despesa.id_despesa,
                 'nome': despesa.nome,
+                'valor_medio': float(valor_medio) if valor_medio else None,
                 'id_tipo_despesa': despesa.id_tipo_despesa
             })
         
