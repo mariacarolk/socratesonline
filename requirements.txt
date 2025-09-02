@@ -8,3 +8,5 @@ openpyxl
 reportlab
 flask-login
 alembic
+flask-migrate
+email_validator

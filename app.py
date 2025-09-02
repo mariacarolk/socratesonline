@@ -41,7 +41,9 @@ if env == "production":
 else:
     app.config.from_object("config.DevelopmentConfig")
 
-# InicializaÃ§Ã£o das extensÃµes
+
+
+# Inicialização das extensões
 db.init_app(app)
 login_manager.init_app(app)
 migrate = Migrate(app, db)
@@ -253,8 +255,15 @@ def login():
             if usuario.colaborador and usuario.colaborador.categorias:
                 session['categoria'] = usuario.colaborador.categorias[0].nome.lower()
             else:
-                session['categoria'] = 'administrativo'  # padrÃ£o
+                session['categoria'] = 'administrativo'  # padrão
             return redirect(url_for('dashboard'))
+        else:
+            # Credenciais incorretas
+            flash('Email ou senha incorretos. Tente novamente.', 'danger')
+    elif form.errors:
+        # Erros de validação do formulário
+        flash('Por favor, verifique os dados informados.', 'warning')
+    
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -302,12 +311,12 @@ def excluir_circo(id):
     # Verificar se existem eventos usando este circo
     eventos_usando = Evento.query.filter_by(id_circo=id).count()
     if eventos_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir este circo pois existem {eventos_usando} evento(s) associado(s) a ele.', 'danger')
+        flash(f'Não é possível excluir este circo pois existem {eventos_usando} evento(s) associado(s) a ele.', 'danger')
         return redirect(url_for('cadastrar_circo'))
     
     db.session.delete(circo)
     db.session.commit()
-    flash('Circo excluÃ­do com sucesso!', 'success')
+    flash('Circo excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_circo'))
 
 @app.route('/cadastros/categorias-colaborador', methods=['GET', 'POST'])
@@ -327,13 +336,13 @@ def cadastrar_colaborador():
     # Verificar se existem categorias
     categorias_existentes = CategoriaColaborador.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de colaborador antes de cadastrar colaboradores.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de colaborador antes de cadastrar colaboradores.', 'warning')
         return redirect(url_for('cadastrar_categoria_colaborador'))
     
     form = ColaboradorForm()
     form.categorias.choices = [(c.id_categoria_colaborador, c.nome) for c in categorias_existentes]
     if form.validate_on_submit():
-        novo = Colaborador(nome=form.nome.data)
+        novo = Colaborador(nome=form.nome.data, telefone=form.telefone.data, email=form.email.data)
         db.session.add(novo)
         db.session.flush()  # Para obter o ID do colaborador
         
@@ -370,12 +379,12 @@ def excluir_categoria_colaborador(id):
     # Verificar se existem colaboradores usando esta categoria
     colaboradores_usando = ColaboradorCategoria.query.filter_by(id_categoria_colaborador=id).count()
     if colaboradores_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta categoria pois existem {colaboradores_usando} colaborador(es) associado(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta categoria pois existem {colaboradores_usando} colaborador(es) associado(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_categoria_colaborador'))
     
     db.session.delete(categoria)
     db.session.commit()
-    flash('Categoria excluÃ­da com sucesso!', 'success')
+    flash('Categoria excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_categoria_colaborador'))
 
 @app.route('/cadastros/colaboradores/editar/<int:id>', methods=['GET', 'POST'])
@@ -383,29 +392,33 @@ def editar_colaborador(id):
     # Verificar se existem categorias
     categorias_existentes = CategoriaColaborador.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de colaborador antes de editar colaboradores.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de colaborador antes de editar colaboradores.', 'warning')
         return redirect(url_for('cadastrar_categoria_colaborador'))
     
     colaborador = Colaborador.query.get_or_404(id)
     form = ColaboradorForm()
     
-    # Configurar as choices sempre, antes de qualquer validaÃ§Ã£o
+    # Configurar as choices sempre, antes de qualquer validação
     form.categorias.choices = [(c.id_categoria_colaborador, c.nome) for c in categorias_existentes]
     
     # Se for GET, preencher com os dados atuais do colaborador
     if request.method == 'GET':
         form.nome.data = colaborador.nome
-        # PrÃ©-selecionar as categorias atuais do colaborador
+        form.telefone.data = colaborador.telefone
+        form.email.data = colaborador.email
+        # Pré-selecionar as categorias atuais do colaborador
         categorias_atuais = [assoc.id_categoria_colaborador for assoc in colaborador.categorias_associacao]
         form.categorias.data = categorias_atuais
     
     if form.validate_on_submit():
         colaborador.nome = form.nome.data
+        colaborador.telefone = form.telefone.data
+        colaborador.email = form.email.data
         
-        # Obter categorias selecionadas do formulÃ¡rio
+        # Obter categorias selecionadas do formulário
         categorias_selecionadas = form.categorias.data
         
-        # Se o campo do formulÃ¡rio estiver vazio, tentar pegar do request.form
+        # Se o campo do formulário estiver vazio, tentar pegar do request.form
         if not categorias_selecionadas:
             categorias_selecionadas = request.form.getlist('categorias')
             categorias_selecionadas = [int(cat_id) for cat_id in categorias_selecionadas if cat_id.isdigit()]
@@ -414,12 +427,12 @@ def editar_colaborador(id):
         
         
         if not categorias_selecionadas:
-            flash('Ã‰ necessÃ¡rio selecionar pelo menos uma categoria.', 'danger')
+            flash('É necessário selecionar pelo menos uma categoria.', 'danger')
             colaboradores = Colaborador.query.all()
             return render_template('colaboradores.html', form=form, colaboradores=colaboradores)
         
         try:
-            # Remover todas as associaÃ§Ãµes existentes
+            # Remover todas as associações existentes
             ColaboradorCategoria.query.filter_by(id_colaborador=colaborador.id_colaborador).delete()
             
             # Adicionar as novas categorias selecionadas
@@ -445,51 +458,63 @@ def editar_colaborador(id):
 def excluir_colaborador(id):
     colaborador = Colaborador.query.get_or_404(id)
     
-    # Verificar se Ã© produtor de eventos
+    # Verificar se é produtor de eventos
     eventos_produzindo = Evento.query.filter_by(id_produtor=id).count()
     if eventos_produzindo > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir este colaborador pois ele Ã© produtor de {eventos_produzindo} evento(s).', 'danger')
+        flash(f'Não é possível excluir este colaborador pois ele é produtor de {eventos_produzindo} evento(s).', 'danger')
         return redirect(url_for('cadastrar_colaborador'))
     
-    # Verificar se tem usuÃ¡rio associado
+    # Verificar se participa de equipe de evento
+    equipe_usando = EquipeEvento.query.filter_by(id_colaborador=id).count()
+    if equipe_usando > 0:
+        flash(f'Não é possível excluir este colaborador pois ele está vinculado a {equipe_usando} registro(s) de equipe em evento(s).', 'danger')
+        return redirect(url_for('cadastrar_colaborador'))
+    
+    # Verificar se está vinculado como motorista em algum uso de veículo
+    motorista_usando = VeiculoEvento.query.filter_by(id_motorista=id).count()
+    if motorista_usando > 0:
+        flash(f'Não é possível excluir este colaborador pois ele é motorista em {motorista_usando} registro(s) de veículo em evento(s).', 'danger')
+        return redirect(url_for('cadastrar_colaborador'))
+    
+    # Verificar se tem usuário associado
     usuario_associado = Usuario.query.filter_by(id_colaborador=id).first()
     if usuario_associado:
-        flash(f'NÃ£o Ã© possÃ­vel excluir este colaborador pois ele possui um usuÃ¡rio associado. Exclua o usuÃ¡rio primeiro.', 'danger')
+        flash(f'Não é possível excluir este colaborador pois ele possui um usuário associado. Exclua o usuário primeiro.', 'danger')
         return redirect(url_for('cadastrar_colaborador'))
     
     db.session.delete(colaborador)
     db.session.commit()
-    flash('Colaborador excluÃ­do com sucesso!', 'success')
+    flash('Colaborador excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_colaborador'))
 
 @app.route('/colaboradores/<int:id>/criar-usuario', methods=['GET', 'POST'])
 def criar_usuario(id):
     if session.get('categoria', '').lower() != 'administrativo':
-        flash('Apenas administradores podem criar usuÃ¡rios.', 'danger')
+        flash('Apenas administradores podem criar usuários.', 'danger')
         return redirect(url_for('cadastrar_colaborador'))
     
     colaborador = Colaborador.query.get_or_404(id)
     
-    # Verificar se jÃ¡ existe usuÃ¡rio para este colaborador
+    # Verificar se já existe usuário para este colaborador
     usuario_existente = Usuario.query.filter_by(id_colaborador=id).first()
     if usuario_existente:
-        flash(f'JÃ¡ existe um usuÃ¡rio para o colaborador {colaborador.nome}.', 'warning')
+        flash(f'Já existe um usuário para o colaborador {colaborador.nome}.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
     form = UsuarioForm()
     
-    # PrÃ©-preencher o nome com o nome do colaborador
+    # Pré-preencher o nome com o nome do colaborador
     if request.method == 'GET':
         form.nome.data = colaborador.nome
     
     if form.validate_on_submit():
-        # Verificar se email jÃ¡ existe
+        # Verificar se email já existe
         email_existente = Usuario.query.filter_by(email=form.email.data).first()
         if email_existente:
-            flash('Este email jÃ¡ estÃ¡ sendo usado por outro usuÃ¡rio.', 'danger')
+            flash('Este email já está sendo usado por outro usuário.', 'danger')
             return render_template('criar_usuario.html', form=form, colaborador=colaborador)
         
-        # Criar usuÃ¡rio
+        # Criar usuário
         hashed_password = generate_password_hash(form.password.data)
         novo_usuario = Usuario(
             nome=form.nome.data,
@@ -500,7 +525,7 @@ def criar_usuario(id):
         
         db.session.add(novo_usuario)
         db.session.commit()
-        flash(f'UsuÃ¡rio criado com sucesso para o colaborador {colaborador.nome}!', 'success')
+        flash(f'Usuário criado com sucesso para o colaborador {colaborador.nome}!', 'success')
         return redirect(url_for('cadastrar_colaborador'))
     
     return render_template('criar_usuario.html', form=form, colaborador=colaborador)
@@ -508,33 +533,33 @@ def criar_usuario(id):
 @app.route('/colaboradores/<int:id>/editar-usuario', methods=['GET', 'POST'])
 def editar_usuario(id):
     if session.get('categoria', '').lower() != 'administrativo':
-        flash('Apenas administradores podem editar usuÃ¡rios.', 'danger')
+        flash('Apenas administradores podem editar usuários.', 'danger')
         return redirect(url_for('cadastrar_colaborador'))
     
     colaborador = Colaborador.query.get_or_404(id)
     usuario = Usuario.query.filter_by(id_colaborador=id).first()
     
     if not usuario:
-        flash(f'NÃ£o existe usuÃ¡rio para o colaborador {colaborador.nome}.', 'warning')
+        flash(f'Não existe usuário para o colaborador {colaborador.nome}.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
     form = UsuarioForm(obj=usuario, is_edit=True)
     
     if form.validate_on_submit():
-        # Verificar se email jÃ¡ existe (exceto o prÃ³prio usuÃ¡rio)
+        # Verificar se email já existe (exceto o próprio usuário)
         email_existente = Usuario.query.filter(Usuario.email == form.email.data, Usuario.id != usuario.id).first()
         if email_existente:
-            flash('Este email jÃ¡ estÃ¡ sendo usado por outro usuÃ¡rio.', 'danger')
+            flash('Este email já está sendo usado por outro usuário.', 'danger')
             return render_template('editar_usuario.html', form=form, colaborador=colaborador, usuario=usuario)
         
-        # Atualizar usuÃ¡rio
+        # Atualizar usuário
         usuario.nome = form.nome.data
         usuario.email = form.email.data
-        if form.password.data:  # SÃ³ atualiza senha se foi preenchida
+        if form.password.data:  # Só atualiza senha se foi preenchida
             usuario.senha_hash = generate_password_hash(form.password.data)
         
         db.session.commit()
-        flash(f'UsuÃ¡rio do colaborador {colaborador.nome} atualizado com sucesso!', 'success')
+        flash(f'Usuário do colaborador {colaborador.nome} atualizado com sucesso!', 'success')
         return redirect(url_for('cadastrar_colaborador'))
     
     return render_template('editar_usuario.html', form=form, colaborador=colaborador, usuario=usuario)
@@ -542,19 +567,19 @@ def editar_usuario(id):
 @app.route('/colaboradores/<int:id>/excluir-usuario')
 def excluir_usuario(id):
     if session.get('categoria', '').lower() != 'administrativo':
-        flash('Apenas administradores podem excluir usuÃ¡rios.', 'danger')
+        flash('Apenas administradores podem excluir usuários.', 'danger')
         return redirect(url_for('cadastrar_colaborador'))
     
     colaborador = Colaborador.query.get_or_404(id)
     usuario = Usuario.query.filter_by(id_colaborador=id).first()
     
     if not usuario:
-        flash(f'NÃ£o existe usuÃ¡rio para o colaborador {colaborador.nome}.', 'warning')
+        flash(f'Não existe usuário para o colaborador {colaborador.nome}.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
     db.session.delete(usuario)
     db.session.commit()
-    flash(f'UsuÃ¡rio do colaborador {colaborador.nome} excluÃ­do com sucesso!', 'success')
+    flash(f'Usuário do colaborador {colaborador.nome} excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_colaborador'))
 
 @app.route('/cadastros/elenco', methods=['GET', 'POST'])
@@ -602,7 +627,7 @@ def excluir_elenco(id):
     integrante = Elenco.query.get_or_404(id)
     db.session.delete(integrante)
     db.session.commit()
-    flash('Integrante excluÃ­do com sucesso!', 'success')
+    flash('Integrante excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_elenco'))
 
 @app.route('/cadastros/categorias-fornecedor', methods=['GET', 'POST'])
@@ -622,7 +647,7 @@ def cadastrar_fornecedor():
     # Verificar se existem categorias
     categorias_existentes = CategoriaFornecedor.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de fornecedor antes de cadastrar fornecedores.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de fornecedor antes de cadastrar fornecedores.', 'warning')
         return redirect(url_for('cadastrar_categoria_fornecedor'))
     
     form = FornecedorForm()
@@ -661,12 +686,12 @@ def excluir_categoria_fornecedor(id):
     # Verificar se existem fornecedores usando esta categoria
     fornecedores_usando = Fornecedor.query.filter_by(id_categoria_fornecedor=id).count()
     if fornecedores_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta categoria pois existem {fornecedores_usando} fornecedor(es) associado(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta categoria pois existem {fornecedores_usando} fornecedor(es) associado(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_categoria_fornecedor'))
     
     db.session.delete(categoria)
     db.session.commit()
-    flash('Categoria excluÃ­da com sucesso!', 'success')
+    flash('Categoria excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_categoria_fornecedor'))
 
 @app.route('/cadastros/fornecedores/editar/<int:id>', methods=['GET', 'POST'])
@@ -674,7 +699,7 @@ def editar_fornecedor(id):
     # Verificar se existem categorias
     categorias_existentes = CategoriaFornecedor.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de fornecedor antes de editar fornecedores.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de fornecedor antes de editar fornecedores.', 'warning')
         return redirect(url_for('cadastrar_categoria_fornecedor'))
     
     fornecedor = Fornecedor.query.get_or_404(id)
@@ -695,11 +720,11 @@ def editar_fornecedor(id):
 @app.route('/cadastros/fornecedores/excluir/<int:id>')
 def excluir_fornecedor(id):
     fornecedor = Fornecedor.query.get_or_404(id)
-    # Fornecedores normalmente nÃ£o tÃªm dependÃªncias diretas no sistema atual
+    # Fornecedores normalmente não têm dependências diretas no sistema atual
     # Mas se houver tabelas de relacionamento no futuro, adicionar aqui
     db.session.delete(fornecedor)
     db.session.commit()
-    flash('Fornecedor excluÃ­do com sucesso!', 'success')
+    flash('Fornecedor excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_fornecedor'))
 
 @app.route('/cadastros/receitas', methods=['GET', 'POST'])
@@ -707,7 +732,7 @@ def cadastrar_receita():
     # Verificar se existem categorias
     categorias_existentes = CategoriaReceita.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de receita antes de cadastrar receitas.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de receita antes de cadastrar receitas.', 'warning')
         return redirect(url_for('cadastrar_categoria_receita'))
     
     form = ReceitaForm()
@@ -726,7 +751,7 @@ def editar_receita(id):
     # Verificar se existem categorias
     categorias_existentes = CategoriaReceita.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de receita antes de editar receitas.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de receita antes de editar receitas.', 'warning')
         return redirect(url_for('cadastrar_categoria_receita'))
     
     receita = Receita.query.get_or_404(id)
@@ -748,12 +773,12 @@ def excluir_receita(id):
     # Verificar se existem eventos usando esta receita
     eventos_usando = ReceitaEvento.query.filter_by(id_receita=id).count()
     if eventos_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta receita pois existem {eventos_usando} registro(s) de receita em evento(s) associado(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta receita pois existem {eventos_usando} registro(s) de receita em evento(s) associado(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_receita'))
     
     db.session.delete(receita)
     db.session.commit()
-    flash('Receita excluÃ­da com sucesso!', 'success')
+    flash('Receita excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_receita'))
 
 @app.route('/cadastros/categorias-receita', methods=['GET', 'POST'])
@@ -787,12 +812,12 @@ def excluir_categoria_receita(id):
     # Verificar se existem receitas usando esta categoria
     receitas_usando = Receita.query.filter_by(id_categoria_receita=id).count()
     if receitas_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta categoria pois existem {receitas_usando} receita(s) associada(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta categoria pois existem {receitas_usando} receita(s) associada(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_categoria_receita'))
     
     db.session.delete(categoria)
     db.session.commit()
-    flash('Categoria excluÃ­da com sucesso!', 'success')
+    flash('Categoria excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_categoria_receita'))
 
 @app.route('/cadastros/categorias-despesa', methods=['GET', 'POST'])
@@ -831,12 +856,12 @@ def excluir_categoria_despesa(id):
     # Verificar se existem despesas usando esta categoria
     despesas_usando = Despesa.query.filter_by(id_categoria_despesa=id).count()
     if despesas_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta categoria pois existem {despesas_usando} despesa(s) associada(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta categoria pois existem {despesas_usando} despesa(s) associada(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_categoria_despesa'))
     
     db.session.delete(categoria)
     db.session.commit()
-    flash('Categoria excluÃ­da com sucesso!', 'success')
+    flash('Categoria excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_categoria_despesa'))
 
 @app.route('/cadastros/parametros', methods=['GET', 'POST'])
@@ -888,13 +913,13 @@ def listar_eventos():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    # Obter informaÃ§Ãµes do usuÃ¡rio logado
+    # Obter informações do usuário logado
     usuario = Usuario.query.get(session['user_id'])
     if not usuario or not usuario.colaborador:
-        flash('Erro ao carregar informaÃ§Ãµes do usuÃ¡rio.', 'danger')
+        flash('Erro ao carregar informações do usuário.', 'danger')
         return redirect(url_for('login'))
     
-    # Verificar se Ã© administrador
+    # Verificar se é administrador
     is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
 
     # Processar filtro de período
@@ -990,10 +1015,10 @@ def api_despesas_por_categoria(categoria_id):
         despesas_data = []
         
         for despesa in despesas:
-            # Usar o valor mÃ©dio jÃ¡ cadastrado na despesa ou calcular dinamicamente
+            # Usar o valor médio já cadastrado na despesa ou calcular dinamicamente
             valor_medio = despesa.valor_medio_despesa
             
-            # Se nÃ£o tem valor mÃ©dio cadastrado, calcular baseado nos eventos
+            # Se não tem valor médio cadastrado, calcular baseado nos eventos
             if not valor_medio:
                 despesas_evento = DespesaEvento.query.filter_by(id_despesa=despesa.id_despesa).all()
                 if despesas_evento:
@@ -1108,24 +1133,24 @@ def salvar_receita_individual(id_evento):
     try:
         data = request.get_json()
         
-        # Validar dados obrigatÃ³rios
+        # Validar dados obrigatórios
         if not data.get('receita_id') or not data.get('valor'):
-            return jsonify({'success': False, 'message': 'Receita e valor sÃ£o obrigatÃ³rios'})
+            return jsonify({'success': False, 'message': 'Receita e valor são obrigatórios'})
         
         # Verificar se o evento existe
         evento = Evento.query.get(id_evento)
         if not evento:
-            return jsonify({'success': False, 'message': 'Evento nÃ£o encontrado'})
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
         
         # Converter valor - tratar tanto formato brasileiro quanto americano
         try:
             valor_str = str(data['valor']).strip()
             
-            # Se contÃ©m ponto e vÃ­rgula, Ã© formato brasileiro (ex: 1.000,50)
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
             if '.' in valor_str and ',' in valor_str:
-                # Remover pontos de milhares e trocar vÃ­rgula por ponto
+                # Remover pontos de milhares e trocar vírgula por ponto
                 valor_str = valor_str.replace('.', '').replace(',', '.')
-            # Se contÃ©m apenas vÃ­rgula, trocar por ponto
+            # Se contém apenas vírgula, trocar por ponto
             elif ',' in valor_str and '.' not in valor_str:
                 valor_str = valor_str.replace(',', '.')
             
@@ -1136,13 +1161,13 @@ def salvar_receita_individual(id_evento):
                 
         except (ValueError, TypeError) as e:
 
-            return jsonify({'success': False, 'message': 'Valor invÃ¡lido'})
+            return jsonify({'success': False, 'message': 'Valor inválido'})
         
         # Converter data
         try:
             data_receita = datetime.strptime(data['data'], '%Y-%m-%d').date()
         except ValueError:
-            return jsonify({'success': False, 'message': 'Data invÃ¡lida'})
+            return jsonify({'success': False, 'message': 'Data inválida'})
         
         # Criar receita do evento
         receita_evento = ReceitaEvento(
@@ -1180,10 +1205,10 @@ def novo_evento():
     form = EventoForm()
     form.id_circo.choices = [(c.id_circo, c.nome) for c in Circo.query.all()]
     
-    # Filtrar apenas colaboradores que sÃ£o produtores
+    # Filtrar apenas colaboradores que são produtores
     produtores = [p for p in Colaborador.query.all() if p.tem_categoria_produtor]
     if not produtores:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos um colaborador como produtor antes de criar eventos.', 'warning')
+        flash('É necessário cadastrar pelo menos um colaborador como produtor antes de criar eventos.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
     form.id_produtor.choices = [(p.id_colaborador, p.nome) for p in produtores]
@@ -1204,11 +1229,11 @@ def novo_evento():
         print(f"Tipo data_inicio: {type(form.data_inicio.data)}, valor: {form.data_inicio.data}")
         print(f"Tipo data_fim: {type(form.data_fim.data)}, valor: {form.data_fim.data}")
         
-        # Processamento manual das datas se necessÃ¡rio
+        # Processamento manual das datas se necessário
         data_inicio = form.data_inicio.data
         data_fim = form.data_fim.data
         
-        # Converter strings para objetos date se necessÃ¡rio
+        # Converter strings para objetos date se necessário
         if isinstance(data_inicio, str):
             if '/' in data_inicio:
                 # Formato brasileiro DD/MM/YYYY
@@ -1240,7 +1265,7 @@ def novo_evento():
         
         print(f"Evento criado: {novo.nome}, ID antes do add: {novo.id_evento}")
         db.session.add(novo)
-        print(f"Evento adicionado Ã  sessÃ£o")
+        print(f"Evento adicionado Ã  sessão")
         
         try:
             db.session.flush()
@@ -1248,6 +1273,17 @@ def novo_evento():
         except Exception as e:
             print(f"Erro no flush: {e}")
             raise
+
+        # Adicionar automaticamente o produtor na equipe do evento
+        if form.id_produtor.data:
+            equipe_produtor = EquipeEvento(
+                id_evento=novo.id_evento,
+                id_colaborador=form.id_produtor.data,
+                funcao='Produtor',
+                observacoes='Adicionado automaticamente como produtor do evento'
+            )
+            db.session.add(equipe_produtor)
+            print(f"Produtor {form.id_produtor.data} adicionado automaticamente à equipe do evento")
 
         # 1. Processar receitas
         receitas_ids = request.form.getlist('receita_id[]')
@@ -1271,7 +1307,7 @@ def novo_evento():
                     observacoes=observacoes[i]
                 ))
 
-        # 2. Processar despesas variÃ¡veis do formulÃ¡rio
+        # 2. Processar despesas variáveis do formulário
         despesa_ids = request.form.getlist('despesa_id[]')
         datas_desp = request.form.getlist('despesa_data[]')
         valores_desp = request.form.getlist('despesa_valor[]')
@@ -1282,7 +1318,7 @@ def novo_evento():
 
         for i in range(len(despesa_ids)):
             try:
-                # Verificar se tem ID da despesa (obrigatÃ³rio)
+                # Verificar se tem ID da despesa (obrigatório)
                 if not despesa_ids[i]:
                     continue
                     
@@ -1302,7 +1338,7 @@ def novo_evento():
                 data_vencimento=data,
                 valor=valor,
                 status_pagamento=status_pag[i] if i < len(status_pag) else 'pendente',
-                forma_pagamento=forma_pag[i] if i < len(forma_pag) else 'dÃ©bito',
+                forma_pagamento=forma_pag[i] if i < len(forma_pag) else 'débito',
                 pago_por=pago_por[i] if i < len(pago_por) else '',
                 observacoes=obs_desp[i] if i < len(obs_desp) else ''
             ))
@@ -1318,7 +1354,7 @@ def novo_evento():
                 data_vencimento=novo.data_inicio or date.today(),
                 valor=valor_automatico,
                 status_pagamento='pendente',
-                forma_pagamento='dÃ©bito',
+                forma_pagamento='débito',
                 pago_por='',
                 observacoes='Despesa fixa adicionada automaticamente'
             ))
@@ -1332,7 +1368,7 @@ def novo_evento():
             if evento_verificacao:
                 print(f"âœ… Evento verificado no banco: {evento_verificacao.nome}")
             else:
-                print("âŒ ERRO: Evento nÃ£o encontrado no banco apÃ³s commit!")
+                print("âŒ ERRO: Evento não encontrado no banco após commit!")
             
             # Verificar as despesas APÃ“S o commit
             despesas_depois = DespesaEvento.query.filter_by(id_evento=novo.id_evento).all()
@@ -1347,16 +1383,16 @@ def novo_evento():
             print(f"âŒ ERRO no commit: {e}")
             db.session.rollback()
             flash(f'Erro ao salvar evento: {str(e)}', 'danger')
-            # NÃ£o fazer redirect em caso de erro para debugar
+            # Não fazer redirect em caso de erro para debugar
 
-    # Para a exibiÃ§Ã£o inicial (antes de salvar), mostrar todas as despesas disponÃ­veis
+    # Para a exibiÃ§ão inicial (antes de salvar), mostrar todas as despesas disponíveis
     categorias_receita_dict = {
         c.id_categoria_receita: [{'id_receita': r.id_receita, 'nome': r.nome}
                                  for r in Receita.query.filter_by(id_categoria_receita=c.id_categoria_receita)]
         for c in categorias_receita
     }
 
-    # Criar estrutura de despesas organizada por tipo para exibiÃ§Ã£o
+    # Criar estrutura de despesas organizada por tipo para exibiÃ§ão
     categorias_despesa_dict = {}
     for categoria in categorias_despesa:
         despesas_categoria = Despesa.query.filter_by(
@@ -1372,14 +1408,14 @@ def novo_evento():
                 'nome': d.nome,
                 'valor_medio': float(d.valor_medio_despesa) if d.valor_medio_despesa else None,
                 'tipo': 1,
-                'ja_cadastrada': False  # No cadastro, nenhuma estÃ¡ cadastrada ainda
+                'ja_cadastrada': False  # No cadastro, nenhuma está cadastrada ainda
             } for d in despesas_fixas],
             'variaveis': [{
                 'id_despesa': d.id_despesa, 
                 'nome': d.nome,
                 'valor_medio': float(d.valor_medio_despesa) if d.valor_medio_despesa else None,
                 'tipo': 2,
-                'ja_cadastrada': False  # No cadastro, nenhuma estÃ¡ cadastrada ainda
+                'ja_cadastrada': False  # No cadastro, nenhuma está cadastrada ainda
             } for d in despesas_variaveis]
         }
 
@@ -1412,10 +1448,10 @@ def editar_evento(id):
     form = EventoForm(obj=evento)
     form.id_circo.choices = [(c.id_circo, c.nome) for c in Circo.query.all()]
     
-    # Filtrar apenas colaboradores que sÃ£o produtores
+    # Filtrar apenas colaboradores que são produtores
     produtores = [p for p in Colaborador.query.all() if p.tem_categoria_produtor]
     if not produtores:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos um colaborador como produtor antes de editar eventos.', 'warning')
+        flash('É necessário cadastrar pelo menos um colaborador como produtor antes de editar eventos.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
     form.id_produtor.choices = [(p.id_colaborador, p.nome) for p in produtores]
@@ -1431,16 +1467,20 @@ def editar_evento(id):
         )
     ).all()
 
-    # Obter receitas e despesas jÃ¡ cadastradas
+    # Obter receitas e despesas já cadastradas
     receitas_salvas = ReceitaEvento.query.filter_by(id_evento=id).all()
     despesas_salvas = DespesaEvento.query.filter_by(id_evento=id).all()
 
     if form.validate_on_submit():
-        # Processamento manual das datas se necessÃ¡rio
+        # Verificar se o produtor mudou
+        produtor_anterior = evento.id_produtor
+        novo_produtor = form.id_produtor.data
+        
+        # Processamento manual das datas se necessário
         data_inicio = form.data_inicio.data
         data_fim = form.data_fim.data
         
-        # Converter strings para objetos date se necessÃ¡rio
+        # Converter strings para objetos date se necessário
         if isinstance(data_inicio, str):
             if '/' in data_inicio:
                 # Formato brasileiro DD/MM/YYYY
@@ -1467,6 +1507,77 @@ def editar_evento(id):
         evento.id_produtor = form.id_produtor.data
         evento.status = form.status.data
         evento.observacoes = form.observacoes.data
+
+        # Gerenciar mudança de produtor na equipe do evento
+        if produtor_anterior != novo_produtor:
+            # Obter nomes dos produtores para as observações
+            nome_produtor_anterior = None
+            nome_novo_produtor = None
+            
+            if produtor_anterior:
+                colaborador_anterior = Colaborador.query.get(produtor_anterior)
+                nome_produtor_anterior = colaborador_anterior.nome if colaborador_anterior else f"ID {produtor_anterior}"
+            
+            if novo_produtor:
+                colaborador_novo = Colaborador.query.get(novo_produtor)
+                nome_novo_produtor = colaborador_novo.nome if colaborador_novo else f"ID {novo_produtor}"
+            
+            data_alteracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+            
+            # Atualizar o registro do produtor anterior com observação sobre a modificação
+            if produtor_anterior:
+                equipe_anterior = EquipeEvento.query.filter_by(
+                    id_evento=evento.id_evento,
+                    id_colaborador=produtor_anterior,
+                    funcao='Produtor'
+                ).first()
+                if equipe_anterior:
+                    # Atualizar observações do produtor anterior
+                    observacao_modificacao = f"Produtor substituído por {nome_novo_produtor} em {data_alteracao}"
+                    if equipe_anterior.observacoes:
+                        equipe_anterior.observacoes += f" | {observacao_modificacao}"
+                    else:
+                        equipe_anterior.observacoes = observacao_modificacao
+                    
+                    # Alterar função para indicar que não é mais o produtor ativo
+                    equipe_anterior.funcao = 'Ex-Produtor'
+                    print(f"Produtor anterior {nome_produtor_anterior} marcado como Ex-Produtor com observação")
+            
+            # Adicionar o novo produtor à equipe (se não existir já)
+            if novo_produtor:
+                equipe_existente = EquipeEvento.query.filter_by(
+                    id_evento=evento.id_evento,
+                    id_colaborador=novo_produtor,
+                    funcao='Produtor'
+                ).first()
+                
+                if not equipe_existente:
+                    # Criar observação para o novo produtor
+                    observacao_novo = f"Assumiu como produtor em {data_alteracao}"
+                    if nome_produtor_anterior:
+                        observacao_novo += f", substituindo {nome_produtor_anterior}"
+                    
+                    nova_equipe_produtor = EquipeEvento(
+                        id_evento=evento.id_evento,
+                        id_colaborador=novo_produtor,
+                        funcao='Produtor',
+                        observacoes=observacao_novo
+                    )
+                    db.session.add(nova_equipe_produtor)
+                    print(f"Novo produtor {nome_novo_produtor} adicionado à equipe do evento")
+                else:
+                    # Se já existe na equipe, apenas atualizar para Produtor e adicionar observação
+                    observacao_promocao = f"Promovido a Produtor em {data_alteracao}"
+                    if nome_produtor_anterior:
+                        observacao_promocao += f", substituindo {nome_produtor_anterior}"
+                    
+                    if equipe_existente.observacoes:
+                        equipe_existente.observacoes += f" | {observacao_promocao}"
+                    else:
+                        equipe_existente.observacoes = observacao_promocao
+                    
+                    equipe_existente.funcao = 'Produtor'
+                    print(f"Colaborador {nome_novo_produtor} promovido a Produtor na equipe do evento")
 
         # Exclui os itens marcados
         excluir_receitas = request.form.get('excluir_receita_ids', '')
@@ -1522,7 +1633,7 @@ def editar_evento(id):
         print(f"pago_por: {pago_por}")
         print(f"obs_desp: {obs_desp}")
         
-        # Verificar todas as despesas jÃ¡ cadastradas no evento ANTES do processamento
+        # Verificar todas as despesas já cadastradas no evento ANTES do processamento
         despesas_antes = DespesaEvento.query.filter_by(id_evento=evento.id_evento).all()
         print(f"\n=== DESPESAS NO EVENTO ANTES DO PROCESSAMENTO ===")
         for desp in despesas_antes:
@@ -1530,7 +1641,7 @@ def editar_evento(id):
         
         for i in range(len(despesa_ids)):
             try:
-                # Verificar se tem ID da despesa (obrigatÃ³rio)
+                # Verificar se tem ID da despesa (obrigatório)
                 if not despesa_ids[i]:
                     print(f"Ãndice {i}: ID da despesa vazio, pulando...")
                     continue
@@ -1550,13 +1661,13 @@ def editar_evento(id):
                 print(f"Valor convertido: {valor}")
                 print(f"Data: {data}")
                 print(f"Status: {status_pag[i] if i < len(status_pag) else 'pendente'}")
-                print(f"Forma: {forma_pag[i] if i < len(forma_pag) else 'dÃ©bito'}")
+                print(f"Forma: {forma_pag[i] if i < len(forma_pag) else 'débito'}")
                 
             except (ValueError, IndexError) as e:
-                print(f"ERRO ao processar despesa Ã­ndice {i}: {e}")
+                print(f"ERRO ao processar despesa índice {i}: {e}")
                 continue
             
-            # Verificar se jÃ¡ existe uma DespesaEvento para esta despesa neste evento
+            # Verificar se já existe uma DespesaEvento para esta despesa neste evento
             # PERMITIR MÚLTIPLAS INSTÂNCIAS DA MESMA DESPESA - Comentado para sempre criar nova
             # despesa_evento_existente = DespesaEvento.query.filter_by(
             #     id_evento=evento.id_evento,
@@ -1621,7 +1732,7 @@ def editar_evento(id):
             if evento_verificacao:
                 print(f"âœ… Evento verificado no banco: {evento_verificacao.nome}")
             else:
-                print("âŒ ERRO: Evento nÃ£o encontrado no banco apÃ³s commit!")
+                print("âŒ ERRO: Evento não encontrado no banco após commit!")
             
             # Verificar as despesas APÃ“S o commit
             despesas_depois = DespesaEvento.query.filter_by(id_evento=evento.id_evento).all()
@@ -1636,7 +1747,7 @@ def editar_evento(id):
             print(f"âŒ ERRO no commit: {e}")
             db.session.rollback()
             flash(f'Erro ao salvar evento: {str(e)}', 'danger')
-            # NÃ£o fazer redirect em caso de erro para debugar
+            # Não fazer redirect em caso de erro para debugar
 
     categorias_receita_dict = {
         c.id_categoria_receita: [{'id_receita': r.id_receita, 'nome': r.nome}
@@ -1644,10 +1755,10 @@ def editar_evento(id):
         for c in categorias_receita
     }
 
-    # Criar estrutura de despesas para ediÃ§Ã£o - mostrar apenas as que faltam cadastrar
+    # Criar estrutura de despesas para ediÃ§ão - mostrar apenas as que faltam cadastrar
     categorias_despesa_dict = {}
     for categoria in categorias_despesa:
-        # Obter todas as despesas disponÃ­veis desta categoria
+        # Obter todas as despesas disponíveis desta categoria
         despesas_categoria = Despesa.query.filter_by(
             id_categoria_despesa=categoria.id_categoria_despesa
         ).filter(Despesa.id_tipo_despesa.in_([1, 2])).all()
@@ -1655,13 +1766,13 @@ def editar_evento(id):
         despesas_fixas = [d for d in despesas_categoria if d.id_tipo_despesa == 1]
         despesas_variaveis = [d for d in despesas_categoria if d.id_tipo_despesa == 2]
         
-        # IDs das despesas jÃ¡ cadastradas neste evento
+        # IDs das despesas já cadastradas neste evento
         despesas_ja_cadastradas = set(d.id_despesa for d in despesas_salvas)
         
-        # Criar um dicionÃ¡rio para acesso rÃ¡pido aos dados das despesas jÃ¡ cadastradas
+        # Criar um dicionário para acesso rápido aos dados das despesas já cadastradas
         despesas_evento_dict = {d.id_despesa: d for d in despesas_salvas}
         
-        # Para as despesas fixas: sempre mostrar TODAS, mas com valores reais se jÃ¡ cadastradas
+        # Para as despesas fixas: sempre mostrar TODAS, mas com valores reais se já cadastradas
         categorias_despesa_dict[categoria.id_categoria_despesa] = {
             'fixas': [{
                 'id_despesa': d.id_despesa, 
@@ -2105,17 +2216,17 @@ def relatorios_faturamento_evento():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    # Obter informaÃ§Ãµes do usuÃ¡rio logado
+    # Obter informações do usuário logado
     usuario = Usuario.query.get(session['user_id'])
     if not usuario or not usuario.colaborador:
-        flash('Erro ao carregar informaÃ§Ãµes do usuÃ¡rio.', 'danger')
+        flash('Erro ao carregar informações do usuário.', 'danger')
         return redirect(url_for('login'))
     
-    # Verificar se Ã© administrador
+    # Verificar se é administrador
     is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
     
     if not is_admin:
-        # Verificar se Ã© produtor
+        # Verificar se é produtor
         is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
         if not is_produtor:
             flash('Acesso restrito a administradores e produtores.', 'danger')
@@ -2146,7 +2257,7 @@ def relatorios_faturamento_evento():
         data_inicio = data_inicio.strftime('%Y-%m-%d')
         data_fim = data_fim.strftime('%Y-%m-%d')
     
-    # Filtrar eventos baseado no tipo de usuÃ¡rio
+    # Filtrar eventos baseado no tipo de usuário
     eventos_query = Evento.query
     
     if not is_admin:
@@ -2175,7 +2286,7 @@ def relatorios_faturamento_evento():
     # Ordenar por lucro (do maior para o menor) e pegar top 10
     eventos_mais_lucrativos = sorted(eventos_lucratividade, key=lambda x: x['lucro'], reverse=True)[:10]
     
-    # Preparar dados para o grÃ¡fico (apenas lucro)
+    # Preparar dados para o gráfico (apenas lucro)
     nomes_eventos = [e['nome'][:25] + '...' if len(e['nome']) > 25 else e['nome'] for e in eventos_mais_lucrativos]
     lucros_eventos = [e['lucro'] for e in eventos_mais_lucrativos]
     
@@ -2197,28 +2308,28 @@ def relatorio_faturamento_evento(id_evento):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    # Obter informaÃ§Ãµes do usuÃ¡rio logado
+    # Obter informações do usuário logado
     usuario = Usuario.query.get(session['user_id'])
     if not usuario or not usuario.colaborador:
-        flash('Erro ao carregar informaÃ§Ãµes do usuÃ¡rio.', 'danger')
+        flash('Erro ao carregar informações do usuário.', 'danger')
         return redirect(url_for('login'))
     
-    # Verificar se Ã© administrador
+    # Verificar se é administrador
     is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
     
     evento = Evento.query.get_or_404(id_evento)
     
-    # Verificar se o usuÃ¡rio tem permissÃ£o para ver este evento
+    # Verificar se o usuário tem permissão para ver este evento
     if not is_admin:
-        # Verificar se Ã© produtor
+        # Verificar se é produtor
         is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
         if not is_produtor:
             flash('Acesso restrito a administradores e produtores.', 'danger')
             return redirect(url_for('dashboard'))
         
-        # Verificar se Ã© o produtor deste evento
+        # Verificar se é o produtor deste evento
         if evento.id_produtor != usuario.colaborador.id_colaborador:
-            flash('VocÃª sÃ³ pode visualizar relatÃ³rios dos seus prÃ³prios eventos.', 'danger')
+            flash('Você só pode visualizar relatórios dos seus próprios eventos.', 'danger')
             return redirect(url_for('relatorios_faturamento_evento'))
     
     receitas = ReceitaEvento.query.filter_by(id_evento=id_evento).all()
@@ -2378,15 +2489,15 @@ def editar_categoria_veiculo(id):
 def excluir_categoria_veiculo(id):
     categoria = CategoriaVeiculo.query.get_or_404(id)
     
-    # Verificar se existem veÃ­culos usando esta categoria
+    # Verificar se existem veículos usando esta categoria
     veiculos_usando = Veiculo.query.filter_by(id_categoria_veiculo=id).count()
     if veiculos_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta categoria pois existem {veiculos_usando} veÃ­culo(s) associado(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta categoria pois existem {veiculos_usando} veículo(s) associado(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_categoria_veiculo'))
     
     db.session.delete(categoria)
     db.session.commit()
-    flash('Categoria excluÃ­da com sucesso!', 'success')
+    flash('Categoria excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_categoria_veiculo'))
 
 @app.route('/cadastros/veiculos', methods=['GET', 'POST'])
@@ -2394,7 +2505,7 @@ def cadastrar_veiculo():
     # Verificar se existem categorias
     categorias_existentes = CategoriaVeiculo.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de veÃ­culo antes de cadastrar veÃ­culos.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de veículo antes de cadastrar veículos.', 'warning')
         return redirect(url_for('cadastrar_categoria_veiculo'))
     
     form = VeiculoForm()
@@ -2415,7 +2526,7 @@ def cadastrar_veiculo():
         )
         db.session.add(novo)
         db.session.commit()
-        flash('VeÃ­culo cadastrado com sucesso!', 'success')
+        flash('Veículo cadastrado com sucesso!', 'success')
         return redirect(url_for('cadastrar_veiculo'))
     veiculos = Veiculo.query.all()
     return render_template('veiculos.html', form=form, veiculos=veiculos)
@@ -2425,7 +2536,7 @@ def editar_veiculo(id):
     # Verificar se existem categorias
     categorias_existentes = CategoriaVeiculo.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de veÃ­culo antes de editar veÃ­culos.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de veículo antes de editar veículos.', 'warning')
         return redirect(url_for('cadastrar_categoria_veiculo'))
     
     veiculo = Veiculo.query.get_or_404(id)
@@ -2444,7 +2555,7 @@ def editar_veiculo(id):
         veiculo.observacoes = form.observacoes.data
         veiculo.id_categoria_veiculo = form.id_categoria_veiculo.data
         db.session.commit()
-        flash('VeÃ­culo atualizado com sucesso!', 'success')
+        flash('Veículo atualizado com sucesso!', 'success')
         return redirect(url_for('cadastrar_veiculo'))
     veiculos = Veiculo.query.all()
     return render_template('veiculos.html', form=form, veiculos=veiculos)
@@ -2452,11 +2563,11 @@ def editar_veiculo(id):
 @app.route('/cadastros/veiculos/excluir/<int:id>')
 def excluir_veiculo(id):
     veiculo = Veiculo.query.get_or_404(id)
-    # VeÃ­culos normalmente nÃ£o tÃªm dependÃªncias diretas no sistema atual
+    # Veículos normalmente não tÃªm dependÃªncias diretas no sistema atual
     # Mas se houver tabelas de relacionamento no futuro, adicionar aqui
     db.session.delete(veiculo)
     db.session.commit()
-    flash('VeÃ­culo excluÃ­do com sucesso!', 'success')
+    flash('Veículo excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_veiculo'))
 
 @app.route('/cadastros/despesas', methods=['GET', 'POST'])
@@ -2464,20 +2575,20 @@ def cadastrar_despesa():
     # Verificar se existem categorias
     categorias_existentes = CategoriaDespesa.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de despesa antes de cadastrar despesas.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de despesa antes de cadastrar despesas.', 'warning')
         return redirect(url_for('cadastrar_categoria_despesa'))
     
     form = DespesaForm()
     form.id_categoria_despesa.choices = [(c.id_categoria_despesa, c.nome) for c in categorias_existentes]
     
     if form.validate_on_submit():
-        # Converter valor mÃ©dio para float
+        # Converter valor médio para float
         valor_medio = None
         if form.valor_medio_despesa.data:
             try:
                 valor_medio = float(form.valor_medio_despesa.data.replace(',', '.'))
             except ValueError:
-                flash('Valor mÃ©dio deve ser um nÃºmero vÃ¡lido.', 'danger')
+                flash('Valor médio deve ser um número válido.', 'danger')
                 despesas = Despesa.query.all()
                 return render_template('despesas.html', form=form, despesas=despesas)
         
@@ -2501,25 +2612,25 @@ def editar_despesa(id):
     # Verificar se existem categorias
     categorias_existentes = CategoriaDespesa.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de despesa antes de editar despesas.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de despesa antes de editar despesas.', 'warning')
         return redirect(url_for('cadastrar_categoria_despesa'))
     
     despesa = Despesa.query.get_or_404(id)
     form = DespesaForm(obj=despesa)
     form.id_categoria_despesa.choices = [(c.id_categoria_despesa, c.nome) for c in categorias_existentes]
     
-    # Preencher o valor mÃ©dio no formato brasileiro
+    # Preencher o valor médio no formato brasileiro
     if request.method == 'GET' and despesa.valor_medio_despesa:
         form.valor_medio_despesa.data = str(despesa.valor_medio_despesa).replace('.', ',')
     
     if form.validate_on_submit():
-        # Converter valor mÃ©dio para float
+        # Converter valor médio para float
         valor_medio = None
         if form.valor_medio_despesa.data:
             try:
                 valor_medio = float(form.valor_medio_despesa.data.replace(',', '.'))
             except ValueError:
-                flash('Valor mÃ©dio deve ser um nÃºmero vÃ¡lido.', 'danger')
+                flash('Valor médio deve ser um número válido.', 'danger')
                 despesas = Despesa.query.all()
                 return render_template('despesas.html', form=form, despesas=despesas)
         
@@ -2542,12 +2653,12 @@ def excluir_despesa(id):
     # Verificar se existem eventos usando esta despesa
     eventos_usando = DespesaEvento.query.filter_by(id_despesa=id).count()
     if eventos_usando > 0:
-        flash(f'NÃ£o Ã© possÃ­vel excluir esta despesa pois existem {eventos_usando} registro(s) de despesa em evento(s) associado(s) a ela.', 'danger')
+        flash(f'Não é possível excluir esta despesa pois existem {eventos_usando} registro(s) de despesa em evento(s) associado(s) a ela.', 'danger')
         return redirect(url_for('cadastrar_despesa'))
     
     db.session.delete(despesa)
     db.session.commit()
-    flash('Despesa excluÃ­da com sucesso!', 'success')
+    flash('Despesa excluída com sucesso!', 'success')
     return redirect(url_for('cadastrar_despesa'))
 
 @app.route('/eventos/<int:id_evento>/despesas', methods=['GET', 'POST'])
@@ -2557,7 +2668,7 @@ def cadastrar_despesa_evento(id_evento):
     # Verificar se existem categorias
     categorias_existentes = CategoriaDespesa.query.all()
     if not categorias_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos uma categoria de despesa antes de cadastrar despesas.', 'warning')
+        flash('É necessário cadastrar pelo menos uma categoria de despesa antes de cadastrar despesas.', 'warning')
         return redirect(url_for('cadastrar_categoria_despesa'))
     
     form = DespesaForm()
@@ -2565,17 +2676,17 @@ def cadastrar_despesa_evento(id_evento):
     # Filtrar apenas tipos de evento (1 e 2)
     form.id_tipo_despesa.choices = [
         (1, 'Fixas - Evento'),
-        (2, 'VariÃ¡veis - Evento')
+        (2, 'Variáveis - Evento')
     ]
     
     if form.validate_on_submit():
-        # Converter valor mÃ©dio para float
+        # Converter valor médio para float
         valor_medio = None
         if form.valor_medio_despesa.data:
             try:
                 valor_medio = float(form.valor_medio_despesa.data.replace(',', '.'))
             except ValueError:
-                flash('Valor mÃ©dio deve ser um nÃºmero vÃ¡lido.', 'danger')
+                flash('Valor médio deve ser um número válido.', 'danger')
                 # Buscar apenas despesas de evento
                 despesas = Despesa.query.filter(Despesa.id_tipo_despesa.in_([1, 2])).all()
                 return render_template('despesas_evento.html', form=form, despesas=despesas, evento=evento)
@@ -2783,21 +2894,21 @@ def equipe_evento(id_evento):
     # Verificar se existem colaboradores
     colaboradores_existentes = Colaborador.query.all()
     if not colaboradores_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos um colaborador antes de adicionar equipe ao evento.', 'warning')
+        flash('É necessário cadastrar pelo menos um colaborador antes de adicionar equipe ao evento.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
     form = EquipeEventoForm()
     form.id_colaborador.choices = [(0, 'Selecione um colaborador')] + [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
     
     if form.validate_on_submit():
-        # Verificar se o colaborador jÃ¡ estÃ¡ na equipe do evento
+        # Verificar se o colaborador já está na equipe do evento
         equipe_existente = EquipeEvento.query.filter_by(
             id_evento=id_evento,
             id_colaborador=form.id_colaborador.data
         ).first()
         
         if equipe_existente:
-            flash('Este colaborador jÃ¡ faz parte da equipe deste evento.', 'warning')
+            flash('Este colaborador já faz parte da equipe deste evento.', 'warning')
         else:
             nova_equipe = EquipeEvento(
                 id_evento=id_evento,
@@ -2807,7 +2918,7 @@ def equipe_evento(id_evento):
             )
             db.session.add(nova_equipe)
             db.session.commit()
-            flash('Colaborador adicionado Ã  equipe com sucesso!', 'success')
+            flash('Colaborador adicionado à equipe com sucesso!', 'success')
         return redirect(url_for('equipe_evento', id_evento=id_evento))
     
     equipe_evento = EquipeEvento.query.filter_by(id_evento=id_evento).all()
@@ -2823,14 +2934,14 @@ def editar_equipe_evento(id_evento, id):
     form.id_colaborador.choices = [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
     
     if form.validate_on_submit():
-        # Verificar se outro colaborador jÃ¡ estÃ¡ na equipe (exceto o atual)
+        # Verificar se outro colaborador já está na equipe (exceto o atual)
         equipe_existente = EquipeEvento.query.filter_by(
             id_evento=id_evento,
             id_colaborador=form.id_colaborador.data
         ).filter(EquipeEvento.id_equipe_evento != id).first()
         
         if equipe_existente:
-            flash('Este colaborador jÃ¡ faz parte da equipe deste evento.', 'warning')
+            flash('Este colaborador já faz parte da equipe deste evento.', 'warning')
         else:
             equipe.id_colaborador = form.id_colaborador.data
             equipe.funcao = form.funcao.data
@@ -3039,18 +3150,14 @@ def buscar_usos_em_aberto():
 
 def buscar_usos_em_aberto_para_evento(id_evento):
     """
-    Busca usos em aberto que podem afetar o evento específico.
-    Retorna usos em aberto de qualquer evento, mas filtra veículos que já estão no evento atual
+    Busca apenas usos em aberto que realmente impedem novos cadastros.
+    Múltiplos veículos podem estar em uso simultaneamente, desde que sejam veículos diferentes.
     """
     # Buscar todos os usos em aberto
     usos_em_aberto = VeiculoEvento.query.filter(VeiculoEvento.data_devolucao.is_(None)).all()
     
-    # Se não há usos em aberto, retorna lista vazia
-    if not usos_em_aberto:
-        return []
-    
-    # Se há usos em aberto, verificamos se algum impede novos usos no evento atual
-    # Para simplicidade, vamos mostrar todos os usos em aberto, mas com texto explicativo
+    # Retorna todos os usos em aberto para exibição informativa
+    # A validação de conflitos será feita individualmente por veículo no momento do cadastro
     return usos_em_aberto
 
 # =============== ROTAS PARA VEÍCULOS DO EVENTO ===============
@@ -3073,7 +3180,15 @@ def veiculos_evento(id_evento):
     form = VeiculoEventoForm()
     # Repovoar choices sempre
     form.id_veiculo.choices = [(0, 'Selecione um veículo')] + [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
-    form.id_motorista.choices = [(0, 'Selecione um motorista')] + [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
+    
+    # Buscar apenas colaboradores que estão na equipe do evento
+    equipe_colaboradores = db.session.query(Colaborador).join(EquipeEvento).filter(EquipeEvento.id_evento == id_evento).all()
+    
+    if not equipe_colaboradores:
+        flash('É necessário adicionar colaboradores à equipe do evento antes de cadastrar veículos.', 'warning')
+        return redirect(url_for('equipe_evento', id_evento=id_evento))
+    
+    form.id_motorista.choices = [(0, 'Selecione um motorista')] + [(c.id_colaborador, c.nome) for c in equipe_colaboradores]
     
     if form.validate_on_submit():
         # Validações obrigatórias primeiro
@@ -3148,10 +3263,13 @@ def editar_veiculo_evento(id_evento, id):
     veiculo_evento = VeiculoEvento.query.get_or_404(id)
     
     veiculos_existentes = Veiculo.query.all()
-    colaboradores_existentes = Colaborador.query.all()
+    
+    # Buscar apenas colaboradores que estão na equipe do evento
+    equipe_colaboradores = db.session.query(Colaborador).join(EquipeEvento).filter(EquipeEvento.id_evento == id_evento).all()
+    
     form = VeiculoEventoForm(obj=veiculo_evento)
     form.id_veiculo.choices = [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
-    form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
+    form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in equipe_colaboradores]
     
     if form.validate_on_submit():
         # Validações obrigatórias primeiro  
@@ -3214,7 +3332,7 @@ def editar_veiculo_evento(id_evento, id):
     
     # Sempre repovoar choices (mesmo em caso de erro de validação)
     form.id_veiculo.choices = [(v.id_veiculo, f"{v.nome} - {v.placa or 'Sem placa'}") for v in veiculos_existentes]
-    form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in colaboradores_existentes]
+    form.id_motorista.choices = [(c.id_colaborador, c.nome) for c in equipe_colaboradores]
     
     veiculos_evento = VeiculoEvento.query.filter_by(id_evento=id_evento).all()
     usos_em_aberto = buscar_usos_em_aberto_para_evento(id_evento)
@@ -3240,21 +3358,21 @@ def elenco_evento(id_evento):
     # Verificar se existem membros do elenco
     elencos_existentes = Elenco.query.all()
     if not elencos_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos um membro do elenco antes de adicionar ao evento.', 'warning')
+        flash('É necessário cadastrar pelo menos um membro do elenco antes de adicionar ao evento.', 'warning')
         return redirect(url_for('cadastrar_elenco'))
     
     form = ElencoEventoForm()
     form.id_elenco.choices = [(0, 'Selecione um membro do elenco')] + [(e.id_elenco, e.nome) for e in elencos_existentes]
     
     if form.validate_on_submit():
-        # Verificar se o elenco jÃ¡ estÃ¡ no evento
+        # Verificar se o elenco já está no evento
         elenco_existente = ElencoEvento.query.filter_by(
             id_evento=id_evento,
             id_elenco=form.id_elenco.data
         ).first()
         
         if elenco_existente:
-            flash('Este membro do elenco jÃ¡ faz parte deste evento.', 'warning')
+            flash('Este membro do elenco já faz parte deste evento.', 'warning')
         else:
             novo_elenco = ElencoEvento(
                 id_evento=id_evento,
@@ -3279,14 +3397,14 @@ def editar_elenco_evento(id_evento, id):
     form.id_elenco.choices = [(e.id_elenco, e.nome) for e in elencos_existentes]
     
     if form.validate_on_submit():
-        # Verificar se outro elenco jÃ¡ estÃ¡ no evento (exceto o atual)
+        # Verificar se outro elenco já está no evento (exceto o atual)
         elenco_existente = ElencoEvento.query.filter_by(
             id_evento=id_evento,
             id_elenco=form.id_elenco.data
         ).filter(ElencoEvento.id_elenco_evento != id).first()
         
         if elenco_existente:
-            flash('Este membro do elenco jÃ¡ faz parte deste evento.', 'warning')
+            flash('Este membro do elenco já faz parte deste evento.', 'warning')
         else:
             elenco_evt.id_elenco = form.id_elenco.data
             elenco_evt.observacoes = form.observacoes.data
@@ -3313,21 +3431,21 @@ def fornecedor_evento(id_evento):
     # Verificar se existem fornecedores
     fornecedores_existentes = Fornecedor.query.all()
     if not fornecedores_existentes:
-        flash('Ã‰ necessÃ¡rio cadastrar pelo menos um fornecedor antes de adicionar ao evento.', 'warning')
+        flash('É necessário cadastrar pelo menos um fornecedor antes de adicionar ao evento.', 'warning')
         return redirect(url_for('cadastrar_fornecedor'))
     
     form = FornecedorEventoForm()
     form.id_fornecedor.choices = [(0, 'Selecione um fornecedor')] + [(f.id_fornecedor, f.nome) for f in fornecedores_existentes]
     
     if form.validate_on_submit():
-        # Verificar se o fornecedor jÃ¡ estÃ¡ no evento
+        # Verificar se o fornecedor já está no evento
         fornecedor_existente = FornecedorEvento.query.filter_by(
             id_evento=id_evento,
             id_fornecedor=form.id_fornecedor.data
         ).first()
         
         if fornecedor_existente:
-            flash('Este fornecedor jÃ¡ faz parte deste evento.', 'warning')
+            flash('Este fornecedor já faz parte deste evento.', 'warning')
         else:
             novo_fornecedor = FornecedorEvento(
                 id_evento=id_evento,
@@ -3352,14 +3470,14 @@ def editar_fornecedor_evento(id_evento, id):
     form.id_fornecedor.choices = [(f.id_fornecedor, f.nome) for f in fornecedores_existentes]
     
     if form.validate_on_submit():
-        # Verificar se outro fornecedor jÃ¡ estÃ¡ no evento (exceto o atual)
+        # Verificar se outro fornecedor já está no evento (exceto o atual)
         fornecedor_existente = FornecedorEvento.query.filter_by(
             id_evento=id_evento,
             id_fornecedor=form.id_fornecedor.data
         ).filter(FornecedorEvento.id_fornecedor_evento != id).first()
         
         if fornecedor_existente:
-            flash('Este fornecedor jÃ¡ faz parte deste evento.', 'warning')
+            flash('Este fornecedor já faz parte deste evento.', 'warning')
         else:
             fornecedor_evt.id_fornecedor = form.id_fornecedor.data
             fornecedor_evt.observacoes = form.observacoes.data
@@ -3384,7 +3502,7 @@ def excluir_receita_evento(id_evento, receita_evento_id):
         # Verificar se o evento existe
         evento = Evento.query.get(id_evento)
         if not evento:
-            return jsonify({'success': False, 'message': 'Evento nÃ£o encontrado'})
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
         
         # Buscar a receita do evento
         receita_evento = ReceitaEvento.query.filter_by(
@@ -3393,17 +3511,17 @@ def excluir_receita_evento(id_evento, receita_evento_id):
         ).first()
         
         if not receita_evento:
-            return jsonify({'success': False, 'message': 'Receita nÃ£o encontrada neste evento'})
+            return jsonify({'success': False, 'message': 'Receita não encontrada neste evento'})
         
         # Excluir a receita do evento
         db.session.delete(receita_evento)
         db.session.commit()
         
-        print(f"âœ… Receita excluÃ­da do evento: ID {receita_evento_id}")
+        print(f"âœ… Receita excluída do evento: ID {receita_evento_id}")
         
         return jsonify({
             'success': True, 
-            'message': 'Receita excluÃ­da com sucesso'
+            'message': 'Receita excluída com sucesso'
         })
         
     except Exception as e:
@@ -3417,7 +3535,7 @@ def atualizar_receita_evento(id_evento, receita_evento_id):
         # Verificar se o evento existe
         evento = Evento.query.get(id_evento)
         if not evento:
-            return jsonify({'success': False, 'message': 'Evento nÃ£o encontrado'})
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
         
         # Buscar a receita do evento
         receita_evento = ReceitaEvento.query.filter_by(
@@ -3426,23 +3544,23 @@ def atualizar_receita_evento(id_evento, receita_evento_id):
         ).first()
         
         if not receita_evento:
-            return jsonify({'success': False, 'message': 'Receita nÃ£o encontrada neste evento'})
+            return jsonify({'success': False, 'message': 'Receita não encontrada neste evento'})
         
         data = request.get_json()
         
-        # Validar dados obrigatÃ³rios
+        # Validar dados obrigatórios
         if not data.get('valor') or not data.get('data'):
-            return jsonify({'success': False, 'message': 'Data e valor sÃ£o obrigatÃ³rios'})
+            return jsonify({'success': False, 'message': 'Data e valor são obrigatórios'})
         
         # Converter valor - tratar tanto formato brasileiro quanto americano
         try:
             valor_str = str(data['valor']).strip()
             
-            # Se contÃ©m ponto e vÃ­rgula, Ã© formato brasileiro (ex: 1.000,50)
+            # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
             if '.' in valor_str and ',' in valor_str:
-                # Remover pontos de milhares e trocar vÃ­rgula por ponto
+                # Remover pontos de milhares e trocar vírgula por ponto
                 valor_str = valor_str.replace('.', '').replace(',', '.')
-            # Se contÃ©m apenas vÃ­rgula, trocar por ponto
+            # Se contém apenas vírgula, trocar por ponto
             elif ',' in valor_str and '.' not in valor_str:
                 valor_str = valor_str.replace(',', '.')
             
@@ -3453,13 +3571,13 @@ def atualizar_receita_evento(id_evento, receita_evento_id):
                 
         except (ValueError, TypeError) as e:
             print(f"Erro ao converter valor '{data['valor']}': {e}")
-            return jsonify({'success': False, 'message': 'Valor invÃ¡lido'})
+            return jsonify({'success': False, 'message': 'Valor inválido'})
         
         # Converter data
         try:
             data_receita = datetime.strptime(data['data'], '%Y-%m-%d').date()
         except ValueError:
-            return jsonify({'success': False, 'message': 'Data invÃ¡lida'})
+            return jsonify({'success': False, 'message': 'Data inválida'})
         
         # Atualizar receita do evento
         receita_evento.valor = valor
@@ -3486,7 +3604,7 @@ def excluir_despesa_evento(id_evento, despesa_evento_id):
         # Verificar se o evento existe
         evento = Evento.query.get(id_evento)
         if not evento:
-            return jsonify({'success': False, 'message': 'Evento nÃ£o encontrado'})
+            return jsonify({'success': False, 'message': 'Evento não encontrado'})
         
         # Buscar a despesa do evento
         despesa_evento = DespesaEvento.query.filter_by(
@@ -3495,17 +3613,17 @@ def excluir_despesa_evento(id_evento, despesa_evento_id):
         ).first()
         
         if not despesa_evento:
-            return jsonify({'success': False, 'message': 'Despesa nÃ£o encontrada neste evento'})
+            return jsonify({'success': False, 'message': 'Despesa não encontrada neste evento'})
         
         # Excluir a despesa do evento
         db.session.delete(despesa_evento)
         db.session.commit()
         
-        print(f"âœ… Despesa excluÃ­da do evento: ID {despesa_evento_id}")
+        print(f"âœ… Despesa excluída do evento: ID {despesa_evento_id}")
         
         return jsonify({
             'success': True, 
-            'message': 'Despesa excluÃ­da com sucesso'
+            'message': 'Despesa excluída com sucesso'
         })
         
     except Exception as e:
@@ -3724,7 +3842,7 @@ def api_cidades_por_estado(estado):
 
 @app.route('/api/fornecedores-busca')
 def api_fornecedores_busca():
-    """API para buscar fornecedores com priorizaÃ§Ã£o por localizaÃ§Ã£o"""
+    """API para buscar fornecedores com priorizaÃ§ão por localizaÃ§ão"""
     try:
         # ParÃ¢metros de busca
         termo_busca = request.args.get('q', '').strip()
@@ -3734,11 +3852,11 @@ def api_fornecedores_busca():
         # Query base
         query = Fornecedor.query
         
-        # Se hÃ¡ termo de busca, filtrar por nome
+        # Se há termo de busca, filtrar por nome
         if termo_busca:
             query = query.filter(Fornecedor.nome.ilike(f'%{termo_busca}%'))
         
-        # Buscar todos os fornecedores que atendem ao critÃ©rio
+        # Buscar todos os fornecedores que atendem ao critério
         fornecedores = query.all()
         
         # Separar fornecedores por prioridade
@@ -4966,7 +5084,7 @@ def excluir_receita_empresa(id):
     
     return redirect(url_for('receitas_empresa'))
 
-# ==================== FINANCEIRO MÊS ====================
+# ==================== FINANCEIRO MÃS ====================
 
 @app.route('/empresa/financeiro-mes', methods=['GET', 'POST'])
 def financeiro_mes():

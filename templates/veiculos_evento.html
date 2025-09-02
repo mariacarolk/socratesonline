@@ -116,32 +116,21 @@
       <!-- Formulário de Cadastro -->
       <div class="row">
         <div class="col-md-12">
-          {% if usos_em_aberto and not editando %}
-            <!-- Formulário Desabilitado -->
-            <div class="card border-secondary bg-light">
-              <div class="card-header bg-secondary bg-opacity-10">
-                <h6 class="mb-0 text-muted">
-                  <i class="bi bi-lock me-2"></i>Formulário Bloqueado
-                </h6>
-              </div>
-              <div class="card-body">
-                <div class="text-center py-4">
-                  <i class="bi bi-lock-fill display-1 text-muted mb-3"></i>
-                  <h5 class="text-muted">Cadastro Temporariamente Bloqueado</h5>
-                  <p class="text-muted mb-3">
-                    Para manter a integridade dos dados, é necessário encerrar todos os usos em aberto<br>
-                    antes de adicionar novos registros de veículos.
-                  </p>
-                  <div class="d-flex justify-content-center gap-2">
-                    <span class="badge bg-warning text-dark px-3 py-2">
-                      <i class="bi bi-exclamation-triangle me-1"></i>
-                      {{ usos_em_aberto|length }} uso{{ 's' if usos_em_aberto|length != 1 else '' }} pendente{{ 's' if usos_em_aberto|length != 1 else '' }}
-                    </span>
-                  </div>
+          {% if not editando and usos_em_aberto %}
+            <!-- Aviso Informativo sobre Usos em Aberto -->
+            <div class="alert alert-info mb-3">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle me-2"></i>
+                <div>
+                  <strong>Informação:</strong> 
+                  Existem {{ usos_em_aberto|length }} veículo{{ 's' if usos_em_aberto|length != 1 else '' }} em uso no momento. 
+                  Você pode adicionar outros veículos, mas não pode reutilizar os que já estão em uso.
                 </div>
               </div>
             </div>
-          {% else %}
+          {% endif %}
+          
+          {% if not editando or editando %}
             <!-- Formulário Ativo -->
             {% if editando %}
             <div class="alert alert-info mb-3">

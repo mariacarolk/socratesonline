@@ -12,7 +12,7 @@ class MultiCheckboxField(SelectMultipleField):
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[InputRequired()])
-    password = StringField('Senha', validators=[InputRequired()])
+    password = PasswordField('Senha', validators=[InputRequired()])
 
 class UsuarioForm(FlaskForm):
     nome = StringField('Nome', validators=[InputRequired()])
@@ -40,6 +40,8 @@ class CategoriaColaboradorForm(FlaskForm):
 
 class ColaboradorForm(FlaskForm):
     nome = StringField('Nome', validators=[InputRequired()])
+    telefone = StringField('Telefone', validators=[Optional(), Length(max=20)])
+    email = StringField('Email', validators=[Optional()])
     categorias = MultiCheckboxField('Categorias', coerce=int, validators=[InputRequired(message="Selecione pelo menos uma categoria")])
 
 class ElencoForm(FlaskForm):
