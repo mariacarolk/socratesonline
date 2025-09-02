@@ -30,6 +30,20 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-3 mb-3">
+                    {{ form.telefone.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.telefone(class="form-control", placeholder="(99) 99999-9999", **{"data-mask":"phone"}) }}
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    {{ form.email.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.email(class="form-control", placeholder="email@exemplo.com") }}
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    </div>
+                </div>
                 <div class="col-md-6 mb-3">
                     {{ form.categorias.label(class="form-label") }}
                     <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
@@ -81,6 +95,8 @@
                 <thead>
                     <tr>
                         <th>Nome</th>
+                        <th>Telefone</th>
+                        <th>Email</th>
                         <th>Categorias</th>
                         <th class="text-center">Usuário</th>
                         <th class="text-center no-sort" style="width: 200px;">Ações</th>
@@ -90,6 +106,8 @@
                     {% for col in colaboradores %}
                     <tr>
                         <td>{{ col.nome }}</td>
+                        <td>{{ col.telefone or '—' }}</td>
+                        <td>{{ col.email or '—' }}</td>
                         <td>
                             {% if col.categoria_nomes %}
                                 {% for categoria in col.categoria_nomes %}
