@@ -18,11 +18,9 @@ depends_on = None
 
 def upgrade():
     # Alterar coluna data_devolucao para ser nullable
-    with op.batch_alter_table('veiculos_evento', schema=None) as batch_op:
-        batch_op.alter_column('data_devolucao', nullable=True)
+    op.alter_column('veiculos_evento', 'data_devolucao', nullable=True)
 
 
 def downgrade():
     # Reverter coluna data_devolucao para ser not nullable
-    with op.batch_alter_table('veiculos_evento', schema=None) as batch_op:
-        batch_op.alter_column('data_devolucao', nullable=False) 
+    op.alter_column('veiculos_evento', 'data_devolucao', nullable=False) 

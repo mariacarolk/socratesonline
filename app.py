@@ -35,6 +35,8 @@ from reportlab.lib.units import inch
 load_dotenv()  # Carrega variáveis do .env
 
 app = Flask(__name__)
+
+# Configuração PostgreSQL por ambiente
 env = os.getenv("FLASK_ENV", "development")
 if env == "production":
     app.config.from_object("config.ProductionConfig")
