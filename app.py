@@ -1901,8 +1901,10 @@ def excluir_evento(id):
         db.session.close()
         
         # Criar uma nova sessão para as operações de exclusão
-        db.session.execute(text("PRAGMA foreign_keys=OFF"))
-        db.session.execute(text("PRAGMA journal_mode=DELETE"))
+        # PRAGMAs são específicos do SQLite; proteger para outros bancos (ex.: PostgreSQL)
+        if db.engine.dialect.name == 'sqlite':
+            db.session.execute(text("PRAGMA foreign_keys=OFF"))
+            db.session.execute(text("PRAGMA journal_mode=DELETE"))
         
         # Deletar todas as dependências
         print("Iniciando exclusão das dependências...")
@@ -1959,9 +1961,10 @@ def excluir_evento(id):
         # Commit das alterações
         db.session.commit()
         
-        # Reabilitar foreign keys
-        db.session.execute(text("PRAGMA foreign_keys=ON"))
-        db.session.commit()
+        # Reabilitar foreign keys (apenas SQLite)
+        if db.engine.dialect.name == 'sqlite':
+            db.session.execute(text("PRAGMA foreign_keys=ON"))
+            db.session.commit()
         
         print(f"Evento '{nome_evento}' excluído com sucesso!")
         flash(f'Evento "{nome_evento}" excluído com sucesso!', 'success')
