@@ -10,3 +10,4 @@ flask-login
 alembic
 flask-migrate
 email_validator
+psycopg2-binary
