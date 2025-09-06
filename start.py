@@ -43,7 +43,7 @@ def main():
         os.environ['FLASK_APP'] = 'app.py'
         print("📝 FLASK_APP definida como app.py")
     
-    # Executar migrações
+    # Executar migrações (env.py agora força DATABASE_URL)
     if not run_command("flask db upgrade", "Executando migrações do banco"):
         print("❌ Falha nas migrações - parando aplicação")
         sys.exit(1)
