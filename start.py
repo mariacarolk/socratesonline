@@ -59,7 +59,15 @@ def main():
         # Procurar por outras variáveis que possam conter a URL do banco
         possible_vars = []
         for key, value in os.environ.items():
-            if ('postgres' in value.lower() or 'railway' in value.lower()) and 'localhost' not in value:
+            value_str = str(value).lower()
+            # Buscar por URLs que começam com postgres e não são localhost
+            if (value_str.startswith(('postgres://', 'postgresql://')) and 
+                'localhost' not in value_str and '127.0.0.1' not in value_str):
+                possible_vars.append((key, value))
+            # Buscar por variáveis que contêm 'railway' ou 'postgres' no valor
+            elif (('postgres' in value_str or 'railway' in value_str) and 
+                  'localhost' not in value_str and '127.0.0.1' not in value_str and
+                  len(value_str) > 20):  # URL deve ter tamanho mínimo
                 possible_vars.append((key, value))
         
         if possible_vars:
@@ -73,7 +81,20 @@ def main():
             database_url = alt_value
             os.environ['DATABASE_URL'] = database_url
         else:
-            print("❌ Nenhuma variável alternativa encontrada!")
+            print("❌ ERRO CRÍTICO: Nenhuma variável de banco válida encontrada!")
+            print("📋 DIAGNÓSTICO:")
+            print("   • DATABASE_URL aponta para localhost")
+            print("   • Nenhuma variável alternativa de PostgreSQL encontrada")
+            print("   • Isso indica que PostgreSQL não foi adicionado ao projeto Railway")
+            print("")
+            print("🔧 SOLUÇÃO:")
+            print("   1. Acesse o dashboard do Railway")
+            print("   2. Clique em '+ New' no seu projeto")
+            print("   3. Selecione 'Database' → 'Add PostgreSQL'")
+            print("   4. Aguarde a criação do banco")
+            print("   5. Faça um novo deploy")
+            print("")
+            print("⏸️  Aplicação será pausada até que PostgreSQL seja configurado.")
             sys.exit(1)
     
     print(f"🔗 DATABASE_URL final: {database_url[:50]}...")
