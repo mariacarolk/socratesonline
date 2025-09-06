@@ -25,18 +25,16 @@ def upgrade():
     )
     
     # Adicionar colunas na tabela despesa
-    with op.batch_alter_table('despesa', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('id_tipo_despesa', sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column('valor_medio_despesa', sa.Numeric(precision=10, scale=2), nullable=True))
-        batch_op.create_foreign_key('fk_despesa_tipo_despesa', 'tipo_despesa', ['id_tipo_despesa'], ['id_tipo_despesa'])
+    op.add_column('despesa', sa.Column('id_tipo_despesa', sa.Integer(), nullable=True))
+    op.add_column('despesa', sa.Column('valor_medio_despesa', sa.Numeric(precision=10, scale=2), nullable=True))
+    op.create_foreign_key('fk_despesa_tipo_despesa', 'despesa', 'tipo_despesa', ['id_tipo_despesa'], ['id_tipo_despesa'])
 
 
 def downgrade():
     # Remover colunas da tabela despesa
-    with op.batch_alter_table('despesa', schema=None) as batch_op:
-        batch_op.drop_constraint('fk_despesa_tipo_despesa', type_='foreignkey')
-        batch_op.drop_column('valor_medio_despesa')
-        batch_op.drop_column('id_tipo_despesa')
+    op.drop_constraint('fk_despesa_tipo_despesa', 'despesa', type_='foreignkey')
+    op.drop_column('despesa', 'valor_medio_despesa')
+    op.drop_column('despesa', 'id_tipo_despesa')
     
     # Remover tabela tipo_despesa
     op.drop_table('tipo_despesa') 

@@ -6,7 +6,7 @@
 **Versão:** 1.0  
 **Tipo:** Sistema Web de Gestão de Eventos para Circos  
 **Linguagem:** Python (Flask)  
-**Banco de Dados:** SQLite com SQLAlchemy  
+**Banco de Dados:** PostgreSQL com SQLAlchemy  
 **Frontend:** Bootstrap 5, JavaScript ES6, Jinja2  
 
 ### 🎯 Objetivo
@@ -19,7 +19,7 @@ Sistema integrado para gestão completa de eventos circenses, incluindo controle
 ### **Tecnologias Utilizadas**
 - **Backend:** Flask (Python)
 - **Frontend:** Bootstrap 5.3.0, Bootstrap Icons, Font Awesome
-- **Banco de Dados:** SQLite + SQLAlchemy ORM
+- **Banco de Dados:** PostgreSQL + SQLAlchemy ORM
 - **Autenticação:** Flask sessions
 - **Validação:** WTForms + HTML5 validation
 - **Gráficos:** Chart.js
