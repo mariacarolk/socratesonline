@@ -36,12 +36,22 @@ load_dotenv()  # Carrega variáveis do .env
 
 app = Flask(__name__)
 
-# Configuração PostgreSQL por ambiente
+# Configuração por ambiente com detecção automática do Railway
 env = os.getenv("FLASK_ENV", "development")
-if env == "production":
-    app.config.from_object("config.ProductionConfig")
+railway_env = os.getenv("RAILWAY_ENVIRONMENT")
+
+if railway_env:  # Detecta se está rodando no Railway
+    config_obj = "config.RailwayConfig"
+elif env == "production":
+    config_obj = "config.ProductionConfig"
 else:
-    app.config.from_object("config.DevelopmentConfig")
+    config_obj = "config.DevelopmentConfig"
+
+# Aplicar configuração
+app.config.from_object(config_obj)
+
+# Criar pasta de upload se não existir
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
 
@@ -50,10 +60,6 @@ db.init_app(app)
 login_manager.init_app(app)
 migrate = Migrate(app, db)
 
-# Configurar pasta de upload se não existe
-if not hasattr(app.config, 'UPLOAD_FOLDER'):
-    app.config['UPLOAD_FOLDER'] = 'uploads/comprovantes'
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
 # User loader para Flask-Login
 @login_manager.user_loader
@@ -5575,4 +5581,8 @@ def exportar_custo_frota(formato):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Configuração de porta para Railway e desenvolvimento local
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
