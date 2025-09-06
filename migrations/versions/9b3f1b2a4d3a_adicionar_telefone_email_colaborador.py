@@ -17,14 +17,14 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table('colaborador') as batch_op:
-        batch_op.add_column(sa.Column('telefone', sa.String(), nullable=True))
-        batch_op.add_column(sa.Column('email', sa.String(), nullable=True))
+    # PostgreSQL pode fazer ALTER TABLE diretamente
+    op.add_column('colaborador', sa.Column('telefone', sa.String(), nullable=True))
+    op.add_column('colaborador', sa.Column('email', sa.String(), nullable=True))
 
 
 def downgrade():
-    with op.batch_alter_table('colaborador') as batch_op:
-        batch_op.drop_column('email')
-        batch_op.drop_column('telefone')
+    # PostgreSQL pode fazer DROP COLUMN diretamente
+    op.drop_column('colaborador', 'email')
+    op.drop_column('colaborador', 'telefone')
 
 
