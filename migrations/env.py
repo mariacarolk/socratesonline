@@ -28,14 +28,40 @@ def get_engine():
 def get_engine_url():
     # Forçar uso da DATABASE_URL se disponível (Railway)
     database_url = os.environ.get('DATABASE_URL')
+    
+    # Verificar se estamos no Railway
+    is_railway = (
+        os.environ.get('RAILWAY_ENVIRONMENT') or 
+        os.environ.get('PORT') or
+        any('railway' in key.lower() for key in os.environ.keys())
+    )
+    
     if database_url:
+        # Verificar se DATABASE_URL aponta para localhost em produção (erro)
+        if is_railway and ('localhost' in database_url or '127.0.0.1' in database_url):
+            print(f"⚠️  MIGRATIONS: DATABASE_URL aponta para localhost no Railway!")
+            print(f"🔍 DATABASE_URL atual: {database_url[:50]}...")
+            
+            # Procurar variável alternativa
+            for key, value in os.environ.items():
+                if (('postgres' in value.lower() or 'railway' in value.lower()) and 
+                    'localhost' not in value and '127.0.0.1' not in value and
+                    value.startswith(('postgres://', 'postgresql://'))):
+                    print(f"🔧 MIGRATIONS: Usando {key} em vez de DATABASE_URL")
+                    database_url = value
+                    break
+            else:
+                raise RuntimeError(f"MIGRATIONS: Nenhuma URL de banco válida encontrada para Railway!")
+        
         # Fix para Railway - substitui postgres:// por postgresql://
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
-        print(f"🔗 Usando DATABASE_URL: {database_url[:50]}...")
+        
+        print(f"🔗 MIGRATIONS: Usando DATABASE_URL: {database_url[:50]}...")
         return database_url.replace('%', '%%')
     
     # Fallback para configuração do Flask
+    print("🔗 MIGRATIONS: Usando configuração do Flask (fallback)")
     try:
         return get_engine().url.render_as_string(hide_password=False).replace(
             '%', '%%')

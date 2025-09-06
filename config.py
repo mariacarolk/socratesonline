@@ -8,13 +8,39 @@ def get_database_config():
     """
     database_url = os.environ.get('DATABASE_URL')
     
+    # Verificar se estamos no Railway (não usar localhost em produção)
+    is_railway = (
+        os.environ.get('RAILWAY_ENVIRONMENT') or 
+        os.environ.get('PORT') or
+        any('railway' in key.lower() for key in os.environ.keys())
+    )
+    
     if not database_url:
-        # Configuração padrão para desenvolvimento local
-        database_url = 'postgresql://postgres:postgres@localhost:5432/socrates_online'
+        if is_railway:
+            # Em produção Railway, DATABASE_URL DEVE estar definida
+            raise RuntimeError("DATABASE_URL não encontrada no Railway! Verifique se PostgreSQL foi adicionado ao projeto.")
+        else:
+            # Configuração padrão para desenvolvimento local
+            database_url = 'postgresql://postgres:postgres@localhost:5432/socrates_online'
+    
+    # Verificar se DATABASE_URL aponta para localhost em produção (erro comum)
+    if is_railway and ('localhost' in database_url or '127.0.0.1' in database_url):
+        # Procurar por variáveis alternativas do Railway
+        for key, value in os.environ.items():
+            if (('postgres' in value.lower() or 'railway' in value.lower()) and 
+                'localhost' not in value and '127.0.0.1' not in value and
+                value.startswith(('postgres://', 'postgresql://'))):
+                print(f"🔧 Config: Usando {key} em vez de DATABASE_URL")
+                database_url = value
+                break
+        else:
+            raise RuntimeError(f"DATABASE_URL aponta para localhost no Railway: {database_url[:50]}...")
     
     # Fix para Railway - substitui postgres:// por postgresql://
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    print(f"🔧 Config: DATABASE_URL configurada: {database_url[:50]}...")
     
     # Configuração para PostgreSQL
     return {
