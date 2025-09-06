@@ -18,23 +18,19 @@ depends_on = None
 
 def upgrade():
     # Adicionar campos qtd_dias e qtd_pessoas na tabela despesas_evento
-    with op.batch_alter_table('despesas_evento', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('qtd_dias', sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column('qtd_pessoas', sa.Integer(), nullable=True))
+    op.add_column('despesas_evento', sa.Column('qtd_dias', sa.Integer(), nullable=True))
+    op.add_column('despesas_evento', sa.Column('qtd_pessoas', sa.Integer(), nullable=True))
     
     # Adicionar campos qtd_dias e qtd_pessoas na tabela despesas_empresa
-    with op.batch_alter_table('despesas_empresa', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('qtd_dias', sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column('qtd_pessoas', sa.Integer(), nullable=True))
+    op.add_column('despesas_empresa', sa.Column('qtd_dias', sa.Integer(), nullable=True))
+    op.add_column('despesas_empresa', sa.Column('qtd_pessoas', sa.Integer(), nullable=True))
 
 
 def downgrade():
     # Remover campos qtd_dias e qtd_pessoas da tabela despesas_empresa
-    with op.batch_alter_table('despesas_empresa', schema=None) as batch_op:
-        batch_op.drop_column('qtd_pessoas')
-        batch_op.drop_column('qtd_dias')
+    op.drop_column('despesas_empresa', 'qtd_pessoas')
+    op.drop_column('despesas_empresa', 'qtd_dias')
     
     # Remover campos qtd_dias e qtd_pessoas da tabela despesas_evento
-    with op.batch_alter_table('despesas_evento', schema=None) as batch_op:
-        batch_op.drop_column('qtd_pessoas')
-        batch_op.drop_column('qtd_dias') 
+    op.drop_column('despesas_evento', 'qtd_pessoas')
+    op.drop_column('despesas_evento', 'qtd_dias') 

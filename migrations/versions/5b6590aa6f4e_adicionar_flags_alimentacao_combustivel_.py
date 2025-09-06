@@ -19,14 +19,12 @@ depends_on = None
 def upgrade():
     # Adicionar colunas apenas se elas não existirem
     try:
-        with op.batch_alter_table('despesa', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('flag_alimentacao', sa.Boolean(), nullable=False, server_default='0'))
+        op.add_column('despesa', sa.Column('flag_alimentacao', sa.Boolean(), nullable=False, server_default='false'))
     except Exception:
         pass  # Coluna já existe
     
     try:
-        with op.batch_alter_table('despesa', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('flag_combustivel', sa.Boolean(), nullable=False, server_default='0'))
+        op.add_column('despesa', sa.Column('flag_combustivel', sa.Boolean(), nullable=False, server_default='false'))
     except Exception:
         pass  # Coluna já existe
 
@@ -34,13 +32,11 @@ def upgrade():
 def downgrade():
     # Remover colunas se existirem
     try:
-        with op.batch_alter_table('despesa', schema=None) as batch_op:
-            batch_op.drop_column('flag_combustivel')
+        op.drop_column('despesa', 'flag_combustivel')
     except Exception:
         pass
     
     try:
-        with op.batch_alter_table('despesa', schema=None) as batch_op:
-            batch_op.drop_column('flag_alimentacao')
+        op.drop_column('despesa', 'flag_alimentacao')
     except Exception:
         pass
