@@ -103,6 +103,8 @@ Para desenvolvimento local, você **DEVE** usar PostgreSQL:
 
 ```
 ├── railway.json            # Configurações do Railway (substituiu Procfile)
+├── start.py               # Script de inicialização robusto para Railway
+├── .flaskenv              # Configuração automática do FLASK_APP
 ├── env.example             # Exemplo de variáveis de ambiente
 ├── requirements.txt        # Dependências atualizadas com versões específicas
 ├── config.py              # Configurações adaptadas para PostgreSQL
@@ -112,14 +114,15 @@ Para desenvolvimento local, você **DEVE** usar PostgreSQL:
 
 ## Troubleshooting
 
-### Problema: Erro de conexão PostgreSQL durante build
+### Problema: Erro de conexão PostgreSQL durante build/startup
 **Erro:** `connection to server at "localhost" port 5432 failed`
 
-**Solução:** Este erro ocorre quando as migrações tentam executar durante a fase de build, antes do banco estar disponível.
+**Solução:** Este erro ocorre quando as migrações não conseguem acessar a configuração correta do banco.
 
-- ✅ **Corrigido:** Migrações agora executam durante o startup, não no build
-- ✅ **Configuração:** `railway.json` configurado com `"startCommand": "flask db upgrade && python app.py"`
+- ✅ **Corrigido:** Criado script `start.py` que garante configuração adequada
+- ✅ **Configuração:** `railway.json` usa `"startCommand": "python start.py"`
 - ✅ **Requirements:** Adicionado `psycopg2-binary` com versão específica
+- ✅ **Flask Config:** Criado `.flaskenv` para definir FLASK_APP automaticamente
 
 ### Problema: Aplicação não inicia
 - Verifique os logs no Railway
