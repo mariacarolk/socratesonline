@@ -14,6 +14,6 @@ import os
 with app.app_context():
     if os.getenv("FLASK_ENV") == "development":
         db.create_all()
-        print("Banco de dados PostgreSQL inicializado.")
+        print("Banco de dados local inicializado.")
     else:
         print("Init DB só permitido em modo de desenvolvimento.")
