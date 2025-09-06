@@ -1,5 +1,6 @@
 import logging
 from logging.config import fileConfig
+import os
 
 from flask import current_app
 
@@ -25,6 +26,16 @@ def get_engine():
 
 
 def get_engine_url():
+    # Forçar uso da DATABASE_URL se disponível (Railway)
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        # Fix para Railway - substitui postgres:// por postgresql://
+        if database_url.startswith('postgres://'):
+            database_url = database_url.replace('postgres://', 'postgresql://', 1)
+        print(f"🔗 Usando DATABASE_URL: {database_url[:50]}...")
+        return database_url.replace('%', '%%')
+    
+    # Fallback para configuração do Flask
     try:
         return get_engine().url.render_as_string(hide_password=False).replace(
             '%', '%%')
