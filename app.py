@@ -39,8 +39,10 @@ app = Flask(__name__)
 # Configuração por ambiente com detecção automática do Railway
 env = os.getenv("FLASK_ENV", "development")
 railway_env = os.getenv("RAILWAY_ENVIRONMENT")
+# Railway também define DATABASE_URL automaticamente
+is_railway = os.getenv("DATABASE_URL") and "railway" in os.getenv("DATABASE_URL", "")
 
-if railway_env:  # Detecta se está rodando no Railway
+if railway_env or is_railway:  # Detecta se está rodando no Railway
     config_obj = "config.RailwayConfig"
 elif env == "production":
     config_obj = "config.ProductionConfig"

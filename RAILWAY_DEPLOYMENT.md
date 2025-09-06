@@ -58,9 +58,9 @@ Este guia explica como fazer o deploy da aplicação Sócrates Online no Railway
    > **Importante:** Gere uma SECRET_KEY única e segura para produção!
 
 5. **Deploy automático:**
-   - O Railway detectará automaticamente os arquivos `Procfile` e `requirements.txt`
+   - O Railway detectará automaticamente os arquivos `railway.json` e `requirements.txt`
    - O deploy iniciará automaticamente
-   - As migrações do banco serão executadas via `release: flask db upgrade`
+   - As migrações do banco serão executadas durante o startup via `flask db upgrade && python app.py`
 
 ### 3. Verificar o Deploy
 
@@ -102,25 +102,35 @@ Para desenvolvimento local, você **DEVE** usar PostgreSQL:
 ## Estrutura de Arquivos Criados/Modificados
 
 ```
-├── Procfile                 # Comandos para Railway
-├── railway.json            # Configurações do Railway
+├── railway.json            # Configurações do Railway (substituiu Procfile)
 ├── env.example             # Exemplo de variáveis de ambiente
-├── requirements.txt        # Dependências atualizadas
-├── config.py              # Configurações adaptadas
-├── app.py                 # Configuração de porta dinâmica
+├── requirements.txt        # Dependências atualizadas com versões específicas
+├── config.py              # Configurações adaptadas para PostgreSQL
+├── app.py                 # Configuração de porta dinâmica e detecção Railway
 └── RAILWAY_DEPLOYMENT.md  # Este guia
 ```
 
 ## Troubleshooting
 
+### Problema: Erro de conexão PostgreSQL durante build
+**Erro:** `connection to server at "localhost" port 5432 failed`
+
+**Solução:** Este erro ocorre quando as migrações tentam executar durante a fase de build, antes do banco estar disponível.
+
+- ✅ **Corrigido:** Migrações agora executam durante o startup, não no build
+- ✅ **Configuração:** `railway.json` configurado com `"startCommand": "flask db upgrade && python app.py"`
+- ✅ **Requirements:** Adicionado `psycopg2-binary` com versão específica
+
 ### Problema: Aplicação não inicia
 - Verifique os logs no Railway
 - Confirme se todas as variáveis de ambiente estão configuradas
 - Verifique se o PostgreSQL está conectado
+- Certifique-se de que `DATABASE_URL` foi criada automaticamente pelo Railway
 
 ### Problema: Erro de migração
-- As migrações são executadas automaticamente
-- Se houver problemas, verifique os logs da fase de "release"
+- As migrações são executadas automaticamente durante o startup
+- Se houver problemas, verifique os logs do deploy
+- Certifique-se de que o banco PostgreSQL está disponível
 
 ### Problema: Upload de arquivos
 - O Railway tem sistema de arquivos efêmero
