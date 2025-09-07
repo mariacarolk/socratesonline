@@ -36,21 +36,8 @@ load_dotenv()  # Carrega variáveis do .env
 
 app = Flask(__name__)
 
-# Configuração por ambiente com detecção automática do Railway
-env = os.getenv("FLASK_ENV", "development")
-railway_env = os.getenv("RAILWAY_ENVIRONMENT")
-# Railway também define DATABASE_URL automaticamente
-is_railway = os.getenv("DATABASE_URL") and "railway" in os.getenv("DATABASE_URL", "")
-
-if railway_env or is_railway:  # Detecta se está rodando no Railway
-    config_obj = "config.RailwayConfig"
-elif env == "production":
-    config_obj = "config.ProductionConfig"
-else:
-    config_obj = "config.DevelopmentConfig"
-
-# Aplicar configuração
-app.config.from_object(config_obj)
+# Configuração simples (usa DATABASE_URL ou fallback local)
+app.config.from_object('config.Config')
 
 # Criar pasta de upload se não existir
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
