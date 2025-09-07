@@ -1,7 +1,7 @@
 """adicionar_flags_alimentacao_combustivel_apenas
 
 Revision ID: 5b6590aa6f4e
-Revises: 75998c3b99a8
+Revises: adicionar_campo_media_km_litro_veiculo
 Create Date: 2025-07-15 14:35:28.851345
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '5b6590aa6f4e'
-down_revision = '75998c3b99a8'
+down_revision = 'adicionar_campo_media_km_litro_veiculo'
 branch_labels = None
 depends_on = None
 
