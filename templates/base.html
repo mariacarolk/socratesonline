@@ -45,29 +45,44 @@
             </a>
 
             {% set categoria = session['categoria'] %}
+            
+            {# TEMPORÁRIO: Ocultar menu para usuários não-root - REMOVER FUTURAMENTE #}
+            {% set is_root_user = session['email'] == 'root@socratesonline.com' %}
+            
+            {# Dashboard - oculto temporariamente para não-root #}
+            {% if is_root_user %}
             <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
+            {% endif %}
             
+            {# Eventos - oculto temporariamente para não-root #}
+            {% if is_root_user %}
             <a class="nav-link {% if request.endpoint == 'listar_eventos' %}active{% endif %}" href="{{ url_for('listar_eventos') }}">
                 <i class="bi bi-calendar-event"></i> Eventos
             </a>
+            {% endif %}
 
-            {% if categoria == 'administrativo' %}
+            {# Cadastros - liberado parcialmente para administrativos, completo para root #}
+            {% if categoria == 'administrativo' or is_root_user %}
             <div class="w-100">
                 <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuCadastros" role="button" aria-expanded="false" aria-controls="submenuCadastros">
                     <span><i class="bi bi-pencil-square"></i> Cadastros</span>
                     <i class="bi bi-chevron-down small"></i>
                 </a>
                 <div class="collapse ps-3" id="submenuCadastros">
-                    <a class="nav-link {% if request.endpoint == 'cadastrar_circo' %}active{% endif %}" href="{{ url_for('cadastrar_circo') }}">
-                        <i class="bi bi-building"></i> Circos
-                    </a>
+                    {# Colaboradores e Categorias - liberado para todos administrativos #}
                     <a class="nav-link {% if request.endpoint == 'cadastrar_colaborador' %}active{% endif %}" href="{{ url_for('cadastrar_colaborador') }}">
                         <i class="bi bi-people"></i> Colaboradores
                     </a>
                     <a class="nav-link {% if request.endpoint == 'cadastrar_categoria_colaborador' %}active{% endif %}" href="{{ url_for('cadastrar_categoria_colaborador') }}">
                         <i class="bi bi-tags"></i> Categorias Colaboradores
+                    </a>
+                    
+                    {# Demais cadastros - apenas para root temporariamente #}
+                    {% if is_root_user %}
+                    <a class="nav-link {% if request.endpoint == 'cadastrar_circo' %}active{% endif %}" href="{{ url_for('cadastrar_circo') }}">
+                        <i class="bi bi-building"></i> Circos
                     </a>
                     <a class="nav-link {% if request.endpoint == 'cadastrar_elenco' %}active{% endif %}" href="{{ url_for('cadastrar_elenco') }}">
                         <i class="bi bi-person-badge"></i> Elencos
@@ -99,11 +114,13 @@
                     <a class="nav-link {% if request.endpoint == 'cadastrar_parametro' %}active{% endif %}" href="{{ url_for('cadastrar_parametro') }}">
                         <i class="bi bi-gear"></i> Parâmetros
                     </a>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
 
-            {% if session['categoria'] == 'administrativo' %}
+            {# Gestão Financeira Empresa - oculto temporariamente para não-root #}
+            {% if is_root_user %}
             <div class="w-100">
                 <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuGestaoFinanceira" role="button" aria-expanded="false" aria-controls="submenuGestaoFinanceira">
                     <span><i class="bi bi-bank"></i> Gestão Financeira Empresa</span>
@@ -123,7 +140,8 @@
             </div>
             {% endif %}
 
-            {% if session['categoria'] == 'administrativo' %}
+            {# Relatórios - oculto temporariamente para não-root #}
+            {% if is_root_user %}
             <div class="w-100">
                 <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuRelatorios" role="button" aria-expanded="false" aria-controls="submenuRelatorios">
                     <span><i class="bi bi-bar-chart"></i> Relatórios</span>
@@ -147,6 +165,46 @@
                     </a>
                     <a class="nav-link {% if request.endpoint == 'relatorio_custo_frota' %}active{% endif %}" href="{{ url_for('relatorio_custo_frota') }}">
                         <i class="bi bi-fuel-pump"></i> Custo da Frota
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Menu Marketing para Promotores de Vendas e Administradores -->
+            
+            {% if session['categoria'] == 'administrativo' or session['categoria'] == 'promotor de vendas' %}
+                {% set show_marketing = true %}
+            {% endif %}
+            
+            {% if show_marketing %}
+            <div class="w-100">
+                <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuMarketing" role="button" aria-expanded="false" aria-controls="submenuMarketing">
+                    <span><i class="fas fa-bullhorn"></i> Marketing</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </a>
+                <div class="collapse ps-3" id="submenuMarketing">
+                    <a class="nav-link {% if request.endpoint == 'marketing_dashboard' %}active{% endif %}" href="{{ url_for('marketing_dashboard') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard Marketing
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'cadastrar_escola' %}active{% endif %}" href="{{ url_for('cadastrar_escola') }}">
+                        <i class="bi bi-building"></i> Gerenciar Escolas
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'cadastrar_visita_escola' %}active{% endif %}" href="{{ url_for('cadastrar_visita_escola') }}">
+                        <i class="bi bi-calendar-event"></i> Visitas às Escolas
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if session['categoria'] == 'administrativo' or is_root_user %}
+            <div class="w-100">
+                <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuAdministrativo" role="button" aria-expanded="false" aria-controls="submenuAdministrativo">
+                    <span><i class="bi bi-gear"></i> Administrativo</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </a>
+                <div class="collapse ps-3" id="submenuAdministrativo">
+                    <a class="nav-link {% if request.endpoint == 'listar_logs' %}active{% endif %}" href="{{ url_for('listar_logs') }}">
+                        <i class="bi bi-file-text"></i> Logs do Sistema
                     </a>
                 </div>
             </div>

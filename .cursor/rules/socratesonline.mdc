@@ -106,3 +106,7 @@ pip install -r requirements.txt
 - Manter consistência nos IDs de revisão; podem ser legíveis (ex.: `adicionar_campo_xyz`), mas devem ser únicos.
 - Nunca referenciar nomes de arquivos em `down_revision`; sempre o conteúdo de `revision` da migração anterior.
 - Em SQLite, preferir `op.batch_alter_table` para adicionar/alterar colunas.
+
+sempre executar comandos de powershell etc separadamente 
+
+sempre que criar uma funcionalidade, verificar se existem padrões já implementados no sistema e repetir (ex: botões de excluir, editar, etc)

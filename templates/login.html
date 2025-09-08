@@ -173,6 +173,35 @@
             {% endif %}
         {% endwith %}
         
+        <!-- Informações do primeiro acesso -->
+        {% if primeiro_acesso %}
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-info-circle-fill me-3 mt-1"></i>
+                <div>
+                    <h6 class="alert-heading mb-2">🎉 Primeiro Acesso ao Sistema!</h6>
+                    <p class="mb-2">Use as credenciais padrão do administrador:</p>
+                    <div class="bg-light p-3 rounded mb-2" style="color: #1e293b;">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <strong>📧 Email:</strong><br>
+                                <code>root@socratesonline.com</code>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>🔒 Senha:</strong><br>
+                                <code>Admin@2025</code>
+                            </div>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        💡 <strong>Dica:</strong> Após o primeiro login, crie outros usuários específicos para cada função.
+                    </small>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+        
         <form method="POST" class="needs-validation" novalidate>
             {{ form.hidden_tag() }}
             

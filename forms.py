@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField, BooleanField
-from wtforms.fields.datetime import DateField, TimeField
+from wtforms.fields.datetime import DateField, TimeField, DateTimeLocalField
 from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional
 from wtforms.widgets import CheckboxInput, ListWidget
 from datetime import date, datetime
@@ -446,3 +446,86 @@ class ParametroForm(FlaskForm):
     parametro = StringField('Parâmetro', validators=[InputRequired()])
     valor = StringField('Valor')
     observacoes = TextAreaField('Observações')
+
+class EscolaForm(FlaskForm):
+    # Estados brasileiros
+    ESTADOS_BRASILEIROS = [
+        ('AC', 'Acre'),
+        ('AL', 'Alagoas'),
+        ('AP', 'Amapá'),
+        ('AM', 'Amazonas'),
+        ('BA', 'Bahia'),
+        ('CE', 'Ceará'),
+        ('DF', 'Distrito Federal'),
+        ('ES', 'Espírito Santo'),
+        ('GO', 'Goiás'),
+        ('MA', 'Maranhão'),
+        ('MT', 'Mato Grosso'),
+        ('MS', 'Mato Grosso do Sul'),
+        ('MG', 'Minas Gerais'),
+        ('PA', 'Pará'),
+        ('PB', 'Paraíba'),
+        ('PR', 'Paraná'),
+        ('PE', 'Pernambuco'),
+        ('PI', 'Piauí'),
+        ('RJ', 'Rio de Janeiro'),
+        ('RN', 'Rio Grande do Norte'),
+        ('RS', 'Rio Grande do Sul'),
+        ('RO', 'Rondônia'),
+        ('RR', 'Roraima'),
+        ('SC', 'Santa Catarina'),
+        ('SP', 'São Paulo'),
+        ('SE', 'Sergipe'),
+        ('TO', 'Tocantins')
+    ]
+    
+    nome = StringField('Nome da Escola', validators=[InputRequired(message="Nome da escola é obrigatório")])
+    endereco = StringField('Endereço', validators=[InputRequired(message="Endereço é obrigatório")])
+    cidade = StringField('Cidade', validators=[InputRequired(message="Cidade é obrigatória")])
+    estado = SelectField('Estado', choices=ESTADOS_BRASILEIROS, validators=[InputRequired(message="Estado é obrigatório")])
+    email = StringField('E-mail da Escola', validators=[Optional(), Email(message="E-mail inválido")])
+    whatsapp = StringField('WhatsApp da Escola', validators=[Optional()])
+    nome_contato = StringField('Nome do Contato', validators=[InputRequired(message="Nome do contato é obrigatório")])
+    cargo_contato = StringField('Cargo do Contato', validators=[Optional()])
+    observacoes = TextAreaField('Observações', validators=[Optional()])
+    
+    def validate_whatsapp(form, field):
+        """Validador personalizado para WhatsApp"""
+        if field.data and field.data.strip():
+            # Remover caracteres especiais para validação
+            whatsapp_clean = ''.join(filter(str.isdigit, field.data))
+            
+            # Verificar se tem pelo menos 10 dígitos (formato mínimo brasileiro)
+            if len(whatsapp_clean) < 10:
+                raise ValidationError('WhatsApp deve ter pelo menos 10 dígitos.')
+            
+            # Verificar se não tem mais de 15 dígitos (formato internacional)
+            if len(whatsapp_clean) > 15:
+                raise ValidationError('WhatsApp não pode ter mais de 15 dígitos.')
+    
+    def validate(self, extra_validators=None):
+        # Chamar validação padrão primeiro
+        if not super().validate(extra_validators):
+            return False
+        
+        # Validação customizada: pelo menos email OU whatsapp deve estar preenchido
+        if not self.email.data and not self.whatsapp.data:
+            self.email.errors.append('Pelo menos um meio de contato (e-mail ou WhatsApp) deve ser fornecido.')
+            self.whatsapp.errors.append('Pelo menos um meio de contato (e-mail ou WhatsApp) deve ser fornecido.')
+            return False
+        
+        return True
+
+class VisitaEscolaForm(FlaskForm):
+    id_escola = SelectField('Escola', coerce=int, validators=[InputRequired(message="Escola é obrigatória")])
+    id_promotor = SelectField('Promotor Responsável', coerce=int, validators=[InputRequired(message="Promotor responsável é obrigatório")])
+    data_visita = DateTimeLocalField('Data e Hora da Visita', validators=[InputRequired(message="Data da visita é obrigatória")], default=datetime.now)
+    observacoes_visita = TextAreaField('Observações da Visita', validators=[Optional()])
+    status_visita = SelectField('Status da Visita', 
+                               choices=[
+                                   ('agendada', 'Agendada'),
+                                   ('realizada', 'Realizada'),
+                                   ('cancelada', 'Cancelada')
+                               ],
+                               default='agendada',
+                               validators=[InputRequired(message="Status é obrigatório")])

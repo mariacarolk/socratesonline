@@ -7,14 +7,16 @@ from models import (
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
     CategoriaDespesa, Despesa, Evento, DespesaEvento, ReceitaEvento,
     CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, 
-    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento, Parametro
+    DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento, Parametro,
+    Escola, VisitaEscola, LogSistema
 )
 from forms import (
     UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
-    DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm, ParametroForm
+    DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm, ParametroForm,
+    EscolaForm, VisitaEscolaForm
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -22,6 +24,7 @@ from extensions import db, login_manager
 from sqlalchemy import func, text, or_, and_
 from flask_migrate import Migrate
 from flask_login import login_required, current_user
+from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 import uuid
 from openpyxl import Workbook
@@ -31,6 +34,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+import requests
 
 load_dotenv()  # Carrega variáveis do .env
 
@@ -48,6 +52,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db.init_app(app)
 login_manager.init_app(app)
 migrate = Migrate(app, db)
+mail = Mail(app)
 
 
 # User loader para Flask-Login
@@ -241,8 +246,238 @@ def dashboard():
         usuario=usuario
     )
 
+def registrar_log(acao, descricao=None, id_usuario=None):
+    """Registrar log de operação no sistema"""
+    try:
+        # Se não foi passado id_usuario, pegar do usuário logado
+        if id_usuario is None:
+            id_usuario = session.get('user_id')
+        
+        # Se ainda não tiver usuário, não registrar log
+        if not id_usuario:
+            return
+        
+        # Criar registro de log
+        novo_log = LogSistema(
+            acao=acao,
+            descricao=descricao,
+            id_usuario=id_usuario,
+            data_hora=datetime.now()
+        )
+        
+        db.session.add(novo_log)
+        db.session.commit()
+        
+    except Exception as e:
+        # Em caso de erro no log, não interromper o fluxo principal
+        print(f"Erro ao registrar log: {e}")
+        db.session.rollback()
+
+def enviar_whatsapp(numero_destino, mensagem):
+    """
+    Envia mensagem via WhatsApp Business API
+    
+    Args:
+        numero_destino (str): Número do WhatsApp (pode ter formatação)
+        mensagem (str): Texto da mensagem
+        
+    Returns:
+        dict: {'success': bool, 'message_id': str, 'error': str}
+    """
+    api_url = app.config.get('WHATSAPP_API_URL')
+    access_token = app.config.get('WHATSAPP_API_TOKEN')
+    
+    if not api_url or not access_token:
+        return {
+            'success': False,
+            'error': 'WhatsApp API não configurada. Configure WHATSAPP_API_URL e WHATSAPP_API_TOKEN no .env'
+        }
+    
+    # Limpar o número (remover caracteres especiais)
+    numero_limpo = ''.join(filter(str.isdigit, numero_destino))
+    
+    # Garantir formato internacional brasileiro
+    if len(numero_limpo) == 11 and numero_limpo.startswith('11'):
+        numero_limpo = '55' + numero_limpo
+    elif len(numero_limpo) == 10:
+        numero_limpo = '5511' + numero_limpo
+    elif not numero_limpo.startswith('55'):
+        numero_limpo = '55' + numero_limpo
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        'messaging_product': 'whatsapp',
+        'to': numero_limpo,
+        'type': 'text',
+        'text': {
+            'body': mensagem
+        }
+    }
+    
+    try:
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            message_id = response_data.get('messages', [{}])[0].get('id', 'unknown')
+            return {
+                'success': True,
+                'message_id': message_id,
+                'numero_enviado': numero_limpo
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'Erro da API: {response.status_code} - {response.text}'
+            }
+            
+    except requests.exceptions.RequestException as e:
+        return {
+            'success': False,
+            'error': f'Erro de conexão: {str(e)}'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Erro inesperado: {str(e)}'
+        }
+
+def criar_mensagem_visita_escola(escola, visita, promotor):
+    """
+    Cria mensagem padrão para visita à escola
+    
+    Args:
+        escola: Objeto Escola
+        visita: Objeto VisitaEscola  
+        promotor: Objeto Colaborador (promotor)
+        
+    Returns:
+        str: Mensagem formatada
+    """
+    empresa_nome = os.environ.get('EMPRESA_NOME', 'Sócrates Online')
+    empresa_contato = os.environ.get('EMPRESA_CONTATO', 'contato@socratesonline.com')
+    empresa_whatsapp = os.environ.get('EMPRESA_WHATSAPP', '5511999887766')
+    
+    # Formatar número da empresa para exibição
+    whatsapp_formatado = empresa_whatsapp
+    if len(empresa_whatsapp) == 13 and empresa_whatsapp.startswith('55'):
+        # Formato: 5511999887766 -> (11) 99988-7766
+        ddd = empresa_whatsapp[2:4]
+        numero = empresa_whatsapp[4:]
+        whatsapp_formatado = f"({ddd}) {numero[:5]}-{numero[5:]}"
+    
+    mensagem = f"""🎪 *{empresa_nome}*
+
+Olá, {escola.nome}!
+
+Temos o prazer de informar que foi agendada uma visita do nosso circo em sua escola.
+
+📅 *Data da Visita:* {visita.data_visita.strftime('%d/%m/%Y às %H:%M')}
+👤 *Promotor Responsável:* {promotor.nome}
+📍 *Escola:* {escola.nome} - {escola.cidade}/{escola.estado}
+
+Nossa equipe entrará em contato para alinhar todos os detalhes do espetáculo.
+
+Para mais informações:
+📧 {empresa_contato}
+📱 {whatsapp_formatado}
+
+Aguardamos vocês para um espetáculo inesquecível! 🎭✨
+
+_Mensagem enviada automaticamente pelo sistema {empresa_nome}_"""
+    
+    return mensagem
+
+def criar_usuario_root():
+    """Criar usuário ROOT se não existir"""
+    try:
+        # Verificar se já existe usuário ROOT
+        usuario_root = Usuario.query.filter_by(email='root@socratesonline.com').first()
+        if usuario_root:
+            return  # Usuário ROOT já existe
+        
+        print("🔄 Criando usuário ROOT do sistema...")
+        
+        # Criar categorias básicas se não existirem
+        categorias_basicas = [
+            'Administrativo',
+            'Operacional', 
+            'Promotor de Vendas',
+            'Produtor',
+            'Motorista',
+            'Técnico'
+        ]
+        
+        categorias_criadas = []
+        for nome_categoria in categorias_basicas:
+            categoria_existente = CategoriaColaborador.query.filter_by(nome=nome_categoria).first()
+            if not categoria_existente:
+                nova_categoria = CategoriaColaborador(nome=nome_categoria)
+                db.session.add(nova_categoria)
+                db.session.flush()  # Para obter o ID
+                categorias_criadas.append(nova_categoria)
+                print(f"📝 Categoria '{nome_categoria}' criada")
+            else:
+                categorias_criadas.append(categoria_existente)
+        
+        # Verificar se já existe colaborador ROOT
+        colaborador_root = Colaborador.query.filter_by(email='root@socratesonline.com').first()
+        if not colaborador_root:
+            # Criar colaborador ROOT
+            colaborador_root = Colaborador(
+                nome='ROOT - Administrador do Sistema',
+                telefone='(00) 00000-0000',
+                email='root@socratesonline.com'
+            )
+            db.session.add(colaborador_root)
+            db.session.flush()  # Para obter o ID do colaborador
+            print("👤 Colaborador ROOT criado")
+        
+        # Verificar e associar todas as categorias ao colaborador ROOT
+        categorias_associadas = [assoc.categoria for assoc in colaborador_root.categorias_associacao]
+        for categoria in categorias_criadas:
+            if categoria not in categorias_associadas:
+                associacao = ColaboradorCategoria(
+                    id_colaborador=colaborador_root.id_colaborador,
+                    id_categoria_colaborador=categoria.id_categoria_colaborador
+                )
+                db.session.add(associacao)
+        
+        # Criar usuário ROOT
+        senha_hash = generate_password_hash('Admin@2025')
+        usuario_root = Usuario(
+            nome='ROOT',
+            email='root@socratesonline.com',
+            senha_hash=senha_hash,
+            id_colaborador=colaborador_root.id_colaborador
+        )
+        db.session.add(usuario_root)
+        
+        db.session.commit()
+        print("✅ Usuário ROOT criado com sucesso!")
+        print("📧 Email: root@socratesonline.com")
+        print("🔒 Senha: Admin@2025")
+        print("🏷️ Categorias:", ', '.join([cat.nome for cat in categorias_criadas]))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Erro ao criar usuário ROOT: {e}")
+        import traceback
+        traceback.print_exc()
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Verificar e criar usuário ROOT se necessário
+    criar_usuario_root()
+    
+    # Verificar se é o primeiro acesso (apenas usuário ROOT existe)
+    total_usuarios = Usuario.query.count()
+    primeiro_acesso = total_usuarios <= 1
+    
     form = LoginForm()
     if form.validate_on_submit():
         usuario = Usuario.query.filter_by(email=form.email.data).first()
@@ -261,7 +496,7 @@ def login():
         # Erros de validação do formulário
         flash('Por favor, verifique os dados informados.', 'warning')
     
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, primeiro_acesso=primeiro_acesso)
 
 @app.route('/logout')
 def logout():
@@ -904,6 +1139,539 @@ def excluir_parametro(id):
     db.session.commit()
     flash('Parâmetro excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_parametro'))
+
+@app.route('/cadastros/escolas', methods=['GET', 'POST'])
+def cadastrar_escola():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    form = EscolaForm()
+    if form.validate_on_submit():
+        nova = Escola(
+            nome=form.nome.data,
+            endereco=form.endereco.data,
+            cidade=form.cidade.data,
+            estado=form.estado.data,
+            email=form.email.data,
+            whatsapp=form.whatsapp.data,
+            nome_contato=form.nome_contato.data,
+            cargo_contato=form.cargo_contato.data,
+            observacoes=form.observacoes.data
+        )
+        db.session.add(nova)
+        db.session.commit()
+        
+        # Registrar log da operação
+        registrar_log('Cadastrar Escola', f'Escola "{nova.nome}" cadastrada - {nova.cidade}/{nova.estado}')
+        
+        flash('Escola cadastrada com sucesso!', 'success')
+        return redirect(url_for('cadastrar_escola'))
+    
+    escolas = Escola.query.order_by(Escola.nome).all()
+    return render_template('escolas.html', form=form, escolas=escolas)
+
+@app.route('/cadastros/escolas/editar/<int:id>', methods=['GET', 'POST'])
+def editar_escola(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    escola = Escola.query.get_or_404(id)
+    form = EscolaForm(obj=escola)
+    
+    if form.validate_on_submit():
+        escola.nome = form.nome.data
+        escola.endereco = form.endereco.data
+        escola.cidade = form.cidade.data
+        escola.estado = form.estado.data
+        escola.email = form.email.data
+        escola.whatsapp = form.whatsapp.data
+        escola.nome_contato = form.nome_contato.data
+        escola.cargo_contato = form.cargo_contato.data
+        escola.observacoes = form.observacoes.data
+        
+        db.session.commit()
+        
+        # Registrar log da operação
+        registrar_log('Editar Escola', f'Escola "{escola.nome}" editada - {escola.cidade}/{escola.estado}')
+        
+        flash('Escola atualizada com sucesso!', 'success')
+        return redirect(url_for('cadastrar_escola'))
+    
+    escolas = Escola.query.order_by(Escola.nome).all()
+    return render_template('escolas.html', form=form, escolas=escolas, escola_editando=escola)
+
+@app.route('/cadastros/escolas/excluir/<int:id>')
+def excluir_escola(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    escola = Escola.query.get_or_404(id)
+    
+    # Verificar se existem visitas associadas
+    visitas_count = VisitaEscola.query.filter_by(id_escola=id).count()
+    if visitas_count > 0:
+        flash(f'Não é possível excluir esta escola pois existem {visitas_count} visita(s) associada(s) a ela.', 'danger')
+        return redirect(url_for('cadastrar_escola'))
+    
+    # Salvar dados para o log antes de excluir
+    nome_escola = escola.nome
+    cidade_escola = escola.cidade
+    estado_escola = escola.estado
+    
+    db.session.delete(escola)
+    db.session.commit()
+    
+    # Registrar log da operação
+    registrar_log('Excluir Escola', f'Escola "{nome_escola}" excluída - {cidade_escola}/{estado_escola}')
+    
+    flash('Escola excluída com sucesso!', 'success')
+    return redirect(url_for('cadastrar_escola'))
+
+@app.route('/visitas/escolas', methods=['GET', 'POST'])
+def cadastrar_visita_escola():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se existem escolas cadastradas
+    escolas_existentes = Escola.query.all()
+    if not escolas_existentes:
+        flash('É necessário cadastrar pelo menos uma escola antes de agendar visitas.', 'warning')
+        return redirect(url_for('cadastrar_escola'))
+    
+    form = VisitaEscolaForm()
+    form.id_escola.choices = [(e.id_escola, f"{e.nome} - {e.cidade}/{e.estado}") for e in escolas_existentes]
+    
+    # Buscar colaboradores com categoria "Promotor de Vendas"
+    promotores = db.session.query(Colaborador).join(ColaboradorCategoria).join(CategoriaColaborador).filter(
+        CategoriaColaborador.nome.ilike('%promotor de vendas%')
+    ).order_by(Colaborador.nome).all()
+    
+    form.id_promotor.choices = [(p.id_colaborador, p.nome) for p in promotores]
+    
+    # Definir promotor padrão como o usuário logado se ele for promotor
+    if request.method == 'GET':
+        usuario = Usuario.query.get(session['user_id'])
+        if usuario and usuario.colaborador:
+            # Verificar se o usuário logado é promotor de vendas
+            is_promotor = any(cat.nome.lower() == 'promotor de vendas' for cat in usuario.colaborador.categorias)
+            if is_promotor:
+                form.id_promotor.data = usuario.colaborador.id_colaborador
+    
+    if form.validate_on_submit():
+        nova_visita = VisitaEscola(
+            id_escola=form.id_escola.data,
+            data_visita=form.data_visita.data,
+            id_promotor=form.id_promotor.data,
+            observacoes_visita=form.observacoes_visita.data,
+            status_visita=form.status_visita.data
+        )
+        db.session.add(nova_visita)
+        db.session.commit()
+        
+        # Registrar log da operação
+        escola = Escola.query.get(form.id_escola.data)
+        registrar_log('Cadastrar Visita', f'Visita agendada para escola "{escola.nome}" - {nova_visita.data_visita.strftime("%d/%m/%Y %H:%M")}')
+        
+        flash('Visita agendada com sucesso!', 'success')
+        return redirect(url_for('cadastrar_visita_escola'))
+    
+    # Listar visitas ordenadas por data
+    visitas = db.session.query(VisitaEscola).join(Escola).join(Colaborador).order_by(VisitaEscola.data_visita.desc()).all()
+    return render_template('visitas_escola.html', form=form, visitas=visitas)
+
+@app.route('/visitas/escolas/editar/<int:id>', methods=['GET', 'POST'])
+def editar_visita_escola(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    visita = VisitaEscola.query.get_or_404(id)
+    
+    # Verificar se o usuário pode editar esta visita (apenas o próprio promotor ou admin)
+    usuario = Usuario.query.get(session['user_id'])
+    if not usuario or not usuario.colaborador:
+        flash('Erro ao carregar informações do usuário.', 'danger')
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo' and visita.id_promotor != usuario.colaborador.id_colaborador:
+        flash('Você não tem permissão para editar esta visita.', 'danger')
+        return redirect(url_for('cadastrar_visita_escola'))
+    
+    escolas_existentes = Escola.query.all()
+    form = VisitaEscolaForm(obj=visita)
+    form.id_escola.choices = [(e.id_escola, f"{e.nome} - {e.cidade}/{e.estado}") for e in escolas_existentes]
+    
+    # Buscar colaboradores com categoria "Promotor de Vendas"
+    promotores = db.session.query(Colaborador).join(ColaboradorCategoria).join(CategoriaColaborador).filter(
+        CategoriaColaborador.nome.ilike('%promotor de vendas%')
+    ).order_by(Colaborador.nome).all()
+    
+    form.id_promotor.choices = [(p.id_colaborador, p.nome) for p in promotores]
+    
+    if form.validate_on_submit():
+        visita.id_escola = form.id_escola.data
+        visita.id_promotor = form.id_promotor.data
+        visita.data_visita = form.data_visita.data
+        visita.observacoes_visita = form.observacoes_visita.data
+        visita.status_visita = form.status_visita.data
+        
+        db.session.commit()
+        
+        # Registrar log da operação
+        escola = Escola.query.get(visita.id_escola)
+        registrar_log('Editar Visita', f'Visita editada para escola "{escola.nome}" - {visita.data_visita.strftime("%d/%m/%Y %H:%M")}')
+        
+        flash('Visita atualizada com sucesso!', 'success')
+        return redirect(url_for('cadastrar_visita_escola'))
+    
+    visitas = db.session.query(VisitaEscola).join(Escola).join(Colaborador).order_by(VisitaEscola.data_visita.desc()).all()
+    return render_template('visitas_escola.html', form=form, visitas=visitas, visita_editando=visita)
+
+@app.route('/visitas/escolas/excluir/<int:id>')
+def excluir_visita_escola(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    visita = VisitaEscola.query.get_or_404(id)
+    
+    # Verificar se o usuário pode excluir esta visita (apenas o próprio promotor ou admin)
+    usuario = Usuario.query.get(session['user_id'])
+    if not usuario or not usuario.colaborador:
+        flash('Erro ao carregar informações do usuário.', 'danger')
+        return redirect(url_for('login'))
+    
+    if session.get('categoria') != 'administrativo' and visita.id_promotor != usuario.colaborador.id_colaborador:
+        flash('Você não tem permissão para excluir esta visita.', 'danger')
+        return redirect(url_for('cadastrar_visita_escola'))
+    
+    # Salvar dados para o log antes de excluir
+    escola = Escola.query.get(visita.id_escola)
+    data_visita = visita.data_visita.strftime("%d/%m/%Y %H:%M")
+    
+    db.session.delete(visita)
+    db.session.commit()
+    
+    # Registrar log da operação
+    registrar_log('Excluir Visita', f'Visita excluída para escola "{escola.nome}" - {data_visita}')
+    
+    flash('Visita excluída com sucesso!', 'success')
+    return redirect(url_for('cadastrar_visita_escola'))
+
+@app.route('/escolas/<int:id>/historico')
+def historico_visitas_escola(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    escola = Escola.query.get_or_404(id)
+    visitas = VisitaEscola.query.filter_by(id_escola=id).join(Colaborador).order_by(VisitaEscola.data_visita.desc()).all()
+    
+    return render_template('historico_visitas_escola.html', escola=escola, visitas=visitas)
+
+@app.route('/marketing/dashboard')
+def marketing_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar permissão (administrativo ou promotor de vendas)
+    if session.get('categoria', '').lower() not in ['administrativo', 'promotor de vendas']:
+        flash('Acesso restrito a administradores e promotores de vendas.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Estatísticas gerais
+    total_escolas = Escola.query.count()
+    total_visitas = VisitaEscola.query.count()
+    
+    # Escolas com visitas pendentes de envio de material
+    escolas_pendentes_email = db.session.query(Escola).join(VisitaEscola).filter(
+        and_(
+            Escola.email.isnot(None),
+            Escola.email != '',
+            VisitaEscola.email_enviado == False
+        )
+    ).distinct().count()
+    
+    escolas_pendentes_whatsapp = db.session.query(Escola).join(VisitaEscola).filter(
+        and_(
+            Escola.whatsapp.isnot(None),
+            Escola.whatsapp != '',
+            VisitaEscola.whatsapp_enviado == False
+        )
+    ).distinct().count()
+    
+    # Escolas já contactadas
+    escolas_email_enviado = db.session.query(Escola).join(VisitaEscola).filter(
+        VisitaEscola.email_enviado == True
+    ).distinct().count()
+    
+    escolas_whatsapp_enviado = db.session.query(Escola).join(VisitaEscola).filter(
+        VisitaEscola.whatsapp_enviado == True
+    ).distinct().count()
+    
+    # Visitas por status
+    visitas_agendadas = VisitaEscola.query.filter_by(status_visita='agendada').count()
+    visitas_realizadas = VisitaEscola.query.filter_by(status_visita='realizada').count()
+    visitas_canceladas = VisitaEscola.query.filter_by(status_visita='cancelada').count()
+    
+    # Últimas visitas realizadas
+    ultimas_visitas = db.session.query(VisitaEscola).join(Escola).join(Colaborador).order_by(VisitaEscola.data_visita.desc()).limit(5).all()
+    
+    # Escolas mais visitadas
+    escolas_mais_visitadas = db.session.query(
+        Escola.nome,
+        Escola.cidade,
+        Escola.estado,
+        func.count(VisitaEscola.id_visita).label('total_visitas')
+    ).join(VisitaEscola).group_by(Escola.id_escola).order_by(func.count(VisitaEscola.id_visita).desc()).limit(5).all()
+    
+    return render_template('marketing_dashboard.html',
+                         total_escolas=total_escolas,
+                         total_visitas=total_visitas,
+                         escolas_pendentes_email=escolas_pendentes_email,
+                         escolas_pendentes_whatsapp=escolas_pendentes_whatsapp,
+                         escolas_email_enviado=escolas_email_enviado,
+                         escolas_whatsapp_enviado=escolas_whatsapp_enviado,
+                         visitas_agendadas=visitas_agendadas,
+                         visitas_realizadas=visitas_realizadas,
+                         visitas_canceladas=visitas_canceladas,
+                         ultimas_visitas=ultimas_visitas,
+                         escolas_mais_visitadas=escolas_mais_visitadas)
+
+def enviar_email_marketing(escola, colaborador):
+    """
+    Função para enviar email de marketing para uma escola
+    """
+    try:
+        # Verificar se as configurações de email estão definidas
+        if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+            print("❌ Configurações de email não definidas")
+            return False
+        
+        # Criar mensagem de email
+        assunto = f"Circo Stankowich - Proposta de Apresentação para {escola.nome}"
+        
+        # Template do email em HTML
+        corpo_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #e74c3c; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 20px; background-color: #f9f9f9; }}
+                .footer {{ padding: 20px; text-align: center; color: #666; }}
+                .btn {{ background-color: #e74c3c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎪 Circo Stankowich</h1>
+                    <p>Alegria e Diversão para Toda a Família!</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Olá, {escola.nome_contato or 'Responsável'}!</h2>
+                    
+                    <p>Esperamos que esteja tudo bem! Somos do <strong>Circo Stankowich</strong> e gostaríamos de apresentar uma proposta especial para levar alegria e diversão diretamente para a <strong>{escola.nome}</strong>.</p>
+                    
+                    <h3>🎭 O que oferecemos:</h3>
+                    <ul>
+                        <li>Espetáculos circenses profissionais</li>
+                        <li>Apresentações educativas e divertidas</li>
+                        <li>Experiência inesquecível para alunos e familiares</li>
+                        <li>Preços especiais para instituições de ensino</li>
+                    </ul>
+                    
+                    <h3>📍 Informações da Escola:</h3>
+                    <p><strong>Escola:</strong> {escola.nome}<br>
+                    <strong>Cidade:</strong> {escola.cidade}/{escola.estado}</p>
+                    
+                    <p>Gostaríamos muito de agendar uma conversa para apresentar nossa proposta detalhada e discutir as melhores opções para vocês.</p>
+                    
+                    <p>Ficamos no aguardo do seu contato!</p>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>Atenciosamente,</strong><br>
+                    {colaborador.nome}<br>
+                    Circo Stankowich</p>
+                    
+                    <p>📧 contato@socratesonline.com<br>
+                    📱 {colaborador.telefone or 'Telefone disponível via email'}</p>
+                    
+                    <p style="font-size: 12px; color: #999;">
+                        Este email foi enviado automaticamente pelo sistema de marketing do Circo Stankowich.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Versão em texto simples
+        corpo_texto = f"""
+        Circo Stankowich - Proposta de Apresentação
+        
+        Olá, {escola.nome_contato or 'Responsável'}!
+        
+        Somos do Circo Stankowich e gostaríamos de apresentar uma proposta especial para levar alegria e diversão diretamente para a {escola.nome}.
+        
+        O que oferecemos:
+        - Espetáculos circenses profissionais
+        - Apresentações educativas e divertidas
+        - Experiência inesquecível para alunos e familiares
+        - Preços especiais para instituições de ensino
+        
+        Escola: {escola.nome}
+        Cidade: {escola.cidade}/{escola.estado}
+        
+        Gostaríamos muito de agendar uma conversa para apresentar nossa proposta detalhada.
+        
+        Atenciosamente,
+        {colaborador.nome}
+        Circo Stankowich
+        
+        contato@socratesonline.com
+        {colaborador.telefone or 'Telefone disponível via email'}
+        """
+        
+        # Criar e enviar mensagem
+        msg = Message(
+            subject=assunto,
+            recipients=[escola.email],
+            html=corpo_html,
+            body=corpo_texto
+        )
+        
+        mail.send(msg)
+        
+        # Registrar log do sistema
+        log = LogSistema(
+            usuario_id=session.get('user_id'),
+            acao='ENVIO_EMAIL_MARKETING',
+            detalhes=f'Email enviado para escola {escola.nome} ({escola.email})',
+            ip_address=request.remote_addr
+        )
+        db.session.add(log)
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erro ao enviar email: {str(e)}")
+        
+        # Registrar log de erro
+        try:
+            log = LogSistema(
+                usuario_id=session.get('user_id'),
+                acao='ERRO_ENVIO_EMAIL_MARKETING',
+                detalhes=f'Erro ao enviar email para escola {escola.nome}: {str(e)}',
+                ip_address=request.remote_addr
+            )
+            db.session.add(log)
+        except:
+            pass
+        
+        return False
+
+@app.route('/marketing/enviar-material', methods=['POST'])
+def enviar_material_marketing():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    # Verificar permissão
+    if session.get('categoria', '').lower() not in ['administrativo', 'promotor de vendas']:
+        return jsonify({'error': 'Acesso restrito a administradores e promotores de vendas'}), 403
+    
+    try:
+        tipo_envio = request.json.get('tipo')  # 'email' ou 'whatsapp'
+        
+        if tipo_envio not in ['email', 'whatsapp']:
+            return jsonify({'error': 'Tipo de envio inválido'}), 400
+        
+        # Obter usuário atual
+        usuario = Usuario.query.get(session['user_id'])
+        if not usuario or not usuario.colaborador:
+            return jsonify({'error': 'Usuário inválido'}), 400
+        
+        # Buscar visitas pendentes de envio
+        if tipo_envio == 'email':
+            visitas_pendentes = db.session.query(VisitaEscola).join(Escola).filter(
+                and_(
+                    Escola.email.isnot(None),
+                    Escola.email != '',
+                    VisitaEscola.email_enviado == False
+                )
+            ).all()
+        else:  # whatsapp
+            visitas_pendentes = db.session.query(VisitaEscola).join(Escola).filter(
+                and_(
+                    Escola.whatsapp.isnot(None),
+                    Escola.whatsapp != '',
+                    VisitaEscola.whatsapp_enviado == False
+                )
+            ).all()
+        
+        if not visitas_pendentes:
+            return jsonify({'message': f'Nenhuma escola pendente de envio por {tipo_envio}', 'count': 0})
+        
+        # Simular envio e marcar como enviado
+        contador_enviados = 0
+        data_envio = datetime.now()
+        
+        for visita in visitas_pendentes:
+            try:
+                # Aqui seria implementada a lógica real de envio
+                # Por enquanto, apenas simulamos o envio
+                
+                if tipo_envio == 'email':
+                    # Envio real de email
+                    sucesso_email = enviar_email_marketing(visita.escola, usuario.colaborador)
+                    if sucesso_email:
+                        print(f"📧 Email enviado com sucesso para: {visita.escola.email} - Escola: {visita.escola.nome}")
+                        visita.email_enviado = True
+                        visita.data_email_enviado = data_envio
+                    else:
+                        print(f"❌ Falha ao enviar email para: {visita.escola.email} - Escola: {visita.escola.nome}")
+                        continue
+                else:
+                    # Envio real de WhatsApp
+                    promotor = Colaborador.query.get(visita.id_promotor)
+                    mensagem = criar_mensagem_visita_escola(visita.escola, visita, promotor)
+                    
+                    resultado = enviar_whatsapp(visita.escola.whatsapp, mensagem)
+                    
+                    if resultado['success']:
+                        print(f"📱 WhatsApp enviado com sucesso para: {visita.escola.whatsapp} - Escola: {visita.escola.nome}")
+                        print(f"   Message ID: {resultado['message_id']}")
+                        visita.whatsapp_enviado = True
+                        visita.data_whatsapp_enviado = data_envio
+                        
+                        # Registrar log do envio
+                        registrar_log('Envio WhatsApp', 
+                                    f'WhatsApp enviado para escola "{visita.escola.nome}" - {resultado["numero_enviado"]}')
+                    else:
+                        print(f"❌ Erro ao enviar WhatsApp para {visita.escola.nome}: {resultado['error']}")
+                        continue
+                
+                contador_enviados += 1
+                
+            except Exception as e:
+                print(f"❌ Erro ao enviar para escola {visita.escola.nome}: {e}")
+                continue
+        
+        # Salvar alterações
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Material enviado com sucesso por {tipo_envio}!',
+            'count': contador_enviados,
+            'tipo': tipo_envio
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro interno: {str(e)}'}), 500
 
 @app.route('/eventos')
 def listar_eventos():
@@ -5569,7 +6337,42 @@ def exportar_custo_frota(formato):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/administrativo/logs')
+def listar_logs():
+    """Lista todos os logs do sistema com paginação - acesso apenas para administrativos"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se o usuário é administrativo
+    usuario = Usuario.query.get(session['user_id'])
+    if not usuario or not usuario.colaborador:
+        flash('Erro ao carregar informações do usuário.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Verificar se é administrador
+    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    if not is_admin:
+        flash('Acesso negado. Esta funcionalidade é restrita a usuários administrativos.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Paginação - 50 registros por página
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    # Buscar logs ordenados por data/hora decrescente (mais recentes primeiro)
+    logs = LogSistema.query.join(Usuario).order_by(LogSistema.data_hora.desc()).paginate(
+        page=page, 
+        per_page=per_page, 
+        error_out=False
+    )
+    
+    return render_template('logs_sistema.html', logs=logs, usuario=usuario)
+
 if __name__ == '__main__':
+    # Inicializar usuário ROOT na primeira execução
+    with app.app_context():
+        criar_usuario_root()
+    
     # Configuração de porta para Railway e desenvolvimento local
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'

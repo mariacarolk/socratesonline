@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'criar_tabela_parametros'
-down_revision = 'tornar_data_devolucao_opcional'
+down_revision = 'adicionar_campo_media_km_litro_veiculo'
 branch_labels = None
 depends_on = None
 

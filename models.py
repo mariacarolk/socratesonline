@@ -1,5 +1,6 @@
 from extensions import db
 from flask_login import UserMixin
+from datetime import datetime
 
 # Constantes para tipos de despesa
 TIPOS_DESPESA = {
@@ -317,3 +318,56 @@ class Parametro(db.Model):
     parametro = db.Column(db.String(100), nullable=False)
     valor = db.Column(db.String(100))
     observacoes = db.Column(db.Text)
+
+class Escola(db.Model):
+    __tablename__ = 'escola'
+    id_escola = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(200), nullable=False)
+    endereco = db.Column(db.String(300), nullable=False)
+    cidade = db.Column(db.String(100), nullable=False)
+    estado = db.Column(db.String(2), nullable=False)
+    email = db.Column(db.String(200), nullable=True)
+    whatsapp = db.Column(db.String(20), nullable=True)
+    nome_contato = db.Column(db.String(100), nullable=False)
+    cargo_contato = db.Column(db.String(100), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    visitas = db.relationship('VisitaEscola', back_populates='escola', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Escola {self.nome}>'
+
+class VisitaEscola(db.Model):
+    __tablename__ = 'visita_escola'
+    id_visita = db.Column(db.Integer, primary_key=True)
+    id_escola = db.Column(db.Integer, db.ForeignKey('escola.id_escola'), nullable=False)
+    data_visita = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    id_promotor = db.Column(db.Integer, db.ForeignKey('colaborador.id_colaborador'), nullable=False)
+    email_enviado = db.Column(db.Boolean, default=False, nullable=False)
+    whatsapp_enviado = db.Column(db.Boolean, default=False, nullable=False)
+    data_email_enviado = db.Column(db.DateTime, nullable=True)
+    data_whatsapp_enviado = db.Column(db.DateTime, nullable=True)
+    observacoes_visita = db.Column(db.Text, nullable=True)
+    status_visita = db.Column(db.String(50), default='agendada', nullable=False)  # agendada, realizada, cancelada
+    
+    # Relacionamentos
+    escola = db.relationship('Escola', back_populates='visitas')
+    promotor = db.relationship('Colaborador', backref='visitas_escolas')
+    
+    def __repr__(self):
+        return f'<VisitaEscola {self.escola.nome} - {self.data_visita}>'
+
+class LogSistema(db.Model):
+    __tablename__ = 'log_sistema'
+    id_log = db.Column(db.Integer, primary_key=True)
+    acao = db.Column(db.String(100), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    data_hora = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Relacionamento com usuário
+    usuario = db.relationship('Usuario', backref='logs_sistema')
+    
+    def __repr__(self):
+        return f'<LogSistema {self.acao} - {self.usuario.nome} - {self.data_hora}>'
