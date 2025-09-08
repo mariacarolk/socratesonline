@@ -60,6 +60,14 @@ mail = Mail(app)
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
+# Função de contexto para templates
+@app.context_processor
+def inject_user_functions():
+    return dict(
+        is_root_user=is_root_user,
+        is_admin_user=is_admin_user
+    )
+
 def allowed_file(filename):
     """Verifica se o arquivo tem uma extensão permitida"""
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'}
@@ -179,13 +187,22 @@ def dashboard():
 
     # Obter informações do usuário logado
     usuario = Usuario.query.get(session['user_id'])
-    if not usuario or not usuario.colaborador:
+    if not usuario:
         flash('Erro ao carregar informações do usuário.', 'danger')
         return redirect(url_for('login'))
     
+    # Para o usuário root, permitir acesso mesmo sem colaborador
+    if not usuario.colaborador and not is_root_user():
+        flash('Erro ao carregar informações do colaborador.', 'danger')
+        return redirect(url_for('login'))
+    
     # Verificar se é administrador ou produtor
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
-    is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
+    # Para root sem colaborador, não verificar categorias
+    if usuario.colaborador:
+        is_produtor = any(cat.nome.lower() == 'produtor' for cat in usuario.colaborador.categorias)
+    else:
+        is_produtor = False
 
     # Filtro de datas da lista de eventos do dashboard
     eventos_period = request.args.get('eventos_period', '90dias')  # Mudança: padrão para 90 dias
@@ -245,6 +262,29 @@ def dashboard():
         is_produtor=is_produtor,
         usuario=usuario
     )
+
+def is_root_user():
+    """Verifica se o usuário atual é o root"""
+    return session.get('email') == 'root@socratesonline.com'
+
+def is_admin_user():
+    """Verifica se o usuário atual é administrador ou root"""
+    if is_root_user():
+        return True
+    
+    user_id = session.get('user_id')
+    if not user_id:
+        return False
+    
+    usuario = Usuario.query.get(user_id)
+    if not usuario:
+        return False
+    
+    # Se não tem colaborador, não é admin (exceto root que já foi verificado acima)
+    if not usuario.colaborador:
+        return False
+    
+    return any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
 
 def registrar_log(acao, descricao=None, id_usuario=None):
     """Registrar log de operação no sistema"""
@@ -483,6 +523,7 @@ def login():
         usuario = Usuario.query.filter_by(email=form.email.data).first()
         if usuario and check_password_hash(usuario.senha_hash, form.password.data):
             session['user_id'] = usuario.id
+            session['email'] = usuario.email  # Adicionar email na sessão para verificação de root
             # Usar a primeira categoria do colaborador para compatibilidade
             if usuario.colaborador and usuario.colaborador.categorias:
                 session['categoria'] = usuario.colaborador.categorias[0].nome.lower()
@@ -502,6 +543,7 @@ def login():
 def logout():
     session.pop('user_id', None)
     session.pop('categoria', None)
+    session.pop('email', None)
     return redirect(url_for('login'))
 
 @app.route('/cadastros/circos', methods=['GET', 'POST'])
@@ -1685,7 +1727,7 @@ def listar_eventos():
         return redirect(url_for('login'))
     
     # Verificar se é administrador
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
 
     # Processar filtro de período
     period = request.args.get('period', '90dias')  # Default para 90 dias
@@ -2991,7 +3033,7 @@ def relatorios_faturamento_evento():
         return redirect(url_for('login'))
     
     # Verificar se é administrador
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
     
     if not is_admin:
         # Verificar se é produtor
@@ -3083,7 +3125,7 @@ def relatorio_faturamento_evento(id_evento):
         return redirect(url_for('login'))
     
     # Verificar se é administrador
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
     
     evento = Evento.query.get_or_404(id_evento)
     
@@ -3130,7 +3172,7 @@ def relatorios_fechamento_evento():
         return redirect(url_for('login'))
     
     # Verificar se é administrador
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
     
     # Verificar se tem permissão (administrador ou produtor)
     if not is_admin:
@@ -3178,7 +3220,7 @@ def relatorio_fechamento_evento(id_evento):
         return redirect(url_for('login'))
     
     # Verificar se é administrador
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
 
     # Usar a função unificada para obter dados
     dados = obter_dados_completos_evento(id_evento)
@@ -6350,7 +6392,7 @@ def listar_logs():
         return redirect(url_for('dashboard'))
     
     # Verificar se é administrador
-    is_admin = any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+    is_admin = is_admin_user()
     if not is_admin:
         flash('Acesso negado. Esta funcionalidade é restrita a usuários administrativos.', 'danger')
         return redirect(url_for('dashboard'))
