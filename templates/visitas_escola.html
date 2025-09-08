@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card p-4 mb-4">
+    <h4 class="mb-4">
+        {% if visita_editando %}
+            Editar Visita à Escola
+        {% else %}
+            Agendar Nova Visita à Escola
+        {% endif %}
+    </h4>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+            <div class="col-md-6">
+                {{ form.id_escola.label(class="form-label") }}
+                {{ form.id_escola(class="form-select") }}
+                {% for error in form.id_escola.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                {{ form.id_promotor.label(class="form-label") }}
+                {{ form.id_promotor(class="form-select") }}
+                {% for error in form.id_promotor.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                {{ form.data_visita.label(class="form-label") }}
+                {{ form.data_visita(class="form-control") }}
+                {% for error in form.data_visita.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                {{ form.status_visita.label(class="form-label") }}
+                {{ form.status_visita(class="form-select") }}
+                {% for error in form.status_visita.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-12">
+                {{ form.observacoes_visita.label(class="form-label") }}
+                {{ form.observacoes_visita(class="form-control", rows="3", placeholder="Observações específicas desta visita...") }}
+                {% for error in form.observacoes_visita.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">
+                {% if visita_editando %}
+                    Atualizar Visita
+                {% else %}
+                    Agendar Visita
+                {% endif %}
+            </button>
+            {% if visita_editando %}
+                <a href="{{ url_for('cadastrar_visita_escola') }}" class="btn btn-secondary">Cancelar</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Visitas às Escolas</h5>
+        <span class="badge bg-primary">{{ visitas|length }} visita(s)</span>
+    </div>
+    <div class="card-body">
+        {% if visitas %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Escola</th>
+                            <th>Data/Hora</th>
+                            <th>Promotor</th>
+                            <th>Status</th>
+                            <th>Observações</th>
+                            <th width="120">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for visita in visitas %}
+                        <tr>
+                            <td>
+                                <strong>{{ visita.escola.nome }}</strong>
+                                <br><small class="text-muted">{{ visita.escola.cidade }}/{{ visita.escola.estado }}</small>
+                                <br><small class="text-muted">Contato: {{ visita.escola.nome_contato }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ visita.data_visita.strftime('%d/%m/%Y') }}</strong>
+                                <br><small class="text-muted">{{ visita.data_visita.strftime('%H:%M') }}</small>
+                            </td>
+                            <td>{{ visita.promotor.nome }}</td>
+                            <td>
+                                {% if visita.status_visita == 'agendada' %}
+                                    <span class="badge bg-warning">Agendada</span>
+                                {% elif visita.status_visita == 'realizada' %}
+                                    <span class="badge bg-success">Realizada</span>
+                                {% elif visita.status_visita == 'cancelada' %}
+                                    <span class="badge bg-danger">Cancelada</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if visita.observacoes_visita %}
+                                    {{ visita.observacoes_visita[:50] }}{% if visita.observacoes_visita|length > 50 %}...{% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group-vertical btn-group-sm" role="group">
+                                    {% if session['categoria'] == 'administrativo' or visita.id_promotor == session.get('colaborador_id') %}
+                                        <a href="{{ url_for('editar_visita_escola', id=visita.id_visita) }}" class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Editar
+                                        </a>
+                                        <a href="{{ url_for('excluir_visita_escola', id=visita.id_visita) }}" 
+                                           class="btn btn-outline-danger"
+                                           onclick="return confirm('Tem certeza que deseja excluir esta visita?')">
+                                            <i class="bi bi-trash"></i> Excluir
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted small">Sem permissão</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-calendar-event display-4 text-muted"></i>
+                <p class="mt-2 text-muted">Nenhuma visita agendada ainda.</p>
+                <a href="{{ url_for('cadastrar_escola') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-building"></i> Cadastrar Escola
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros e Estatísticas -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Estatísticas de Visitas</h6>
+            </div>
+            <div class="card-body">
+                {% set agendadas = visitas|selectattr('status_visita', 'equalto', 'agendada')|list|length %}
+                {% set realizadas = visitas|selectattr('status_visita', 'equalto', 'realizada')|list|length %}
+                {% set canceladas = visitas|selectattr('status_visita', 'equalto', 'cancelada')|list|length %}
+                
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="text-warning">
+                            <i class="bi bi-clock display-6"></i>
+                            <div class="fw-bold">{{ agendadas }}</div>
+                            <small>Agendadas</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-success">
+                            <i class="bi bi-check-circle display-6"></i>
+                            <div class="fw-bold">{{ realizadas }}</div>
+                            <small>Realizadas</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-danger">
+                            <i class="bi bi-x-circle display-6"></i>
+                            <div class="fw-bold">{{ canceladas }}</div>
+                            <small>Canceladas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Ações Rápidas</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('cadastrar_escola') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-building"></i> Gerenciar Escolas
+                    </a>
+                    <button class="btn btn-outline-info" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Imprimir Lista
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

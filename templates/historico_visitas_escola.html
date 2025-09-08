@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h4 class="mb-0">
+                    <i class="bi bi-building"></i> {{ escola.nome }}
+                </h4>
+                <p class="mb-0 text-muted">{{ escola.endereco }} - {{ escola.cidade }}/{{ escola.estado }}</p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('cadastrar_visita_escola') }}" class="btn btn-primary">
+                    <i class="bi bi-plus"></i> Nova Visita
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Informações de Contato</h6>
+                <p><strong>Contato:</strong> {{ escola.nome_contato }}
+                {% if escola.cargo_contato %} - {{ escola.cargo_contato }}{% endif %}</p>
+                {% if escola.email %}
+                    <p><strong>E-mail:</strong> {{ escola.email }}</p>
+                {% endif %}
+                {% if escola.whatsapp %}
+                    <p><strong>WhatsApp:</strong> {{ escola.whatsapp }}</p>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                {% if escola.observacoes %}
+                    <h6>Observações Gerais</h6>
+                    <p>{{ escola.observacoes }}</p>
+                {% endif %}
+                <h6>Estatísticas</h6>
+                <p><strong>Total de visitas:</strong> {{ visitas|length }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-clock-history"></i> Histórico de Visitas
+        </h5>
+        <span class="badge bg-primary">{{ visitas|length }} visita(s)</span>
+    </div>
+    <div class="card-body">
+        {% if visitas %}
+            <div class="timeline">
+                {% for visita in visitas %}
+                <div class="timeline-item mb-4">
+                    <div class="row">
+                        <div class="col-auto">
+                            <div class="timeline-marker">
+                                {% if visita.status_visita == 'agendada' %}
+                                    <i class="bi bi-clock text-warning"></i>
+                                {% elif visita.status_visita == 'realizada' %}
+                                    <i class="bi bi-check-circle text-success"></i>
+                                {% elif visita.status_visita == 'cancelada' %}
+                                    <i class="bi bi-x-circle text-danger"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <h6 class="card-title mb-1">
+                                                {{ visita.data_visita.strftime('%d/%m/%Y às %H:%M') }}
+                                                {% if visita.status_visita == 'agendada' %}
+                                                    <span class="badge bg-warning ms-2">Agendada</span>
+                                                {% elif visita.status_visita == 'realizada' %}
+                                                    <span class="badge bg-success ms-2">Realizada</span>
+                                                {% elif visita.status_visita == 'cancelada' %}
+                                                    <span class="badge bg-danger ms-2">Cancelada</span>
+                                                {% endif %}
+                                            </h6>
+                                            <p class="card-text mb-1">
+                                                <strong>Promotor:</strong> {{ visita.promotor.nome }}
+                                            </p>
+                                            {% if visita.observacoes_visita %}
+                                                <p class="card-text">
+                                                    <strong>Observações:</strong> {{ visita.observacoes_visita }}
+                                                </p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-auto">
+                                            {% if session['categoria'] == 'administrativo' or visita.id_promotor == session.get('colaborador_id') %}
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{{ url_for('editar_visita_escola', id=visita.id_visita) }}" 
+                                                       class="btn btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('excluir_visita_escola', id=visita.id_visita) }}" 
+                                                       class="btn btn-outline-danger"
+                                                       onclick="return confirm('Tem certeza que deseja excluir esta visita?')">
+                                                        <i class="bi bi-trash"></i>
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Informações de contato da visita -->
+                                    {% if visita.email_enviado or visita.whatsapp_enviado %}
+                                        <div class="mt-2 pt-2 border-top">
+                                            <small class="text-muted">
+                                                <strong>Contatos realizados:</strong>
+                                                {% if visita.email_enviado %}
+                                                    <i class="bi bi-envelope text-primary"></i> E-mail enviado
+                                                    {% if visita.data_email_enviado %}
+                                                        em {{ visita.data_email_enviado.strftime('%d/%m/%Y às %H:%M') }}
+                                                    {% endif %}
+                                                {% endif %}
+                                                {% if visita.whatsapp_enviado %}
+                                                    {% if visita.email_enviado %} | {% endif %}
+                                                    <i class="bi bi-whatsapp text-success"></i> WhatsApp enviado
+                                                    {% if visita.data_whatsapp_enviado %}
+                                                        em {{ visita.data_whatsapp_enviado.strftime('%d/%m/%Y às %H:%M') }}
+                                                    {% endif %}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar-x display-4 text-muted"></i>
+                <h5 class="mt-3 text-muted">Nenhuma visita registrada</h5>
+                <p class="text-muted">Esta escola ainda não possui histórico de visitas.</p>
+                <a href="{{ url_for('cadastrar_visita_escola') }}" class="btn btn-primary">
+                    <i class="bi bi-plus"></i> Agendar Primeira Visita
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('cadastrar_escola') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar às Escolas
+    </a>
+    <a href="{{ url_for('cadastrar_visita_escola') }}" class="btn btn-outline-primary">
+        <i class="bi bi-calendar-event"></i> Ver Todas as Visitas
+    </a>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+}
+
+.timeline-marker {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+}
+
+.timeline-marker i {
+    font-size: 14px;
+}
+</style>
+{% endblock %}

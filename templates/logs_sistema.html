@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Início</a></li>
+    <li class="breadcrumb-item"><span>Administrativo</span></li>
+    <li class="breadcrumb-item active" aria-current="page">Logs do Sistema</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- Header moderno e clean -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-2 fw-bold text-dark">
+      <i class="bi bi-file-text me-2 text-primary"></i>Logs do Sistema
+    </h2>
+    <p class="text-muted mb-0 fs-6">Visualize o histórico de ações realizadas no sistema</p>
+  </div>
+</div>
+
+<!-- Informações de paginação -->
+<div class="card border-0 shadow-sm mb-4 rounded-4">
+  <div class="card-body py-3 px-4">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle text-primary me-2 fs-5"></i>
+        <span class="fw-semibold text-dark">
+          Exibindo {{ logs.items|length }} de {{ logs.total }} registros
+          {% if logs.pages > 1 %}
+            (Página {{ logs.page }} de {{ logs.pages }})
+          {% endif %}
+        </span>
+      </div>
+      <div class="text-muted">
+        <small>Atualizados em tempo real</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabela de logs -->
+<div class="card border-0 shadow-sm rounded-4">
+  <div class="card-body p-0">
+    {% if logs.items %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="px-4 py-3 border-0 fw-semibold text-dark">Data/Hora</th>
+              <th class="px-4 py-3 border-0 fw-semibold text-dark">Usuário</th>
+              <th class="px-4 py-3 border-0 fw-semibold text-dark">Ação</th>
+              <th class="px-4 py-3 border-0 fw-semibold text-dark">Descrição</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs.items %}
+              <tr class="border-bottom border-light">
+                <td class="px-4 py-3 text-dark fw-medium">
+                  <div class="d-flex flex-column">
+                    <span class="fw-semibold">{{ log.data_hora.strftime('%d/%m/%Y') }}</span>
+                    <small class="text-muted">{{ log.data_hora.strftime('%H:%M:%S') }}</small>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                      <i class="bi bi-person-fill text-primary fs-6"></i>
+                    </div>
+                    <div>
+                      <div class="fw-semibold text-dark">{{ log.usuario.nome }}</div>
+                      <small class="text-muted">{{ log.usuario.email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-3 fw-medium">
+                    {{ log.acao }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-dark">
+                  {% if log.descricao %}
+                    {{ log.descricao }}
+                  {% else %}
+                    <span class="text-muted fst-italic">Sem descrição</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Paginação -->
+      {% if logs.pages > 1 %}
+        <div class="card-footer bg-light border-0 rounded-bottom-4 py-3">
+          <nav aria-label="Navegação de páginas">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+              {% if logs.has_prev %}
+                <li class="page-item">
+                  <a class="page-link rounded-3 me-1" href="{{ url_for('listar_logs', page=logs.prev_num) }}" aria-label="Anterior">
+                    <span aria-hidden="true"><i class="bi bi-chevron-left"></i></span>
+                  </a>
+                </li>
+              {% endif %}
+              
+              {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                  {% if page_num != logs.page %}
+                    <li class="page-item">
+                      <a class="page-link rounded-3 me-1" href="{{ url_for('listar_logs', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                  {% else %}
+                    <li class="page-item active">
+                      <span class="page-link rounded-3 me-1">{{ page_num }}</span>
+                    </li>
+                  {% endif %}
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link rounded-3 me-1">…</span>
+                  </li>
+                {% endif %}
+              {% endfor %}
+              
+              {% if logs.has_next %}
+                <li class="page-item">
+                  <a class="page-link rounded-3" href="{{ url_for('listar_logs', page=logs.next_num) }}" aria-label="Próximo">
+                    <span aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                  </a>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      {% endif %}
+      
+    {% else %}
+      <!-- Estado vazio -->
+      <div class="text-center py-5">
+        <div class="mb-3">
+          <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
+        </div>
+        <h5 class="text-muted mb-2">Nenhum log encontrado</h5>
+        <p class="text-muted">Não há registros de logs no sistema.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Informações adicionais -->
+<div class="mt-4">
+  <div class="card border-0 bg-light rounded-4">
+    <div class="card-body py-3 px-4">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle text-primary me-2"></i>
+        <small class="text-muted">
+          Os logs são registrados automaticamente para todas as ações importantes do sistema. 
+          Esta visualização é somente leitura e não permite edição ou exclusão dos registros.
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
