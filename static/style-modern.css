@@ -1139,6 +1139,31 @@ body {
   border-color: var(--accent);
 }
 
+.btn-outline-success {
+  background-color: transparent;
+  color: #198754;
+  border: 1.5px solid #198754;
+}
+
+.btn-outline-success:hover {
+  background-color: rgba(25, 135, 84, 0.1);
+  color: #146c43;
+  border-color: #146c43;
+}
+
+.btn-outline-success.active {
+  background-color: #198754;
+  color: white;
+  border-color: #198754;
+}
+
+.btn-outline-success:disabled {
+  background-color: transparent;
+  color: #6c757d;
+  border-color: #6c757d;
+  opacity: 0.65;
+}
+
 /* Formulários Clean */
 .form-control,
 .form-select {
