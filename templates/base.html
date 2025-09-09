@@ -184,7 +184,7 @@
                 </a>
                 <div class="collapse ps-3" id="submenuMarketing">
                     <a class="nav-link {% if request.endpoint == 'marketing_dashboard' %}active{% endif %}" href="{{ url_for('marketing_dashboard') }}">
-                        <i class="fas fa-chart-line"></i> Dashboard Marketing
+                        <i class="fas fa-chart-line"></i> Dashboard Escolas
                     </a>
                     <a class="nav-link {% if request.endpoint == 'cadastrar_escola' %}active{% endif %}" href="{{ url_for('cadastrar_escola') }}">
                         <i class="bi bi-building"></i> Gerenciar Escolas
@@ -237,28 +237,74 @@
     <script src="{{ url_for('static', filename='js/table-sort.js') }}"></script>
     <script src="{{ url_for('static', filename='js/masks.js') }}"></script>
     <script src="{{ url_for('static', filename='js/responsive-tables.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mobile-forms.js') }}"></script>
     <script>
-        // Toggle sidebar em dispositivos móveis
+        // Sistema de navegação mobile melhorado
         document.addEventListener('DOMContentLoaded', function() {
             const toggleSidebar = document.getElementById('toggle-sidebar');
             const sidebar = document.getElementById('sidebar');
             const sidebarOverlay = document.getElementById('sidebar-overlay');
             const mainContent = document.querySelector('.main-content');
+            let touchStartX = 0;
+            let touchEndX = 0;
+            let isScrolling = false;
             
+            // Detectar se é dispositivo móvel
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                document.body.classList.add('mobile-device');
+            }
+            
+            // Toggle sidebar com animação melhorada
             if (toggleSidebar) {
-                toggleSidebar.addEventListener('click', function() {
-                    sidebar.classList.toggle('show');
-                    sidebarOverlay.classList.toggle('show');
-                    document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
+                toggleSidebar.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    toggleSidebarState();
+                    
+                    // Adicionar feedback tátil
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
                 });
+            }
+            
+            function toggleSidebarState() {
+                const isOpen = sidebar.classList.contains('show');
+                
+                if (isOpen) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            }
+            
+            function openSidebar() {
+                sidebar.classList.add('show');
+                sidebarOverlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                
+                // Focar no primeiro link para acessibilidade
+                const firstLink = sidebar.querySelector('.nav-link');
+                if (firstLink) {
+                    setTimeout(() => firstLink.focus(), 300);
+                }
+            }
+            
+            function closeSidebar() {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+                document.body.style.overflow = '';
+                
+                // Retornar foco para o botão de toggle
+                if (toggleSidebar) {
+                    toggleSidebar.focus();
+                }
             }
             
             // Fechar sidebar ao clicar no overlay
             if (sidebarOverlay) {
                 sidebarOverlay.addEventListener('click', function() {
-                    sidebar.classList.remove('show');
-                    sidebarOverlay.classList.remove('show');
-                    document.body.style.overflow = '';
+                    closeSidebar();
                 });
             }
             
@@ -267,22 +313,137 @@
             navLinks.forEach(link => {
                 link.addEventListener('click', function() {
                     if (window.innerWidth <= 768 && !this.hasAttribute('data-bs-toggle')) {
-                        sidebar.classList.remove('show');
-                        sidebarOverlay.classList.remove('show');
-                        document.body.style.overflow = '';
+                        setTimeout(() => closeSidebar(), 150);
                     }
                 });
             });
             
-            // Ajustar ao redimensionar
+            // Gestos de swipe para abrir/fechar sidebar
+            if ('ontouchstart' in window) {
+                // Swipe para abrir (da borda esquerda)
+                document.addEventListener('touchstart', function(e) {
+                    touchStartX = e.changedTouches[0].screenX;
+                    isScrolling = false;
+                }, { passive: true });
+                
+                document.addEventListener('touchmove', function(e) {
+                    if (Math.abs(e.changedTouches[0].screenY - e.changedTouches[0].screenY) > 10) {
+                        isScrolling = true;
+                    }
+                }, { passive: true });
+                
+                document.addEventListener('touchend', function(e) {
+                    if (isScrolling) return;
+                    
+                    touchEndX = e.changedTouches[0].screenX;
+                    const swipeDistance = touchEndX - touchStartX;
+                    const isFromLeftEdge = touchStartX < 30;
+                    const isSwipeRight = swipeDistance > 100;
+                    const isSwipeLeft = swipeDistance < -100;
+                    
+                    // Abrir sidebar com swipe da borda esquerda
+                    if (isFromLeftEdge && isSwipeRight && !sidebar.classList.contains('show')) {
+                        openSidebar();
+                    }
+                    
+                    // Fechar sidebar com swipe para esquerda
+                    if (isSwipeLeft && sidebar.classList.contains('show')) {
+                        closeSidebar();
+                    }
+                }, { passive: true });
+            }
+            
+            // Ajustar ao redimensionar com debounce
+            let resizeTimeout;
             window.addEventListener('resize', function() {
-                if (window.innerWidth > 768) {
-                    sidebar.classList.remove('show');
-                    sidebarOverlay.classList.remove('show');
-                    document.body.style.overflow = '';
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    if (window.innerWidth > 768) {
+                        closeSidebar();
+                    }
+                }, 250);
+            });
+            
+            // Melhorar acessibilidade com teclado
+            document.addEventListener('keydown', function(e) {
+                // Fechar sidebar com ESC
+                if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+                    closeSidebar();
+                }
+                
+                // Navegar no sidebar com setas
+                if (sidebar.classList.contains('show') && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                    e.preventDefault();
+                    const focusedElement = document.activeElement;
+                    const navLinks = Array.from(sidebar.querySelectorAll('.nav-link'));
+                    const currentIndex = navLinks.indexOf(focusedElement);
+                    
+                    if (currentIndex !== -1) {
+                        const nextIndex = e.key === 'ArrowDown' 
+                            ? (currentIndex + 1) % navLinks.length
+                            : (currentIndex - 1 + navLinks.length) % navLinks.length;
+                        navLinks[nextIndex].focus();
+                    }
                 }
             });
+            
+            // Melhorar performance com intersection observer
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('fade-in');
+                        }
+                    });
+                }, { threshold: 0.1 });
+                
+                // Observar cards e elementos animáveis
+                setTimeout(() => {
+                    document.querySelectorAll('.card, .dashboard-card').forEach(el => {
+                        observer.observe(el);
+                    });
+                }, 100);
+            }
+            
+            // Adicionar indicador de carregamento para navegação
+            const links = document.querySelectorAll('a[href]:not([href^="#"]):not([href^="javascript:"]):not([target="_blank"])');
+            links.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (this.hostname === window.location.hostname) {
+                        // Adicionar classe de carregamento
+                        document.body.classList.add('page-loading');
+                        
+                        // Remover após timeout para prevenir travamento
+                        setTimeout(() => {
+                            document.body.classList.remove('page-loading');
+                        }, 3000);
+                    }
+                });
+            });
         });
+        
+        // Adicionar estilos para indicador de carregamento
+        const style = document.createElement('style');
+        style.textContent = `
+            .page-loading::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, transparent, var(--accent), transparent);
+                background-size: 200% 100%;
+                animation: loadingBar 1s linear infinite;
+                z-index: 9999;
+            }
+            
+            @keyframes loadingBar {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
     <!-- Script para funcionalidade de valor médio das despesas -->
     <script src="{{ url_for('static', filename='js/valor-medio-despesas.js') }}"></script>
