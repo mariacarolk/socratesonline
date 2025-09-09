@@ -969,8 +969,11 @@ def excluir_usuario(id):
     
     try:
         # Antes de excluir o usuário, tratar os logs para evitar erro de foreign key
-        # Buscar logs do usuário e atualizar para string + nome
-        logs_do_usuario = LogSistema.query.filter_by(id_usuario=usuario.id).all()
+        # Buscar logs do usuário (tanto por ID integer quanto string)
+        logs_do_usuario = LogSistema.query.filter(
+            (LogSistema.id_usuario == str(usuario.id)) | 
+            (LogSistema.id_usuario == usuario.id)
+        ).all()
         for log in logs_do_usuario:
             log.id_usuario = str(usuario.id)
             # Se o modelo já tem nome_usuario, preencher
@@ -994,7 +997,11 @@ def excluir_usuario(id):
         # Se ainda der erro de foreign key, deletar logs relacionados
         try:
             print("Tentando deletar logs relacionados...")
-            LogSistema.query.filter_by(id_usuario=usuario.id).delete()
+            # Buscar e deletar logs tanto por ID string quanto integer
+            LogSistema.query.filter(
+                (LogSistema.id_usuario == str(usuario.id)) | 
+                (LogSistema.id_usuario == usuario.id)
+            ).delete(synchronize_session=False)
             db.session.delete(usuario)
             db.session.commit()
             flash(f'Usuário do colaborador {colaborador.nome} excluído com sucesso!', 'success')
@@ -6551,7 +6558,7 @@ def listar_logs():
     per_page = 50
     
     # Buscar logs ordenados por data/hora decrescente (mais recentes primeiro)
-    logs = LogSistema.query.join(Usuario).order_by(LogSistema.data_hora.desc()).paginate(
+    logs = LogSistema.query.order_by(LogSistema.data_hora.desc()).paginate(
         page=page, 
         per_page=per_page, 
         error_out=False
