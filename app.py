@@ -1521,9 +1521,9 @@ def marketing_dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    # Verificar permissão (administrativo ou promotor de vendas)
-    if session.get('categoria', '').lower() not in ['administrativo', 'promotor de vendas']:
-        flash('Acesso restrito a administradores e promotores de vendas.', 'danger')
+    # Verificar permissão (apenas administradores)
+    if not is_admin_user():
+        flash('Acesso restrito a administradores.', 'danger')
         return redirect(url_for('dashboard'))
     
     # Estatísticas gerais

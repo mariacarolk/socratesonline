@@ -743,13 +743,15 @@
   }
 
   /* Melhorar botões de ação em tabelas mobile */
-  .table .btn-group {
+  .table .btn-group,
+  .table .btn-group-vertical {
     flex-direction: column;
     gap: 0.25rem;
     width: 100%;
   }
 
-  .table .btn-group .btn {
+  .table .btn-group .btn,
+  .table .btn-group-vertical .btn {
     width: 100%;
     min-width: 44px;
     min-height: 44px;
@@ -761,8 +763,17 @@
     gap: 0.25rem;
   }
 
-  .table .btn-group .btn i {
+  .table .btn-group .btn i,
+  .table .btn-group-vertical .btn i {
     font-size: 1.1rem;
+  }
+  
+  /* Garantir que botões em outras colunas também funcionem */
+  .table .btn-sm {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 0.85rem;
+    padding: 0.5rem;
   }
 
   /* Ajustar largura das colunas em mobile */
@@ -787,7 +798,16 @@
   /* Esconder colunas menos importantes em telas muito pequenas */
   @media (max-width: 576px) {
     .table .hide-mobile {
-      display: none;
+      display: none !important;
+    }
+    
+    /* Garantir que botões importantes permaneçam visíveis */
+    .table .btn-outline-info,
+    .table .btn-outline-primary,
+    .table .btn-outline-danger {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
     }
   }
 }
@@ -1533,10 +1553,10 @@ body {
     left: -100%;
     top: 0;
     height: 100%;
-    z-index: var(--z-fixed);
-    width: 300px; /* Aumentado para melhor usabilidade */
-    padding-top: 70px; /* Mais espaço para navbar */
-    transition: left var(--transition-base);
+    z-index: 1000;
+    width: 280px;
+    padding-top: 70px;
+    transition: left 0.3s ease;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -1566,12 +1586,11 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: calc(var(--z-fixed) - 1);
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
     display: none;
     opacity: 0;
-    transition: opacity var(--transition-base);
-    backdrop-filter: blur(2px);
+    transition: opacity 0.3s ease;
   }
   
   .sidebar-overlay.show {
@@ -1588,10 +1607,10 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    z-index: calc(var(--z-fixed) + 1);
+    z-index: 1001;
     background: white;
-    box-shadow: var(--shadow-sm);
-    padding: var(--spacing-md) var(--spacing-lg);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1rem 1.5rem;
     height: 70px;
   }
   
