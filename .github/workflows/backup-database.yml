@@ -38,18 +38,36 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         
-    - name: Instalar PostgreSQL client
+    - name: Instalar PostgreSQL 17 via Docker
       run: |
-        sudo apt-get update
-        sudo apt-get install -y postgresql-client
+        # Usar PostgreSQL 17 em container para compatibilidade
+        docker pull postgres:17
+        
+        # Criar alias para pg_dump 17
+        echo '#!/bin/bash' > /tmp/pg_dump
+        echo 'docker run --rm -i postgres:17 pg_dump "$@"' >> /tmp/pg_dump
+        chmod +x /tmp/pg_dump
+        
+        # Criar alias para psql 17  
+        echo '#!/bin/bash' > /tmp/psql
+        echo 'docker run --rm -i postgres:17 psql "$@"' >> /tmp/psql
+        chmod +x /tmp/psql
+        
+        # Adicionar ao PATH
+        export PATH="/tmp:$PATH"
+        echo "/tmp" >> $GITHUB_PATH
+        
+        # Verificar versão
+        /tmp/pg_dump --version
         
     - name: Instalar dependências Python
       run: |
         pip install boto3 python-dotenv
         
-    - name: Verificar pg_dump
+    - name: Verificar pg_dump 17
       run: |
         pg_dump --version
+        echo "PostgreSQL 17 pronto para backup!"
         
     - name: Executar backup
       env:
