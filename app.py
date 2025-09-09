@@ -11,7 +11,7 @@ from models import (
     Escola, VisitaEscola, LogSistema
 )
 from forms import (
-    UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm,
+    UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm, AutoCadastroForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
@@ -65,7 +65,8 @@ def load_user(user_id):
 def inject_user_functions():
     return dict(
         is_root_user=is_root_user,
-        is_admin_user=is_admin_user
+        is_admin_user=is_admin_user,
+        is_promotor_user=is_promotor_user
     )
 
 def allowed_file(filename):
@@ -204,6 +205,8 @@ def dashboard():
     else:
         is_produtor = False
 
+    # TEMPORÁRIO: Lógica de eventos comentada
+    """
     # Filtro de datas da lista de eventos do dashboard
     eventos_period = request.args.get('eventos_period', '90dias')  # Mudança: padrão para 90 dias
     if eventos_period == 'hoje':
@@ -251,13 +254,10 @@ def dashboard():
         eventos_query = eventos_query.filter(Evento.data_inicio <= eventos_data_fim)
     
     eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
+    """
 
     return render_template(
         'dashboard.html',
-        eventos=eventos,
-        eventos_data_inicio=eventos_data_inicio,
-        eventos_data_fim=eventos_data_fim,
-        eventos_period=eventos_period,
         is_admin=is_admin,
         is_produtor=is_produtor,
         usuario=usuario
@@ -285,6 +285,19 @@ def is_admin_user():
         return False
     
     return any(cat.nome.lower() == 'administrativo' for cat in usuario.colaborador.categorias)
+
+def is_promotor_user():
+    """Verifica se o usuário atual é promotor de vendas"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return False
+    
+    usuario = Usuario.query.get(user_id)
+    if not usuario or not usuario.colaborador:
+        return False
+    
+    # Verificar se tem categoria que contenha 'promotor'
+    return any('promotor' in cat.nome.lower() for cat in usuario.colaborador.categorias)
 
 def registrar_log(acao, descricao=None, id_usuario=None):
     """Registrar log de operação no sistema"""
@@ -546,6 +559,57 @@ def logout():
     session.pop('email', None)
     return redirect(url_for('login'))
 
+@app.route('/auto-cadastro', methods=['GET', 'POST'])
+def auto_cadastro():
+    # Verificar se existem categorias (exceto administrativo)
+    todas_categorias = CategoriaColaborador.query.all()
+    categorias_existentes = [cat for cat in todas_categorias if 'administrativo' not in cat.nome.lower()]
+    if not categorias_existentes:
+        flash('Sistema indisponível no momento. Entre em contato com o administrador.', 'warning')
+        return redirect(url_for('login'))
+    
+    form = AutoCadastroForm()
+    form.categoria.choices = [(c.id_categoria_colaborador, c.nome) for c in categorias_existentes]
+    
+    if form.validate_on_submit():
+        try:
+            # Criar colaborador
+            novo_colaborador = Colaborador(
+                nome=form.nome.data,
+                telefone=form.telefone.data,
+                email=form.email.data
+            )
+            db.session.add(novo_colaborador)
+            db.session.flush()  # Para obter o ID do colaborador
+            
+            # Associar categoria selecionada
+            nova_associacao = ColaboradorCategoria(
+                id_colaborador=novo_colaborador.id_colaborador,
+                id_categoria_colaborador=form.categoria.data
+            )
+            db.session.add(nova_associacao)
+            
+            # Criar usuário de login
+            hashed_password = generate_password_hash(form.password.data)
+            novo_usuario = Usuario(
+                nome=form.nome.data,
+                email=form.email.data,
+                senha_hash=hashed_password,
+                id_colaborador=novo_colaborador.id_colaborador
+            )
+            db.session.add(novo_usuario)
+            
+            db.session.commit()
+            
+            flash('Cadastro realizado com sucesso! Você já pode fazer login.', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar cadastro: {str(e)}', 'danger')
+    
+    return render_template('auto_cadastro.html', form=form)
+
 @app.route('/cadastros/circos', methods=['GET', 'POST'])
 def cadastrar_circo():
     form = CircoForm()
@@ -670,10 +734,14 @@ def editar_colaborador(id):
         return redirect(url_for('cadastrar_categoria_colaborador'))
     
     colaborador = Colaborador.query.get_or_404(id)
-    form = ColaboradorForm()
+    form = ColaboradorForm(colaborador_id=id)
     
     # Configurar as choices sempre, antes de qualquer validação
     form.categorias.choices = [(c.id_categoria_colaborador, c.nome) for c in categorias_existentes]
+    
+    # Verificar se existe usuário associado ao colaborador
+    usuario_associado = Usuario.query.filter_by(id_colaborador=id).first()
+    email_original = colaborador.email
     
     # Se for GET, preencher com os dados atuais do colaborador
     if request.method == 'GET':
@@ -685,9 +753,31 @@ def editar_colaborador(id):
         form.categorias.data = categorias_atuais
     
     if form.validate_on_submit():
+        email_novo = form.email.data
+        email_mudou = email_original != email_novo
+        
+        # Se o email mudou e existe usuário associado, verificar confirmação
+        if email_mudou and usuario_associado:
+            confirmacao = request.form.get('confirmar_sync_email')
+            if not confirmacao:
+                # Mostrar tela de confirmação
+                colaboradores = Colaborador.query.all()
+                return render_template('colaboradores.html', 
+                                     form=form, 
+                                     colaboradores=colaboradores,
+                                     mostrar_confirmacao_email=True,
+                                     colaborador_editando=colaborador,
+                                     usuario_associado=usuario_associado,
+                                     email_novo=email_novo)
+        
+        # Atualizar dados do colaborador
         colaborador.nome = form.nome.data
         colaborador.telefone = form.telefone.data
-        colaborador.email = form.email.data
+        colaborador.email = email_novo
+        
+        # Se email mudou e existe usuário associado, sincronizar
+        if email_mudou and usuario_associado:
+            usuario_associado.email = email_novo
         
         # Obter categorias selecionadas do formulário
         categorias_selecionadas = form.categorias.data
@@ -696,9 +786,6 @@ def editar_colaborador(id):
         if not categorias_selecionadas:
             categorias_selecionadas = request.form.getlist('categorias')
             categorias_selecionadas = [int(cat_id) for cat_id in categorias_selecionadas if cat_id.isdigit()]
-        
-        # Debug: Mostrar que categorias foram selecionadas
-        
         
         if not categorias_selecionadas:
             flash('É necessário selecionar pelo menos uma categoria.', 'danger')
@@ -718,15 +805,25 @@ def editar_colaborador(id):
                 db.session.add(nova_associacao)
             
             db.session.commit()
-            flash('Colaborador atualizado com sucesso!', 'success')
+            
+            if email_mudou and usuario_associado:
+                flash(f'Colaborador atualizado com sucesso! O email do usuário de login também foi atualizado para {email_novo}.', 'success')
+            else:
+                flash('Colaborador atualizado com sucesso!', 'success')
             return redirect(url_for('cadastrar_colaborador'))
             
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao atualizar colaborador: {str(e)}', 'danger')
+    else:
+        # Se o formulário não validou e é POST, mostrar erros
+        if request.method == 'POST' and form.errors:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'Erro no campo {field}: {error}', 'danger')
     
     colaboradores = Colaborador.query.all()
-    return render_template('colaboradores.html', form=form, colaboradores=colaboradores)
+    return render_template('colaboradores.html', form=form, colaboradores=colaboradores, colaborador_editando=colaborador)
 
 @app.route('/cadastros/colaboradores/excluir/<int:id>')
 def excluir_colaborador(id):

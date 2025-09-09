@@ -172,7 +172,7 @@
 
             <!-- Menu Marketing para Promotores de Vendas, Administradores e Root -->
             
-            {% if session['categoria'] == 'administrativo' or session['categoria'] == 'promotor de vendas' or is_root_user() %}
+            {% if is_admin_user() or is_promotor_user() or is_root_user() %}
                 {% set show_marketing = true %}
             {% endif %}
             

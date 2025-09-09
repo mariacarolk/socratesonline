@@ -1,0 +1,327 @@
+{% extends 'auth_base.html' %}
+{% block title %}Criar Conta - Sócrates Online{% endblock %}
+
+{% block head %}
+<style>
+    :root {
+        --primary: #1a1a2e;
+        --primary-light: #16213e;
+        --secondary: #0f3460;
+        --accent: #e94560;
+        --text-light: #b0b3c1;
+        --success: #28a745;
+        --danger: #dc3545;
+        --warning: #ffc107;
+    }
+
+    body {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        padding: 20px 0;
+    }
+
+    .auto-cadastro-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 0 1rem;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .auto-cadastro-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo {
+        display: block;
+        margin: 0 auto 1rem;
+        max-width: 80px;
+        transition: all 0.3s ease;
+    }
+
+    .logo:hover {
+        transform: scale(1.05);
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        background-color: var(--primary);
+        border: 1px solid var(--primary-light);
+        color: white;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.25);
+    }
+
+    .form-control::placeholder {
+        color: var(--text-light);
+        opacity: 0.7;
+    }
+
+    .form-select option {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .btn-primary {
+        background: linear-gradient(45deg, var(--accent), #ff6b8a);
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
+        background: linear-gradient(45deg, #ff6b8a, var(--accent));
+    }
+
+    .btn-outline-light {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: var(--text-light);
+        border-radius: 10px;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-light:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .invalid-feedback {
+        color: var(--danger);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .text-danger {
+        color: var(--danger) !important;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        margin-bottom: 1rem;
+    }
+
+    .section-title {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .back-link {
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+
+    .required {
+        color: var(--accent);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auto-cadastro-container">
+    <div class="auto-cadastro-card">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Sócrates Online" class="logo">
+        
+        <h4 class="text-center mb-3">Criar Conta</h4>
+        <p class="text-center text-muted mb-4">Preencha os dados para criar seu acesso</p>
+        
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <!-- Seção: Categoria -->
+            <div class="section-title">
+                <i class="bi bi-person-badge me-2"></i>Categoria Profissional
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-12">
+                    {{ form.categoria.label(class="form-label") }} <span class="required">*</span>
+                    {{ form.categoria(class="form-select", required=true) }}
+                    {% if form.categoria.errors %}
+                        {% for error in form.categoria.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    <small class="text-muted">Selecione sua área de atuação no circo</small>
+                </div>
+            </div>
+            
+            <!-- Seção: Dados Pessoais -->
+            <div class="section-title">
+                <i class="bi bi-person me-2"></i>Dados Pessoais
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3">
+                    {{ form.nome.label(class="form-label") }} <span class="required">*</span>
+                    <div class="input-group">
+                        {{ form.nome(class="form-control", placeholder="Seu nome completo", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                    </div>
+                    {% if form.nome.errors %}
+                        {% for error in form.nome.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    {{ form.telefone.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.telefone(class="form-control", placeholder="(99) 99999-9999", **{"data-mask":"phone"}) }}
+                        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                    </div>
+                    {% if form.telefone.errors %}
+                        {% for error in form.telefone.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="col-12 mb-3">
+                    {{ form.email.label(class="form-label") }} <span class="required">*</span>
+                    <div class="input-group">
+                        {{ form.email(class="form-control", placeholder="seu@email.com", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    </div>
+                    {% if form.email.errors %}
+                        {% for error in form.email.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    <small class="text-muted">Este email será usado para fazer login no sistema</small>
+                </div>
+            </div>
+            
+            <!-- Seção: Dados de Acesso -->
+            <div class="section-title">
+                <i class="bi bi-shield-lock me-2"></i>Dados de Acesso
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3">
+                    {{ form.password.label(class="form-label") }} <span class="required">*</span>
+                    <div class="input-group">
+                        {{ form.password(class="form-control", placeholder="Mínimo 6 caracteres", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    </div>
+                    {% if form.password.errors %}
+                        {% for error in form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    {{ form.confirm_password.label(class="form-label") }} <span class="required">*</span>
+                    <div class="input-group">
+                        {{ form.confirm_password(class="form-control", placeholder="Repita a senha", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                    </div>
+                    {% if form.confirm_password.errors %}
+                        {% for error in form.confirm_password.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Informações importantes -->
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Importante:</strong> Após o cadastro, você terá acesso ao sistema com as permissões da categoria selecionada. 
+                Suas informações poderão ser editadas posteriormente pelo administrador se necessário.
+            </div>
+            
+            <!-- Botões -->
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar ao Login
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-person-plus me-2"></i>Criar Conta
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/masks.js') }}"></script>
+<script>
+    // Validação de formulário
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        // Validação de senhas em tempo real
+        const passwordField = document.querySelector('input[name="password"]');
+        const confirmPasswordField = document.querySelector('input[name="confirm_password"]');
+        
+        if (passwordField && confirmPasswordField) {
+            confirmPasswordField.addEventListener('input', function() {
+                if (this.value !== passwordField.value) {
+                    this.setCustomValidity('As senhas não coincidem');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+            
+            passwordField.addEventListener('input', function() {
+                if (confirmPasswordField.value && confirmPasswordField.value !== this.value) {
+                    confirmPasswordField.setCustomValidity('As senhas não coincidem');
+                } else {
+                    confirmPasswordField.setCustomValidity('');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

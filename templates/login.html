@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sócrates Online</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+{% extends 'auth_base.html' %}
+{% block title %}Login - Sócrates Online{% endblock %}
+
+{% block head %}
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -154,24 +150,13 @@
             filter: invert(1);
         }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     <div class="login-card">
         <img src="{{ url_for('static', filename='logo_grande.png') }}" class="logo" alt="Logo Sócrates">
         <h4 class="text-center mb-4">Acesso ao Sistema</h4>
         
-        <!-- Mensagens Flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show mb-3" role="alert">
-                        <i class="bi bi-{{ 'exclamation-triangle' if category == 'danger' else 'info-circle' if category == 'warning' else 'check-circle' }} me-2"></i>
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
         
         <!-- Informações do primeiro acesso -->
         {% if primeiro_acesso %}
@@ -234,6 +219,14 @@
             </button>
         </form>
         
+        <!-- Link para auto-cadastro -->
+        <div class="text-center mt-3">
+            <p class="text-muted mb-2">Não possui credenciais?</p>
+            <a href="{{ url_for('auto_cadastro') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-person-plus me-2"></i>Crie seu usuário aqui
+            </a>
+        </div>
+        
         <div class="login-footer">
             <p>Sistema de Gestão de Eventos Circenses</p>
         </div>
@@ -270,6 +263,4 @@
     </script>
     
     <!-- Bootstrap JS para funcionalidade dos alertas -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

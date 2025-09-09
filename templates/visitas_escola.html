@@ -5,7 +5,7 @@
         {% if visita_editando %}
             Editar Visita à Escola
         {% else %}
-            Agendar Nova Visita à Escola
+            Cadastrar Nova Visita à Escola
         {% endif %}
     </h4>
     <form method="POST">
@@ -52,7 +52,7 @@
                 {% if visita_editando %}
                     Atualizar Visita
                 {% else %}
-                    Agendar Visita
+                    Cadastrar Visita
                 {% endif %}
             </button>
             {% if visita_editando %}
@@ -65,12 +65,27 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Visitas às Escolas</h5>
-        <span class="badge bg-primary">{{ visitas|length }} visita(s)</span>
+        <div>
+            <span class="badge bg-primary me-2">{{ visitas|length }} visita(s)</span>
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
     </div>
     <div class="card-body">
         {% if visitas %}
-            <div class="table-responsive">
-                <table class="table table-striped">
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar visitas..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-striped sortable-table" id="visitasTable">
                     <thead>
                         <tr>
                             <th>Escola</th>
@@ -199,4 +214,44 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Script de filtros avançados -->
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar sistema de filtros avançados
+    if (document.getElementById('visitasTable')) {
+        initializeAdvancedFilters('visitasTable', 'Visitas');
+    }
+});
+
+// Função de busca em tempo real
+function searchTable() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('visitasTable');
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        let row = rows[i];
+        let shouldShow = false;
+        
+        // Busca em todas as colunas de texto (exceto a última que são as ações)
+        const cells = row.getElementsByTagName('td');
+        for (let j = 0; j < cells.length - 1; j++) {
+            const cellText = cells[j].textContent || cells[j].innerText;
+            if (cellText.toLowerCase().indexOf(filter) > -1) {
+                shouldShow = true;
+                break;
+            }
+        }
+        
+        row.style.display = shouldShow ? '' : 'none';
+    }
+}
+</script>
 {% endblock %}
