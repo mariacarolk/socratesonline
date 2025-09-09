@@ -33,12 +33,13 @@
                 <div class="col-md-6 mb-3">
                     {{ form.email.label(class="form-label") }}
                     <div class="input-group">
-                        {{ form.email(class="form-control", placeholder="email@exemplo.com", required=true) }}
+                        {{ form.email(class="form-control", placeholder="email@exemplo.com", required=true, readonly=true) }}
                         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
                         <div class="invalid-feedback">
                             Por favor, informe um email válido.
                         </div>
                     </div>
+                    <small class="text-muted">Email do colaborador será usado automaticamente</small>
                 </div>
             </div>
             
@@ -50,6 +51,17 @@
                         <span class="input-group-text"><i class="bi bi-lock"></i></span>
                         <div class="invalid-feedback">
                             A senha deve ter pelo menos 6 caracteres.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    {{ form.confirm_password.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.confirm_password(class="form-control", placeholder="Repita a senha", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <div class="invalid-feedback">
+                            As senhas devem coincidir.
                         </div>
                     </div>
                 </div>
@@ -79,6 +91,27 @@
     // Validação de formulário
     document.addEventListener('DOMContentLoaded', function() {
         const forms = document.querySelectorAll('.needs-validation');
+        const passwordField = document.getElementById('{{ form.password.id }}');
+        const confirmPasswordField = document.getElementById('{{ form.confirm_password.id }}');
+        
+        // Validação de confirmação de senha em tempo real
+        if (confirmPasswordField && passwordField) {
+            confirmPasswordField.addEventListener('input', function() {
+                if (this.value !== passwordField.value) {
+                    this.setCustomValidity('As senhas não coincidem.');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+            
+            passwordField.addEventListener('input', function() {
+                if (confirmPasswordField.value && confirmPasswordField.value !== this.value) {
+                    confirmPasswordField.setCustomValidity('As senhas não coincidem.');
+                } else {
+                    confirmPasswordField.setCustomValidity('');
+                }
+            });
+        }
         
         Array.from(forms).forEach(form => {
             form.addEventListener('submit', event => {

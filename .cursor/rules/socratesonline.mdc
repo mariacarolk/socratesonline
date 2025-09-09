@@ -110,3 +110,7 @@ pip install -r requirements.txt
 sempre executar comandos de powershell etc separadamente 
 
 sempre que criar uma funcionalidade, verificar se existem padrões já implementados no sistema e repetir (ex: botões de excluir, editar, etc)
+
+todos os ajustes que forem feitos no sistema, considerar a versão produção (railway) e aplicar as instruções se for necessário
+
+nunca realizar subida pro git automática

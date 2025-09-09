@@ -58,7 +58,7 @@ class Colaborador(db.Model):
     id_colaborador = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     telefone = db.Column(db.String, nullable=True)
-    email = db.Column(db.String, nullable=True)
+    email = db.Column(db.String, nullable=False)
     
     # CASCADE DELETE para as associações de categoria quando colaborador é deletado
     categorias_associacao = db.relationship('ColaboradorCategoria', back_populates='colaborador', cascade='all, delete-orphan')

@@ -1,32 +1,39 @@
 {% extends 'base.html' %}
 {% block content %}
+{# TEMPORÁRIO: Apenas banner de boas-vindas - REMOVER FUTURAMENTE #}
 <!-- Hero Section Moderno -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card border-0 bg-gradient-primary text-white">
-            <div class="card-body p-4">
+            <div class="card-body p-5">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2 class="mb-2 fw-bold">Bem-vindo ao Sócrates Online</h2>
-                        <p class="mb-2 opacity-90">Sistema de Gestão de Eventos para Circos</p>
+                        <h2 class="mb-3 fw-bold">Bem-vindo ao Sócrates Online</h2>
+                        <p class="mb-3 opacity-90 fs-5">Sistema de Gestão de Eventos para Circos</p>
                         {% if usuario %}
-                            <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2 mb-3">
                                 <span class="text-white-50">Logado como:</span>
-                                <span class="fw-medium">{{ usuario.nome }}</span>
+                                <span class="fw-medium fs-5">{{ usuario.nome }}</span>
                                 {% if is_admin %}
-                                    <span class="badge bg-white text-primary">
+                                    <span class="badge bg-white text-primary fs-6">
                                         <i class="bi bi-shield-check me-1"></i>Administrador
                                     </span>
                                 {% elif is_produtor %}
-                                    <span class="badge bg-white text-primary">
+                                    <span class="badge bg-white text-primary fs-6">
                                         <i class="bi bi-person-badge me-1"></i>Produtor
                                     </span>
                                 {% endif %}
                             </div>
                         {% endif %}
+                        <div class="mt-4">
+                            <p class="mb-2 opacity-75">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Sistema em configuração. Use o menu lateral para acessar as funcionalidades.
+                            </p>
+                        </div>
                     </div>
                     <div class="d-none d-md-block">
-                        <i class="bi bi-graph-up-arrow" style="font-size: 4rem; opacity: 0.3;"></i>
+                        <i class="bi bi-gear-wide-connected" style="font-size: 5rem; opacity: 0.2;"></i>
                     </div>
                 </div>
             </div>
@@ -34,6 +41,7 @@
     </div>
 </div>
 
+{# TEMPORÁRIO: Conteúdo do dashboard comentado - DESCOMENTAR FUTURAMENTE
 <div class="row">
     <!-- Lista de Eventos -->
     <div class="col-lg-8 mb-4">
@@ -296,4 +304,5 @@
 .text-gray-900 { color: var(--gray-900) !important; }
 .bg-gray-50 { background-color: var(--gray-50) !important; }
 </style>
+#}
 {% endblock %}

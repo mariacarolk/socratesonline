@@ -18,14 +18,25 @@ class UsuarioForm(FlaskForm):
     nome = StringField('Nome', validators=[InputRequired()])
     email = StringField('Email', validators=[InputRequired(), Email()])
     password = PasswordField('Senha', validators=[Length(min=6, message="Senha deve ter pelo menos 6 caracteres")])
+    confirm_password = PasswordField('Confirmar Senha', validators=[Length(min=6, message="Confirmação deve ter pelo menos 6 caracteres")])
     
     def __init__(self, *args, **kwargs):
         self.is_edit = kwargs.pop('is_edit', False)
+        self.colaborador_email = kwargs.pop('colaborador_email', None)
         super(UsuarioForm, self).__init__(*args, **kwargs)
         
         # Se for edição, senha não é obrigatória
         if not self.is_edit:
             self.password.validators.insert(0, InputRequired())
+            self.confirm_password.validators.insert(0, InputRequired())
+        
+        # Se tiver email do colaborador, pré-preencher e tornar readonly
+        if self.colaborador_email and not self.is_edit:
+            self.email.data = self.colaborador_email
+    
+    def validate_confirm_password(self, field):
+        if not self.is_edit and self.password.data != field.data:
+            raise ValidationError('As senhas não coincidem.')
 
 
 
@@ -41,7 +52,7 @@ class CategoriaColaboradorForm(FlaskForm):
 class ColaboradorForm(FlaskForm):
     nome = StringField('Nome', validators=[InputRequired()])
     telefone = StringField('Telefone', validators=[Optional(), Length(max=20)])
-    email = StringField('Email', validators=[Optional()])
+    email = StringField('Email', validators=[InputRequired(), Email()])
     categorias = MultiCheckboxField('Categorias', coerce=int, validators=[InputRequired(message="Selecione pelo menos uma categoria")])
 
 class ElencoForm(FlaskForm):
