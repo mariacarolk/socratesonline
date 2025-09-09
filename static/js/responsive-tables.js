@@ -1,11 +1,16 @@
 /**
- * Sistema de Tabelas Responsivas
- * Melhora a experiência mobile das tabelas de listagem
+ * Sistema de Tabelas Responsivas Aprimorado
+ * Melhora significativamente a experiência mobile das tabelas de listagem
+ * Com suporte a gestos, acessibilidade e performance otimizada
  */
 
 class ResponsiveTables {
     constructor() {
-        this.isMobile = window.innerWidth <= 576;
+        this.isMobile = window.innerWidth <= 768;
+        this.isSmallMobile = window.innerWidth <= 576;
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+        this.isScrolling = false;
         this.init();
     }
 
@@ -13,6 +18,8 @@ class ResponsiveTables {
         this.setupEventListeners();
         this.enhanceExistingTables();
         this.handleResize();
+        this.addSwipeGestures();
+        this.improveAccessibility();
     }
 
     setupEventListeners() {
@@ -44,51 +51,84 @@ class ResponsiveTables {
     enhanceExistingTables() {
         const tables = document.querySelectorAll('.table-responsive table');
         
-        tables.forEach(table => {
-            this.enhanceTable(table);
+        tables.forEach((table, index) => {
+            this.enhanceTable(table, index);
         });
+        
+        // Adicionar indicadores de scroll horizontal
+        this.addScrollIndicators();
     }
 
-    enhanceTable(table) {
+    enhanceTable(table, index = 0) {
         if (!table) return;
 
-        const tableContainer = table.closest('.card-body');
+        const tableContainer = table.closest('.card-body') || table.closest('.table-responsive').parentElement;
         if (!tableContainer) return;
 
-        // Adicionar classes para melhor responsividade
+        // Adicionar classes e atributos para melhor responsividade
         table.classList.add('table-enhanced');
+        table.setAttribute('data-table-id', `table-${index}`);
         
         // Melhorar botões de ação
         this.enhanceActionButtons(table);
         
-        // Adicionar indicadores de colunas opcionais em mobile
+        // Adicionar indicadores de colunas em mobile
         this.addMobileColumnHints(table);
         
-        // Criar alternativa de cards para mobile (opcional)
+        // Melhorar cabeçalhos sticky
+        this.addStickyHeaders(table);
+        
+        // Adicionar tooltips informativos
+        this.addColumnTooltips(table);
+        
+        // Criar alternativa de cards para mobile se necessário
         if (this.shouldCreateMobileCards(table)) {
             this.createMobileCardsAlternative(table, tableContainer);
         }
+        
+        // Melhorar scroll horizontal
+        this.enhanceHorizontalScroll(table);
     }
 
     enhanceActionButtons(table) {
-        const actionButtons = table.querySelectorAll('.btn-group .btn');
+        const actionButtons = table.querySelectorAll('.btn-group .btn, .table .btn');
         
         actionButtons.forEach(btn => {
             // Garantir que botões tenham tamanho mínimo para toque
-            if (!btn.style.minWidth) {
-                btn.style.minWidth = '44px';
-            }
-            if (!btn.style.minHeight) {
-                btn.style.minHeight = '44px';
+            if (this.isMobile) {
+                btn.style.minWidth = '48px';
+                btn.style.minHeight = '48px';
+                btn.style.fontSize = '0.9rem';
             }
 
-            // Melhorar feedback visual
-            btn.addEventListener('touchstart', function() {
+            // Melhorar feedback visual e tátil
+            btn.addEventListener('touchstart', function(e) {
                 this.style.transform = 'scale(0.95)';
-            });
+                this.style.opacity = '0.8';
+                
+                // Feedback tátil se disponível
+                if (navigator.vibrate) {
+                    navigator.vibrate(25);
+                }
+            }, { passive: true });
 
-            btn.addEventListener('touchend', function() {
-                this.style.transform = '';
+            btn.addEventListener('touchend', function(e) {
+                setTimeout(() => {
+                    this.style.transform = '';
+                    this.style.opacity = '';
+                }, 100);
+            }, { passive: true });
+            
+            // Prevenir duplo clique acidental
+            let lastTap = 0;
+            btn.addEventListener('click', function(e) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) {
+                    e.preventDefault();
+                    return false;
+                }
+                lastTap = currentTime;
             });
         });
     }
@@ -104,16 +144,26 @@ class ResponsiveTables {
                 header.classList.contains('no-sort')) return;
 
             const headerText = header.textContent.trim();
+            if (!headerText || headerText === 'Ações') return;
             
             rows.forEach(row => {
                 const cell = row.cells[index];
                 if (cell && !cell.querySelector('.mobile-label')) {
                     const mobileLabel = document.createElement('span');
-                    mobileLabel.className = 'mobile-label d-inline d-sm-none fw-bold me-2';
+                    mobileLabel.className = 'mobile-label d-inline d-md-none fw-bold me-2';
                     mobileLabel.textContent = headerText + ':';
-                    mobileLabel.style.color = 'var(--gray-600)';
-                    mobileLabel.style.fontSize = '0.75rem';
+                    mobileLabel.style.cssText = `
+                        color: var(--gray-600);
+                        font-size: 0.75rem;
+                        display: block;
+                        margin-bottom: 0.25rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    `;
                     
+                    // Inserir label antes do conteúdo
+                    cell.style.display = 'block';
+                    cell.style.padding = '0.75rem 0.5rem';
                     cell.insertBefore(mobileLabel, cell.firstChild);
                 }
             });
@@ -121,9 +171,10 @@ class ResponsiveTables {
     }
 
     shouldCreateMobileCards(table) {
-        // Criar cards alternativos apenas para tabelas com muitas colunas
+        // Criar cards alternativos para tabelas complexas em mobile
         const columnCount = table.querySelectorAll('thead th').length;
-        return this.isMobile && columnCount > 4;
+        const hasComplexContent = table.querySelectorAll('td .btn-group, td .badge, td .dropdown').length > 0;
+        return this.isSmallMobile && (columnCount > 3 || hasComplexContent);
     }
 
     createMobileCardsAlternative(table, container) {
@@ -254,6 +305,134 @@ class ResponsiveTables {
         }
     }
 
+    // Novos métodos para melhor experiência mobile
+    addStickyHeaders(table) {
+        if (!this.isMobile) return;
+        
+        const tableResponsive = table.closest('.table-responsive');
+        if (tableResponsive) {
+            tableResponsive.style.position = 'relative';
+            
+            const thead = table.querySelector('thead');
+            if (thead) {
+                thead.style.position = 'sticky';
+                thead.style.top = '0';
+                thead.style.zIndex = '10';
+                thead.style.backgroundColor = 'var(--gray-50)';
+                thead.style.backdropFilter = 'blur(10px)';
+            }
+        }
+    }
+    
+    addColumnTooltips(table) {
+        const headers = table.querySelectorAll('thead th[title]');
+        headers.forEach(header => {
+            header.style.cursor = 'help';
+            header.setAttribute('data-bs-toggle', 'tooltip');
+            header.setAttribute('data-bs-placement', 'top');
+        });
+    }
+    
+    enhanceHorizontalScroll(table) {
+        const tableResponsive = table.closest('.table-responsive');
+        if (!tableResponsive) return;
+        
+        // Adicionar indicadores de scroll
+        const scrollIndicator = document.createElement('div');
+        scrollIndicator.className = 'scroll-indicator';
+        scrollIndicator.innerHTML = '<i class="bi bi-arrow-left-right"></i> Deslize para ver mais';
+        scrollIndicator.style.cssText = `
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: var(--primary-800);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            opacity: 0.8;
+            z-index: 5;
+            transition: opacity 0.3s ease;
+        `;
+        
+        if (this.isMobile && table.scrollWidth > table.clientWidth) {
+            tableResponsive.style.position = 'relative';
+            tableResponsive.appendChild(scrollIndicator);
+            
+            // Esconder indicador após scroll
+            tableResponsive.addEventListener('scroll', function() {
+                scrollIndicator.style.opacity = '0.3';
+                setTimeout(() => {
+                    if (scrollIndicator.parentElement) {
+                        scrollIndicator.style.opacity = '0.8';
+                    }
+                }, 1000);
+            });
+        }
+    }
+    
+    addScrollIndicators() {
+        const tableResponsives = document.querySelectorAll('.table-responsive');
+        tableResponsives.forEach(container => {
+            if (container.scrollWidth > container.clientWidth) {
+                container.classList.add('has-horizontal-scroll');
+            }
+        });
+    }
+    
+    addSwipeGestures() {
+        if (!('ontouchstart' in window)) return;
+        
+        const tables = document.querySelectorAll('.table-responsive');
+        tables.forEach(table => {
+            let startX = 0;
+            let scrollLeft = 0;
+            
+            table.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].pageX - table.offsetLeft;
+                scrollLeft = table.scrollLeft;
+            }, { passive: true });
+            
+            table.addEventListener('touchmove', (e) => {
+                if (!startX) return;
+                
+                const x = e.touches[0].pageX - table.offsetLeft;
+                const walk = (x - startX) * 2;
+                table.scrollLeft = scrollLeft - walk;
+            }, { passive: true });
+            
+            table.addEventListener('touchend', () => {
+                startX = 0;
+            }, { passive: true });
+        });
+    }
+    
+    improveAccessibility() {
+        const tables = document.querySelectorAll('.table-enhanced');
+        tables.forEach(table => {
+            // Adicionar atributos ARIA
+            table.setAttribute('role', 'table');
+            table.setAttribute('aria-label', 'Tabela de dados');
+            
+            // Melhorar navegação por teclado
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach((row, index) => {
+                row.setAttribute('tabindex', '0');
+                row.setAttribute('role', 'row');
+                row.setAttribute('aria-rowindex', index + 2); // +2 porque header é 1
+                
+                row.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        const firstButton = row.querySelector('button, a');
+                        if (firstButton) {
+                            firstButton.click();
+                        }
+                    }
+                });
+            });
+        });
+    }
+    
     // Método para aplicar melhorias a uma tabela específica
     static enhance(tableSelector) {
         const instance = new ResponsiveTables();
