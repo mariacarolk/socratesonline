@@ -136,6 +136,10 @@ class ResponsiveTables {
     addMobileColumnHints(table) {
         if (!this.isMobile) return;
 
+        // Verificar se já foi processada para evitar duplicações
+        if (table.classList.contains('mobile-labels-added')) return;
+        table.classList.add('mobile-labels-added');
+
         const headers = table.querySelectorAll('thead th');
         const rows = table.querySelectorAll('tbody tr');
 
@@ -151,18 +155,18 @@ class ResponsiveTables {
                 if (cell && !cell.querySelector('.mobile-label')) {
                     const mobileLabel = document.createElement('span');
                     mobileLabel.className = 'mobile-label d-inline d-md-none fw-bold me-2';
-                    mobileLabel.textContent = headerText + ':';
+                    mobileLabel.textContent = headerText + ': ';
                     mobileLabel.style.cssText = `
                         color: var(--gray-600);
                         font-size: 0.75rem;
-                        display: block;
-                        margin-bottom: 0.25rem;
+                        display: inline-block;
+                        margin-right: 0.5rem;
                         text-transform: uppercase;
                         letter-spacing: 0.5px;
+                        font-weight: 600;
                     `;
                     
                     // Inserir label antes do conteúdo
-                    cell.style.display = 'block';
                     cell.style.padding = '0.75rem 0.5rem';
                     cell.insertBefore(mobileLabel, cell.firstChild);
                 }
@@ -178,19 +182,14 @@ class ResponsiveTables {
     }
 
     createMobileCardsAlternative(table, container) {
-        const existingAlternative = container.querySelector('.table-mobile-alternative');
-        if (existingAlternative) {
-            existingAlternative.remove();
-        }
-
-        const existingToggle = container.querySelector('.table-view-toggle');
-        if (existingToggle) {
-            existingToggle.remove();
+        // Verificar se já foi criada para evitar duplicações
+        if (container.querySelector('.table-view-toggle')) {
+            return;
         }
 
         // Criar botões de alternância
         const toggleContainer = document.createElement('div');
-        toggleContainer.className = 'table-view-toggle';
+        toggleContainer.className = 'table-view-toggle mb-3 d-flex gap-2';
         toggleContainer.innerHTML = `
             <button class="btn btn-outline-primary btn-sm active" data-view="table">
                 <i class="bi bi-table me-1"></i>Tabela
@@ -202,11 +201,14 @@ class ResponsiveTables {
 
         // Criar versão em cards
         const mobileCards = this.createCardsFromTable(table);
+        mobileCards.style.display = 'none'; // Iniciar oculto
         
         // Inserir elementos
         const tableResponsive = container.querySelector('.table-responsive');
-        container.insertBefore(toggleContainer, tableResponsive);
-        container.insertBefore(mobileCards, tableResponsive.nextSibling);
+        if (tableResponsive) {
+            container.insertBefore(toggleContainer, tableResponsive);
+            container.insertBefore(mobileCards, tableResponsive.nextSibling);
+        }
     }
 
     createCardsFromTable(table) {
@@ -214,53 +216,72 @@ class ResponsiveTables {
         const rows = table.querySelectorAll('tbody tr');
         
         const cardsContainer = document.createElement('div');
-        cardsContainer.className = 'table-mobile-alternative';
+        cardsContainer.className = 'table-mobile-alternative row g-3';
         
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = 'col-12';
+            
             const card = document.createElement('div');
-            card.className = 'mobile-card-item';
+            card.className = 'card mobile-card-item h-100';
             
             // Header do card (primeira coluna geralmente é o nome/título)
             const cardHeader = document.createElement('div');
-            cardHeader.className = 'mobile-card-header';
-            cardHeader.textContent = cells[0]?.textContent.trim() || 'Item';
+            cardHeader.className = 'card-header mobile-card-header bg-primary text-white';
+            // Remover labels mobile do conteúdo do header
+            const headerContent = cells[0]?.cloneNode(true);
+            if (headerContent) {
+                const mobileLabels = headerContent.querySelectorAll('.mobile-label');
+                mobileLabels.forEach(label => label.remove());
+                cardHeader.innerHTML = headerContent.innerHTML || 'Item';
+            }
             card.appendChild(cardHeader);
             
-            // Informações do card
-            const cardInfo = document.createElement('div');
-            cardInfo.className = 'mobile-card-info';
+            // Body do card com informações
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body mobile-card-info';
             
             // Pular primeira coluna (já usada no header) e última (ações)
             for (let i = 1; i < cells.length - 1; i++) {
                 if (cells[i] && !headers[i]?.includes('Ações')) {
                     const field = document.createElement('div');
-                    field.className = 'mobile-card-field';
+                    field.className = 'mobile-card-field mb-2';
                     
-                    const label = document.createElement('strong');
+                    const label = document.createElement('small');
+                    label.className = 'text-muted d-block';
                     label.textContent = headers[i];
                     
-                    const value = document.createElement('span');
-                    value.innerHTML = cells[i].innerHTML;
+                    const value = document.createElement('div');
+                    // Clonar conteúdo e remover labels mobile
+                    const cellContent = cells[i].cloneNode(true);
+                    const mobileLabels = cellContent.querySelectorAll('.mobile-label');
+                    mobileLabels.forEach(label => label.remove());
+                    value.innerHTML = cellContent.innerHTML;
                     
                     field.appendChild(label);
                     field.appendChild(value);
-                    cardInfo.appendChild(field);
+                    cardBody.appendChild(field);
                 }
             }
             
-            card.appendChild(cardInfo);
+            card.appendChild(cardBody);
             
-            // Ações do card
+            // Footer do card com ações
             const lastCell = cells[cells.length - 1];
-            if (lastCell) {
-                const cardActions = document.createElement('div');
-                cardActions.className = 'mobile-card-actions';
-                cardActions.innerHTML = lastCell.innerHTML;
-                card.appendChild(cardActions);
+            if (lastCell && lastCell.innerHTML.trim()) {
+                const cardFooter = document.createElement('div');
+                cardFooter.className = 'card-footer mobile-card-actions bg-light';
+                // Clonar conteúdo e remover labels mobile
+                const actionsContent = lastCell.cloneNode(true);
+                const mobileLabels = actionsContent.querySelectorAll('.mobile-label');
+                mobileLabels.forEach(label => label.remove());
+                cardFooter.innerHTML = actionsContent.innerHTML;
+                card.appendChild(cardFooter);
             }
             
-            cardsContainer.appendChild(card);
+            cardWrapper.appendChild(card);
+            cardsContainer.appendChild(cardWrapper);
         });
         
         return cardsContainer;
