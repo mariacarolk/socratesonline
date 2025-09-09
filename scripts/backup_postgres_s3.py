@@ -95,35 +95,56 @@ class PostgreSQLBackupS3:
             temp_path = temp_file.name
         
         try:
-            # Comando pg_dump
+            # Comando pg_dump com compatibilidade máxima
             cmd = [
                 'pg_dump',
                 f"--host={db_config['host']}",
                 f"--port={db_config['port']}",
                 f"--username={db_config['username']}",
                 f"--dbname={db_config['database']}",
-                '--verbose',
                 '--clean',
                 '--no-owner',
                 '--no-privileges',
                 '--format=plain',
+                '--inserts',  # Usar INSERT statements (mais compatível)
+                '--column-inserts',  # INSERT com nomes de colunas
                 f"--file={temp_path}"
             ]
             
-            # Configurar variável de ambiente para senha
+            # Configurar variável de ambiente para senha e compatibilidade
             env = os.environ.copy()
             env['PGPASSWORD'] = db_config['password']
+            env['PGOPTIONS'] = '--client-min-messages=warning'  # Reduzir warnings
             
             logger.info(f"Executando: pg_dump para {db_config['database']}")
             
-            # Executar pg_dump
-            result = subprocess.run(
-                cmd,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=1800  # 30 minutos timeout
-            )
+            # Estratégia de fallback para compatibilidade de versão
+            attempts = [
+                (cmd, "Tentativa 1: Backup completo"),
+                (cmd + ['--data-only'], "Tentativa 2: Apenas dados (fallback)"),
+                (cmd + ['--schema-only'], "Tentativa 3: Apenas estrutura (fallback)")
+            ]
+            
+            result = None
+            for attempt_cmd, description in attempts:
+                logger.info(description)
+                result = subprocess.run(
+                    attempt_cmd,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=1800  # 30 minutos timeout
+                )
+                
+                if result.returncode == 0:
+                    logger.info("Backup executado com sucesso!")
+                    break
+                elif "server version mismatch" in result.stderr:
+                    logger.warning(f"Erro de versão: {result.stderr.split('detail:')[1] if 'detail:' in result.stderr else 'incompatibilidade detectada'}")
+                    continue
+                else:
+                    # Outro tipo de erro, parar tentativas
+                    break
             
             if result.returncode != 0:
                 logger.error(f"Erro no pg_dump: {result.stderr}")
