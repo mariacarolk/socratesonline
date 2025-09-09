@@ -43,14 +43,14 @@ jobs:
         # Usar PostgreSQL 17 em container para compatibilidade
         docker pull postgres:17
         
-        # Criar alias para pg_dump 17
+        # Criar alias para pg_dump 17 com suporte a variáveis de ambiente
         echo '#!/bin/bash' > /tmp/pg_dump
-        echo 'docker run --rm -i postgres:17 pg_dump "$@"' >> /tmp/pg_dump
+        echo 'docker run --rm -i -e PGPASSWORD="$PGPASSWORD" -e PGOPTIONS="$PGOPTIONS" postgres:17 pg_dump "$@"' >> /tmp/pg_dump
         chmod +x /tmp/pg_dump
         
-        # Criar alias para psql 17  
+        # Criar alias para psql 17 com suporte a variáveis de ambiente
         echo '#!/bin/bash' > /tmp/psql
-        echo 'docker run --rm -i postgres:17 psql "$@"' >> /tmp/psql
+        echo 'docker run --rm -i -e PGPASSWORD="$PGPASSWORD" -e PGOPTIONS="$PGOPTIONS" postgres:17 psql "$@"' >> /tmp/psql
         chmod +x /tmp/psql
         
         # Adicionar ao PATH
@@ -64,10 +64,23 @@ jobs:
       run: |
         pip install boto3 python-dotenv
         
-    - name: Verificar pg_dump 17
+    - name: Verificar pg_dump 17 e conexão
+      env:
+        DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
       run: |
         pg_dump --version
         echo "PostgreSQL 17 pronto para backup!"
+        
+        # Testar conexão básica
+        echo "Testando conexão com Railway..."
+        export PGPASSWORD=$(echo "$DATABASE_URL" | sed -n 's/.*postgres:\/\/[^:]*:\([^@]*\)@.*/\1/p')
+        export PGHOST=$(echo "$DATABASE_URL" | sed -n 's/.*@\([^:]*\):.*/\1/p')
+        export PGPORT=$(echo "$DATABASE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+        export PGUSER=$(echo "$DATABASE_URL" | sed -n 's/.*postgres:\/\/\([^:]*\):.*/\1/p')
+        export PGDATABASE=$(echo "$DATABASE_URL" | sed -n 's/.*\/\([^?]*\).*/\1/p')
+        
+        echo "Conectando em: $PGHOST:$PGPORT/$PGDATABASE como $PGUSER"
+        psql --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" --dbname="$PGDATABASE" -c "SELECT version();" || echo "Conexão falhou, mas continuando..."
         
     - name: Executar backup
       env:
