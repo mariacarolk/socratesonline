@@ -310,11 +310,19 @@ def registrar_log(acao, descricao=None, id_usuario=None):
         if not id_usuario:
             return
         
+        # Buscar nome do usuário para armazenar junto
+        nome_usuario = None
+        if isinstance(id_usuario, int) or (isinstance(id_usuario, str) and id_usuario.isdigit()):
+            usuario = Usuario.query.get(int(id_usuario))
+            if usuario:
+                nome_usuario = usuario.nome
+        
         # Criar registro de log
         novo_log = LogSistema(
             acao=acao,
             descricao=descricao,
-            id_usuario=id_usuario,
+            id_usuario=str(id_usuario),  # Converter para string
+            nome_usuario=nome_usuario,
             data_hora=datetime.now()
         )
         
@@ -959,9 +967,42 @@ def excluir_usuario(id):
         flash(f'Não existe usuário para o colaborador {colaborador.nome}.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
-    db.session.delete(usuario)
-    db.session.commit()
-    flash(f'Usuário do colaborador {colaborador.nome} excluído com sucesso!', 'success')
+    try:
+        # Antes de excluir o usuário, tratar os logs para evitar erro de foreign key
+        # Buscar logs do usuário e atualizar para string + nome
+        logs_do_usuario = LogSistema.query.filter_by(id_usuario=usuario.id).all()
+        for log in logs_do_usuario:
+            log.id_usuario = str(usuario.id)
+            # Se o modelo já tem nome_usuario, preencher
+            if hasattr(log, 'nome_usuario') and not log.nome_usuario:
+                log.nome_usuario = usuario.nome
+        
+        # Registrar log de exclusão antes de excluir
+        registrar_log('Exclusão de Usuário', 
+                     f'Usuário "{usuario.nome}" (ID: {usuario.id}) do colaborador "{colaborador.nome}" foi excluído')
+        
+        # Agora excluir o usuário
+        db.session.delete(usuario)
+        db.session.commit()
+        
+        flash(f'Usuário do colaborador {colaborador.nome} excluído com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao excluir usuário: {e}")
+        
+        # Se ainda der erro de foreign key, deletar logs relacionados
+        try:
+            print("Tentando deletar logs relacionados...")
+            LogSistema.query.filter_by(id_usuario=usuario.id).delete()
+            db.session.delete(usuario)
+            db.session.commit()
+            flash(f'Usuário do colaborador {colaborador.nome} excluído com sucesso!', 'success')
+        except Exception as e2:
+            db.session.rollback()
+            print(f"Erro secundário: {e2}")
+            flash(f'Erro ao excluir usuário: {str(e2)}', 'danger')
+    
     return redirect(url_for('cadastrar_colaborador'))
 
 @app.route('/cadastros/elenco', methods=['GET', 'POST'])
