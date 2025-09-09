@@ -119,10 +119,39 @@ class PostgreSQLBackupS3:
             logger.info(f"Executando: pg_dump para {db_config['database']}")
             
             # Estratégia de fallback para compatibilidade de versão
+            cmd_data_only = [
+                'pg_dump',
+                f"--host={db_config['host']}",
+                f"--port={db_config['port']}",
+                f"--username={db_config['username']}",
+                f"--dbname={db_config['database']}",
+                '--no-owner',
+                '--no-privileges',
+                '--format=plain',
+                '--data-only',  # Apenas dados
+                '--inserts',
+                '--column-inserts',
+                f"--file={temp_path}"
+            ]
+            
+            cmd_schema_only = [
+                'pg_dump',
+                f"--host={db_config['host']}",
+                f"--port={db_config['port']}",
+                f"--username={db_config['username']}",
+                f"--dbname={db_config['database']}",
+                '--clean',  # Clean só com schema
+                '--no-owner',
+                '--no-privileges',
+                '--format=plain',
+                '--schema-only',  # Apenas estrutura
+                f"--file={temp_path}"
+            ]
+            
             attempts = [
                 (cmd, "Tentativa 1: Backup completo"),
-                (cmd + ['--data-only'], "Tentativa 2: Apenas dados (fallback)"),
-                (cmd + ['--schema-only'], "Tentativa 3: Apenas estrutura (fallback)")
+                (cmd_data_only, "Tentativa 2: Apenas dados (fallback)"),
+                (cmd_schema_only, "Tentativa 3: Apenas estrutura (fallback)")
             ]
             
             result = None
