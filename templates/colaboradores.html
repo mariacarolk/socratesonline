@@ -14,10 +14,16 @@
 {% else %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Cadastro de Colaborador</h5>
+        <h5 class="mb-0">
+            {% if colaborador_editando %}
+                Editar Colaborador - {{ colaborador_editando.nome }}
+            {% else %}
+                Cadastro de Colaborador
+            {% endif %}
+        </h5>
     </div>
     <div class="card-body">
-        <form method="POST" class="needs-validation" novalidate>
+        <form method="POST" class="needs-validation" novalidate {% if colaborador_editando %}action="{{ url_for('editar_colaborador', id=colaborador_editando.id_colaborador) }}"{% endif %}>
             {{ form.hidden_tag() }}
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -63,11 +69,79 @@
                 </div>
             </div>
             <div class="d-flex justify-content-end">
+                {% if colaborador_editando %}
+                    <a href="{{ url_for('cadastrar_colaborador') }}" class="btn btn-secondary me-2">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </a>
+                {% endif %}
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save me-2"></i>Salvar
+                    {% if colaborador_editando %}
+                        <i class="bi bi-check me-2"></i>Atualizar
+                    {% else %}
+                        <i class="bi bi-save me-2"></i>Salvar
+                    {% endif %}
                 </button>
             </div>
         </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal de Confirmação de Sincronização de Email -->
+{% if mostrar_confirmacao_email %}
+<div class="modal fade show" id="confirmacaoEmailModal" tabindex="-1" style="display: block; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmação de Alteração de Email
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Atenção:</strong> Você está alterando o email do colaborador <strong>{{ colaborador_editando.nome }}</strong>.
+                </div>
+                
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <strong>Email atual:</strong> {{ colaborador_editando.email }}<br>
+                        <strong>Novo email:</strong> {{ email_novo }}
+                    </div>
+                </div>
+                
+                {% if usuario_associado %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-person-exclamation me-2"></i>
+                    <strong>Este colaborador possui um usuário de login associado!</strong><br>
+                    O email do usuário <strong>{{ usuario_associado.nome }}</strong> também será automaticamente atualizado para <strong>{{ email_novo }}</strong>.
+                </div>
+                {% endif %}
+                
+                <p class="mb-3">Deseja continuar com a alteração?</p>
+            </div>
+            <div class="modal-footer">
+                <form method="POST" style="display: inline;">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Campos ocultos para preservar os dados do formulário -->
+                    <input type="hidden" name="nome" value="{{ form.nome.data }}">
+                    <input type="hidden" name="telefone" value="{{ form.telefone.data }}">
+                    <input type="hidden" name="email" value="{{ form.email.data }}">
+                    {% for categoria_id in form.categorias.data %}
+                        <input type="hidden" name="categorias" value="{{ categoria_id }}">
+                    {% endfor %}
+                    <input type="hidden" name="confirmar_sync_email" value="true">
+                    
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='{{ url_for('cadastrar_colaborador') }}'">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check-circle me-2"></i>Sim, Alterar Email
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endif %}

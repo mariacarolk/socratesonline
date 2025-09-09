@@ -54,6 +54,59 @@ class ColaboradorForm(FlaskForm):
     telefone = StringField('Telefone', validators=[Optional(), Length(max=20)])
     email = StringField('Email', validators=[InputRequired(), Email()])
     categorias = MultiCheckboxField('Categorias', coerce=int, validators=[InputRequired(message="Selecione pelo menos uma categoria")])
+    
+    def __init__(self, *args, **kwargs):
+        self.colaborador_id = kwargs.pop('colaborador_id', None)
+        super(ColaboradorForm, self).__init__(*args, **kwargs)
+    
+    def validate_email(self, field):
+        from models import Colaborador, Usuario
+        
+        # Verificar se email já existe em outro colaborador
+        existing_colaborador = Colaborador.query.filter_by(email=field.data).first()
+        if existing_colaborador and (not self.colaborador_id or existing_colaborador.id_colaborador != self.colaborador_id):
+            raise ValidationError('Este email já está sendo usado por outro colaborador.')
+        
+        # Verificar se email já existe em usuários (que não sejam do colaborador atual)
+        existing_usuario = Usuario.query.filter_by(email=field.data).first()
+        if existing_usuario and (not self.colaborador_id or existing_usuario.id_colaborador != self.colaborador_id):
+            raise ValidationError('Este email já está sendo usado por outro usuário no sistema.')
+
+class AutoCadastroForm(FlaskForm):
+    # Dados pessoais
+    nome = StringField('Nome Completo', validators=[InputRequired(message="Nome é obrigatório")])
+    telefone = StringField('Telefone', validators=[Optional(), Length(max=20)])
+    email = StringField('Email', validators=[InputRequired(message="Email é obrigatório"), Email(message="Email inválido")])
+    
+    # Categoria (exceto administrativo)
+    categoria = SelectField('Categoria', coerce=int, validators=[InputRequired(message="Selecione uma categoria")])
+    
+    # Dados de login
+    password = PasswordField('Senha', validators=[
+        InputRequired(message="Senha é obrigatória"), 
+        Length(min=6, message="Senha deve ter pelo menos 6 caracteres")
+    ])
+    confirm_password = PasswordField('Confirmar Senha', validators=[
+        InputRequired(message="Confirmação de senha é obrigatória"),
+        Length(min=6, message="Confirmação deve ter pelo menos 6 caracteres")
+    ])
+    
+    def validate_email(self, field):
+        from models import Colaborador, Usuario
+        
+        # Verificar se email já existe em colaboradores
+        existing_colaborador = Colaborador.query.filter_by(email=field.data).first()
+        if existing_colaborador:
+            raise ValidationError('Este email já está sendo usado por outro colaborador.')
+        
+        # Verificar se email já existe em usuários
+        existing_usuario = Usuario.query.filter_by(email=field.data).first()
+        if existing_usuario:
+            raise ValidationError('Este email já está sendo usado por outro usuário.')
+    
+    def validate_confirm_password(self, field):
+        if field.data != self.password.data:
+            raise ValidationError('As senhas não coincidem.')
 
 class ElencoForm(FlaskForm):
     # Estados brasileiros

@@ -96,12 +96,27 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Escolas Cadastradas</h5>
-        <span class="badge bg-primary">{{ escolas|length }} escola(s)</span>
+        <div>
+            <span class="badge bg-primary me-2">{{ escolas|length }} escola(s)</span>
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
     </div>
     <div class="card-body">
         {% if escolas %}
-            <div class="table-responsive">
-                <table class="table table-striped">
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar escolas..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-striped sortable-table" id="escolasTable">
                     <thead>
                         <tr>
                             <th>Nome</th>
@@ -170,7 +185,10 @@
     </div>
 </div>
 
+<!-- Script de filtros avançados -->
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cidades.js') }}"></script>
+
 <script>
 // Inicializar funcionalidade de cidades automáticas
 document.addEventListener('DOMContentLoaded', function() {
@@ -180,6 +198,37 @@ document.addEventListener('DOMContentLoaded', function() {
     if (estadoSelect && cidadeInput) {
         setupCidadeEstado(estadoSelect, cidadeInput);
     }
+    
+    // Inicializar sistema de filtros avançados
+    if (document.getElementById('escolasTable')) {
+        initializeAdvancedFilters('escolasTable', 'Escolas');
+    }
 });
+
+// Função de busca em tempo real
+function searchTable() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('escolasTable');
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        let row = rows[i];
+        let shouldShow = false;
+        
+        // Busca em todas as colunas de texto (exceto a última que são as ações)
+        const cells = row.getElementsByTagName('td');
+        for (let j = 0; j < cells.length - 1; j++) {
+            const cellText = cells[j].textContent || cells[j].innerText;
+            if (cellText.toLowerCase().indexOf(filter) > -1) {
+                shouldShow = true;
+                break;
+            }
+        }
+        
+        row.style.display = shouldShow ? '' : 'none';
+    }
+}
 </script>
 {% endblock %}
