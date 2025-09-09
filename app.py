@@ -769,30 +769,41 @@ def criar_usuario(id):
     
     colaborador = Colaborador.query.get_or_404(id)
     
+    # Verificar se o colaborador tem email cadastrado
+    if not colaborador.email:
+        flash(f'O colaborador {colaborador.nome} não possui email cadastrado. Edite o colaborador e adicione um email primeiro.', 'warning')
+        return redirect(url_for('cadastrar_colaborador'))
+    
     # Verificar se já existe usuário para este colaborador
     usuario_existente = Usuario.query.filter_by(id_colaborador=id).first()
     if usuario_existente:
         flash(f'Já existe um usuário para o colaborador {colaborador.nome}.', 'warning')
         return redirect(url_for('cadastrar_colaborador'))
     
-    form = UsuarioForm()
+    form = UsuarioForm(colaborador_email=colaborador.email)
     
     # Pré-preencher o nome com o nome do colaborador
     if request.method == 'GET':
         form.nome.data = colaborador.nome
+        form.email.data = colaborador.email
     
     if form.validate_on_submit():
-        # Verificar se email já existe
-        email_existente = Usuario.query.filter_by(email=form.email.data).first()
+        # Verificar se email já existe (usando email do colaborador)
+        email_existente = Usuario.query.filter_by(email=colaborador.email).first()
         if email_existente:
             flash('Este email já está sendo usado por outro usuário.', 'danger')
+            return render_template('criar_usuario.html', form=form, colaborador=colaborador)
+        
+        # Validar se as senhas coincidem
+        if form.password.data != form.confirm_password.data:
+            flash('As senhas não coincidem.', 'danger')
             return render_template('criar_usuario.html', form=form, colaborador=colaborador)
         
         # Criar usuário
         hashed_password = generate_password_hash(form.password.data)
         novo_usuario = Usuario(
             nome=form.nome.data,
-            email=form.email.data,
+            email=colaborador.email,  # Usar email do colaborador
             senha_hash=hashed_password,
             id_colaborador=colaborador.id_colaborador
         )

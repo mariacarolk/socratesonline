@@ -38,10 +38,13 @@
                     </div>
                 </div>
                 <div class="col-md-3 mb-3">
-                    {{ form.email.label(class="form-label") }}
+                    {{ form.email.label(class="form-label") }} <span class="text-danger">*</span>
                     <div class="input-group">
-                        {{ form.email(class="form-control", placeholder="email@exemplo.com") }}
+                        {{ form.email(class="form-control", placeholder="email@exemplo.com", required=true) }}
                         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe um email válido.
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6 mb-3">
@@ -95,10 +98,10 @@
                 <thead>
                     <tr>
                         <th>Nome</th>
-                        <th>Telefone</th>
-                        <th>Email</th>
+                        <th class="hide-mobile">Telefone</th>
+                        <th class="hide-mobile">Email</th>
                         <th>Categorias</th>
-                        <th class="text-center">Usuário</th>
+                        <th class="text-center hide-mobile">Usuário</th>
                         <th class="text-center no-sort" style="width: 200px;">Ações</th>
                     </tr>
                 </thead>
