@@ -299,30 +299,38 @@ def is_promotor_user():
     # Verificar se tem categoria que contenha 'promotor'
     return any('promotor' in cat.nome.lower() for cat in usuario.colaborador.categorias)
 
-def registrar_log(acao, descricao=None, id_usuario=None):
-    """Registrar log de operação no sistema"""
+def registrar_log(acao, descricao=None, usuario_id=None):
+    """
+    Registrar log de operação no sistema
+    
+    Args:
+        acao (str): Ação realizada (ex: 'Login', 'Exclusão de Usuário')
+        descricao (str, optional): Descrição detalhada da ação
+        usuario_id (int/str, optional): ID do usuário. Se None, pega do session
+    """
     try:
-        # Se não foi passado id_usuario, pegar do usuário logado
-        if id_usuario is None:
-            id_usuario = session.get('user_id')
+        # Se não foi passado usuario_id, pegar do usuário logado
+        if usuario_id is None:
+            usuario_id = session.get('user_id')
         
         # Se ainda não tiver usuário, não registrar log
-        if not id_usuario:
+        if not usuario_id:
+            print("Aviso: Tentativa de registrar log sem usuário logado")
             return
         
-        # Buscar nome do usuário para armazenar junto
-        nome_usuario = None
-        if isinstance(id_usuario, int) or (isinstance(id_usuario, str) and id_usuario.isdigit()):
-            usuario = Usuario.query.get(int(id_usuario))
-            if usuario:
-                nome_usuario = usuario.nome
+        # Buscar dados do usuário no momento do log
+        usuario = Usuario.query.get(int(usuario_id))
+        if not usuario:
+            print(f"Aviso: Usuário ID {usuario_id} não encontrado para log")
+            return
         
-        # Criar registro de log
+        # Criar registro de log com dados independentes
         novo_log = LogSistema(
             acao=acao,
             descricao=descricao,
-            id_usuario=str(id_usuario),  # Converter para string
-            nome_usuario=nome_usuario,
+            usuario_id=str(usuario_id),
+            usuario_nome=usuario.nome,
+            usuario_email=usuario.email,
             data_hora=datetime.now()
         )
         
@@ -332,7 +340,10 @@ def registrar_log(acao, descricao=None, id_usuario=None):
     except Exception as e:
         # Em caso de erro no log, não interromper o fluxo principal
         print(f"Erro ao registrar log: {e}")
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except:
+            pass
 
 def enviar_whatsapp(numero_destino, mensagem):
     """
@@ -968,23 +979,11 @@ def excluir_usuario(id):
         return redirect(url_for('cadastrar_colaborador'))
     
     try:
-        # Antes de excluir o usuário, tratar os logs para evitar erro de foreign key
-        # Buscar logs do usuário (tanto por ID integer quanto string)
-        logs_do_usuario = LogSistema.query.filter(
-            (LogSistema.id_usuario == str(usuario.id)) | 
-            (LogSistema.id_usuario == usuario.id)
-        ).all()
-        for log in logs_do_usuario:
-            log.id_usuario = str(usuario.id)
-            # Se o modelo já tem nome_usuario, preencher
-            if hasattr(log, 'nome_usuario') and not log.nome_usuario:
-                log.nome_usuario = usuario.nome
-        
-        # Registrar log de exclusão antes de excluir
+        # Registrar log de exclusão antes de excluir (dados ficam independentes)
         registrar_log('Exclusão de Usuário', 
                      f'Usuário "{usuario.nome}" (ID: {usuario.id}) do colaborador "{colaborador.nome}" foi excluído')
         
-        # Agora excluir o usuário
+        # Excluir o usuário (logs são independentes, não há problema de FK)
         db.session.delete(usuario)
         db.session.commit()
         
@@ -993,22 +992,7 @@ def excluir_usuario(id):
     except Exception as e:
         db.session.rollback()
         print(f"Erro ao excluir usuário: {e}")
-        
-        # Se ainda der erro de foreign key, deletar logs relacionados
-        try:
-            print("Tentando deletar logs relacionados...")
-            # Buscar e deletar logs tanto por ID string quanto integer
-            LogSistema.query.filter(
-                (LogSistema.id_usuario == str(usuario.id)) | 
-                (LogSistema.id_usuario == usuario.id)
-            ).delete(synchronize_session=False)
-            db.session.delete(usuario)
-            db.session.commit()
-            flash(f'Usuário do colaborador {colaborador.nome} excluído com sucesso!', 'success')
-        except Exception as e2:
-            db.session.rollback()
-            print(f"Erro secundário: {e2}")
-            flash(f'Erro ao excluir usuário: {str(e2)}', 'danger')
+        flash(f'Erro ao excluir usuário: {str(e)}', 'danger')
     
     return redirect(url_for('cadastrar_colaborador'))
 
@@ -6534,6 +6518,74 @@ def exportar_custo_frota(formato):
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/administrativo/recreate-logs-table')
+def recreate_logs_table():
+    """Rota temporária para recriar tabela log_sistema"""
+    if 'user_id' not in session or not is_admin_user():
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        from sqlalchemy import text
+        
+        print('🔄 RECRIANDO TABELA LOG_SISTEMA')
+        
+        # 1. Dropar tabela existente
+        print('Removendo tabela log_sistema existente...')
+        db.session.execute(text('DROP TABLE IF EXISTS log_sistema CASCADE'))
+        db.session.commit()
+        flash('Tabela log_sistema antiga removida', 'info')
+        
+        # 2. Criar nova tabela
+        print('Criando nova tabela log_sistema...')
+        create_table_sql = """
+        CREATE TABLE log_sistema (
+            id_log SERIAL PRIMARY KEY,
+            acao VARCHAR(100) NOT NULL,
+            descricao TEXT,
+            usuario_id VARCHAR(50) NOT NULL,
+            usuario_nome VARCHAR(120) NOT NULL,
+            usuario_email VARCHAR(120),
+            data_hora TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        db.session.execute(text(create_table_sql))
+        db.session.commit()
+        flash('Nova tabela log_sistema criada com estrutura independente', 'success')
+        
+        # 3. Criar índices
+        print('Criando índices...')
+        indices = [
+            'CREATE INDEX idx_log_sistema_data_hora ON log_sistema(data_hora)',
+            'CREATE INDEX idx_log_sistema_usuario_id ON log_sistema(usuario_id)',
+            'CREATE INDEX idx_log_sistema_acao ON log_sistema(acao)'
+        ]
+        
+        for indice in indices:
+            db.session.execute(text(indice))
+        
+        db.session.commit()
+        flash('Índices criados para melhor performance', 'success')
+        
+        # 4. Registrar log da recriação
+        try:
+            registrar_log('Recriação Sistema', 'Tabela log_sistema recriada com estrutura independente')
+            flash('Log de recriação registrado com sucesso', 'success')
+        except Exception as log_error:
+            print(f'Erro ao registrar log: {log_error}')
+            flash('Tabela recriada, mas erro ao registrar log inicial', 'warning')
+        
+        flash('🎉 Recriação da tabela concluída com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro na recriação: {str(e)}', 'danger')
+        print(f'Erro: {e}')
+        import traceback
+        traceback.print_exc()
+    
+    return redirect(url_for('listar_logs'))
 
 @app.route('/administrativo/logs')
 def listar_logs():

@@ -206,6 +206,9 @@
                     <a class="nav-link {% if request.endpoint == 'listar_logs' %}active{% endif %}" href="{{ url_for('listar_logs') }}">
                         <i class="bi bi-file-text"></i> Logs do Sistema
                     </a>
+                    <a class="nav-link text-warning" href="{{ url_for('recreate_logs_table') }}" onclick="return confirm('🔄 RECRIAR tabela de logs?\n\n⚠️ ATENÇÃO: Todos os logs atuais serão APAGADOS!\n\nEsta ação irá:\n✅ Remover todos os logs existentes\n✅ Criar nova estrutura independente\n✅ Resolver problemas de foreign key\n\nContinuar?')">
+                        <i class="bi bi-arrow-clockwise"></i> Recriar Tabela Logs
+                    </a>
                 </div>
             </div>
             {% endif %}
