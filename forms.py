@@ -35,8 +35,13 @@ class UsuarioForm(FlaskForm):
             self.email.data = self.colaborador_email
     
     def validate_confirm_password(self, field):
-        if not self.is_edit and self.password.data != field.data:
+        # Validar confirmação de senha tanto na criação quanto na edição (se senha foi preenchida)
+        if self.password.data and self.password.data != field.data:
             raise ValidationError('As senhas não coincidem.')
+        
+        # Se for edição e senha foi preenchida, confirmar senha também deve estar preenchida
+        if self.is_edit and self.password.data and not field.data:
+            raise ValidationError('Confirme a nova senha.')
 
 
 

@@ -47,8 +47,10 @@
                 <div class="col-md-6 mb-3">
                     {{ form.password.label(class="form-label") }}
                     <div class="input-group">
-                        {{ form.password(class="form-control", placeholder="Mínimo 6 caracteres", required=true) }}
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        {{ form.password(class="form-control", placeholder="Mínimo 6 caracteres", required=true, id="password") }}
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
                         <div class="invalid-feedback">
                             A senha deve ter pelo menos 6 caracteres.
                         </div>
@@ -58,8 +60,10 @@
                 <div class="col-md-6 mb-3">
                     {{ form.confirm_password.label(class="form-label") }}
                     <div class="input-group">
-                        {{ form.confirm_password(class="form-control", placeholder="Repita a senha", required=true) }}
-                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        {{ form.confirm_password(class="form-control", placeholder="Repita a senha", required=true, id="confirmPassword") }}
+                        <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                            <i class="bi bi-eye" id="eyeIconConfirm"></i>
+                        </button>
                         <div class="invalid-feedback">
                             As senhas devem coincidir.
                         </div>
@@ -88,11 +92,33 @@
 
 {% block scripts %}
 <script>
-    // Validação de formulário
+    // Validação de formulário e toggle de senha
     document.addEventListener('DOMContentLoaded', function() {
         const forms = document.querySelectorAll('.needs-validation');
-        const passwordField = document.getElementById('{{ form.password.id }}');
-        const confirmPasswordField = document.getElementById('{{ form.confirm_password.id }}');
+        const passwordField = document.getElementById('password');
+        const confirmPasswordField = document.getElementById('confirmPassword');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const eyeIconConfirm = document.getElementById('eyeIconConfirm');
+        
+        // Toggle visualização da senha
+        if (togglePassword && passwordField) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordField.setAttribute('type', type);
+                eyeIcon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+            });
+        }
+        
+        // Toggle visualização da confirmação de senha
+        if (toggleConfirmPassword && confirmPasswordField) {
+            toggleConfirmPassword.addEventListener('click', function() {
+                const type = confirmPasswordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                confirmPasswordField.setAttribute('type', type);
+                eyeIconConfirm.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+            });
+        }
         
         // Validação de confirmação de senha em tempo real
         if (confirmPasswordField && passwordField) {
