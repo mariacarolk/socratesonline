@@ -46,13 +46,29 @@
                 <div class="col-md-6 mb-3">
                     {{ form.password.label(class="form-label") }}
                     <div class="input-group">
-                        {{ form.password(class="form-control", placeholder="Deixe em branco para manter a senha atual") }}
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        {{ form.password(class="form-control", placeholder="Deixe em branco para manter a senha atual", id="password") }}
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
                         <div class="invalid-feedback">
                             A senha deve ter pelo menos 6 caracteres.
                         </div>
                     </div>
                     <small class="text-muted">Deixe em branco para manter a senha atual.</small>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    {{ form.confirm_password.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.confirm_password(class="form-control", placeholder="Confirme a nova senha", id="confirmPassword") }}
+                        <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                            <i class="bi bi-eye" id="eyeIconConfirm"></i>
+                        </button>
+                        <div class="invalid-feedback">
+                            As senhas devem coincidir.
+                        </div>
+                    </div>
+                    <small class="text-muted">Obrigatório apenas se alterar a senha.</small>
                 </div>
             </div>
             
@@ -80,20 +96,73 @@
 
 {% block scripts %}
 <script>
-    // Validação de formulário
+    // Validação de formulário e toggle de senha
     document.addEventListener('DOMContentLoaded', function() {
         const forms = document.querySelectorAll('.needs-validation');
+        const passwordField = document.getElementById('password');
+        const confirmPasswordField = document.getElementById('confirmPassword');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const eyeIconConfirm = document.getElementById('eyeIconConfirm');
+        
+        // Toggle visualização da senha
+        if (togglePassword && passwordField) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordField.setAttribute('type', type);
+                eyeIcon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+            });
+        }
+        
+        // Toggle visualização da confirmação de senha
+        if (toggleConfirmPassword && confirmPasswordField) {
+            toggleConfirmPassword.addEventListener('click', function() {
+                const type = confirmPasswordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                confirmPasswordField.setAttribute('type', type);
+                eyeIconConfirm.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+            });
+        }
+        
+        // Validação de confirmação de senha em tempo real
+        if (confirmPasswordField && passwordField) {
+            confirmPasswordField.addEventListener('input', function() {
+                if (passwordField.value && this.value !== passwordField.value) {
+                    this.setCustomValidity('As senhas não coincidem.');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+            
+            passwordField.addEventListener('input', function() {
+                if (confirmPasswordField.value && confirmPasswordField.value !== this.value) {
+                    confirmPasswordField.setCustomValidity('As senhas não coincidem.');
+                } else {
+                    confirmPasswordField.setCustomValidity('');
+                }
+            });
+        }
         
         Array.from(forms).forEach(form => {
             form.addEventListener('submit', event => {
-                // Para edição, a senha é opcional
-                const passwordField = form.querySelector('input[name="password"]');
+                // Para edição, a senha é opcional, mas se preenchida deve ter 6+ caracteres
                 if (passwordField && passwordField.value && passwordField.value.length < 6) {
                     event.preventDefault();
                     event.stopPropagation();
                     passwordField.setCustomValidity('A senha deve ter pelo menos 6 caracteres');
-                } else {
+                } else if (passwordField) {
                     passwordField.setCustomValidity('');
+                }
+                
+                // Se senha foi preenchida, confirmação também deve estar
+                if (passwordField && passwordField.value && confirmPasswordField && !confirmPasswordField.value) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    confirmPasswordField.setCustomValidity('Confirme a nova senha');
+                } else if (confirmPasswordField) {
+                    if (!passwordField.value) {
+                        confirmPasswordField.setCustomValidity('');
+                    }
                 }
                 
                 if (!form.checkValidity()) {
