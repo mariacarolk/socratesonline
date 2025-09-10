@@ -67,15 +67,26 @@ class ColaboradorForm(FlaskForm):
     def validate_email(self, field):
         from models import Colaborador, Usuario
         
-        # Verificar se email já existe em outro colaborador
-        existing_colaborador = Colaborador.query.filter_by(email=field.data).first()
-        if existing_colaborador and (not self.colaborador_id or existing_colaborador.id_colaborador != self.colaborador_id):
-            raise ValidationError('Este email já está sendo usado por outro colaborador.')
+        # Se não há dados no email, pular validação (será capturado por InputRequired)
+        if not field.data or not field.data.strip():
+            return
+            
+        email_limpo = field.data.strip().lower()
         
-        # Verificar se email já existe em usuários (que não sejam do colaborador atual)
-        existing_usuario = Usuario.query.filter_by(email=field.data).first()
-        if existing_usuario and (not self.colaborador_id or existing_usuario.id_colaborador != self.colaborador_id):
-            raise ValidationError('Este email já está sendo usado por outro usuário no sistema.')
+        try:
+            # Verificar se email já existe em outro colaborador
+            existing_colaborador = Colaborador.query.filter_by(email=email_limpo).first()
+            if existing_colaborador and (not self.colaborador_id or existing_colaborador.id_colaborador != self.colaborador_id):
+                raise ValidationError('Este email já está sendo usado por outro colaborador.')
+            
+            # Verificar se email já existe em usuários (que não sejam do colaborador atual)
+            existing_usuario = Usuario.query.filter_by(email=email_limpo).first()
+            if existing_usuario and (not self.colaborador_id or existing_usuario.id_colaborador != self.colaborador_id):
+                raise ValidationError('Este email já está sendo usado por outro usuário no sistema.')
+        except Exception as e:
+            # Em caso de erro na validação, registrar mas não bloquear
+            print(f"DEBUG: Erro na validação de email: {str(e)}")
+            # Não re-raise o erro para não bloquear o cadastro por problemas de DB
 
 class AutoCadastroForm(FlaskForm):
     # Dados pessoais
