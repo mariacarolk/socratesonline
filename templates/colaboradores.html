@@ -46,7 +46,7 @@
                 <div class="col-md-3 mb-3">
                     {{ form.email.label(class="form-label") }} <span class="text-danger">*</span>
                     <div class="input-group">
-                        {{ form.email(class="form-control", placeholder="email@exemplo.com", required=true) }}
+                        {{ form.email(class="form-control", placeholder="email@exemplo.com", required=true, type="email") }}
                         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
                         <div class="invalid-feedback">
                             Por favor, informe um email válido.
@@ -58,7 +58,7 @@
                     <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
                         {% for subfield in form.categorias %}
                         <div class="form-check">
-                            {{ subfield(class="form-check-input") }}
+                            {{ subfield(class="form-check-input", **{"data-validation":"manual"}) }}
                             {{ subfield.label(class="form-check-label") }}
                         </div>
                         {% endfor %}
@@ -289,11 +289,16 @@
         
         Array.from(forms).forEach(form => {
             form.addEventListener('submit', event => {
+                console.log('DEBUG: Formulário sendo submetido...');
+                
                 // Primeiro verificar nossa validação customizada para categorias
                 const categoriaCheckboxes = form.querySelectorAll('input[name="categorias"]:checked');
                 const categoriaContainer = form.querySelector('div[class*="border rounded"]');
                 
+                console.log('DEBUG: Categorias selecionadas:', categoriaCheckboxes.length);
+                
                 if (categoriaCheckboxes.length === 0) {
+                    console.log('DEBUG: Nenhuma categoria selecionada - bloqueando submissão');
                     event.preventDefault();
                     event.stopPropagation();
                     
@@ -315,6 +320,7 @@
                     form.classList.add('was-validated');
                     return false;
                 } else {
+                    console.log('DEBUG: Categorias OK - removendo erros visuais');
                     // Remover erro visual se existir
                     if (categoriaContainer) {
                         categoriaContainer.classList.remove('is-invalid');
@@ -328,20 +334,54 @@
                     }
                 }
                 
-                // Agora verificar validação HTML5, mas só para outros campos
-                const formIsValid = form.checkValidity();
-                if (!formIsValid) {
-                    // Verificar especificamente o campo nome
-                    const nomeField = form.querySelector('input[name="nome"]');
-                    if (nomeField && !nomeField.value.trim()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        form.classList.add('was-validated');
-                        return false;
+                // Verificar campos obrigatórios
+                const nomeField = form.querySelector('input[name="nome"]');
+                const emailField = form.querySelector('input[name="email"]');
+                
+                console.log('DEBUG: Nome preenchido:', nomeField?.value?.trim());
+                console.log('DEBUG: Email preenchido:', emailField?.value?.trim());
+                console.log('DEBUG: Nome válido:', nomeField?.checkValidity());
+                console.log('DEBUG: Email válido:', emailField?.checkValidity());
+                
+                if (nomeField && !nomeField.checkValidity()) {
+                    console.log('DEBUG: Nome inválido:', nomeField.validationMessage);
+                }
+                if (emailField && !emailField.checkValidity()) {
+                    console.log('DEBUG: Email inválido:', emailField.validationMessage);
+                }
+                
+                // Verificar validação HTML5 apenas para campos que não são categorias
+                const fieldsToValidate = form.querySelectorAll('input:not([name="categorias"]), select, textarea');
+                let formIsValid = true;
+                let invalidFieldsInfo = [];
+                
+                fieldsToValidate.forEach(field => {
+                    if (!field.checkValidity()) {
+                        formIsValid = false;
+                        invalidFieldsInfo.push({
+                            name: field.name,
+                            message: field.validationMessage
+                        });
                     }
+                });
+                
+                console.log('DEBUG: Formulário HTML5 válido (exceto categorias):', formIsValid);
+                
+                if (!formIsValid) {
+                    console.log('DEBUG: Formulário inválido - bloqueando submissão');
+                    console.log('DEBUG: Campos inválidos:', invalidFieldsInfo.length);
+                    invalidFieldsInfo.forEach(fieldInfo => {
+                        console.log('DEBUG: Campo inválido:', fieldInfo.name, fieldInfo.message);
+                    });
+                    
+                    event.preventDefault();
+                    event.stopPropagation();
+                    form.classList.add('was-validated');
+                    return false;
                 }
                 
                 // Se chegou até aqui, o formulário é válido
+                console.log('DEBUG: Formulário válido - permitindo submissão');
                 form.classList.add('was-validated');
             }, false);
         });

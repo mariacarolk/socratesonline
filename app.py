@@ -698,22 +698,68 @@ def cadastrar_colaborador():
     
     form = ColaboradorForm()
     form.categorias.choices = [(c.id_categoria_colaborador, c.nome) for c in categorias_existentes]
+    
+    if request.method == 'POST':
+        print(f"DEBUG: Dados recebidos - Nome: {form.nome.data}, Email: {form.email.data}, Telefone: {form.telefone.data}")
+        print(f"DEBUG: Categorias selecionadas: {form.categorias.data}")
+        print(f"DEBUG: Formulário válido: {form.validate_on_submit()}")
+        
+        if form.errors:
+            print(f"DEBUG: Erros do formulário: {form.errors}")
+        
     if form.validate_on_submit():
-        novo = Colaborador(nome=form.nome.data, telefone=form.telefone.data, email=form.email.data)
-        db.session.add(novo)
-        db.session.flush()  # Para obter o ID do colaborador
-        
-        # Adicionar as categorias selecionadas
-        for categoria_id in form.categorias.data:
-            nova_associacao = ColaboradorCategoria(
-                id_colaborador=novo.id_colaborador,
-                id_categoria_colaborador=categoria_id
-            )
-            db.session.add(nova_associacao)
-        
-        db.session.commit()
-        flash('Colaborador cadastrado com sucesso!', 'success')
-        return redirect(url_for('cadastrar_colaborador'))
+        try:
+            print("DEBUG: Iniciando criação do colaborador...")
+            
+            # Limpar e validar dados antes de salvar
+            nome_limpo = form.nome.data.strip() if form.nome.data else ""
+            telefone_limpo = form.telefone.data.strip() if form.telefone.data else None
+            email_limpo = form.email.data.strip().lower() if form.email.data else ""
+            
+            if not nome_limpo:
+                flash('Nome é obrigatório.', 'danger')
+                return render_template('colaboradores.html', form=form, colaboradores=Colaborador.query.all())
+            
+            if not email_limpo:
+                flash('Email é obrigatório.', 'danger')
+                return render_template('colaboradores.html', form=form, colaboradores=Colaborador.query.all())
+            
+            if not form.categorias.data:
+                flash('É necessário selecionar pelo menos uma categoria.', 'danger')
+                return render_template('colaboradores.html', form=form, colaboradores=Colaborador.query.all())
+            
+            print(f"DEBUG: Dados limpos - Nome: {nome_limpo}, Email: {email_limpo}, Telefone: {telefone_limpo}")
+            
+            novo = Colaborador(nome=nome_limpo, telefone=telefone_limpo, email=email_limpo)
+            db.session.add(novo)
+            db.session.flush()  # Para obter o ID do colaborador
+            print(f"DEBUG: Colaborador criado com ID: {novo.id_colaborador}")
+            
+            # Adicionar as categorias selecionadas
+            categorias_adicionadas = 0
+            for categoria_id in form.categorias.data:
+                print(f"DEBUG: Adicionando categoria {categoria_id}")
+                nova_associacao = ColaboradorCategoria(
+                    id_colaborador=novo.id_colaborador,
+                    id_categoria_colaborador=categoria_id
+                )
+                db.session.add(nova_associacao)
+                categorias_adicionadas += 1
+            
+            print(f"DEBUG: {categorias_adicionadas} categorias adicionadas")
+            
+            db.session.commit()
+            print("DEBUG: Commit realizado com sucesso!")
+            flash('Colaborador cadastrado com sucesso!', 'success')
+            return redirect(url_for('cadastrar_colaborador'))
+            
+        except Exception as e:
+            print(f"DEBUG: Erro ao salvar colaborador: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            flash(f'Erro ao cadastrar colaborador: {str(e)}', 'danger')
+    
     colaboradores = Colaborador.query.all()
     return render_template('colaboradores.html', form=form, colaboradores=colaboradores)
 
