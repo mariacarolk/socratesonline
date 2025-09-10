@@ -70,8 +70,8 @@
                       <i class="bi bi-person-fill text-primary fs-6"></i>
                     </div>
                     <div>
-                      <div class="fw-semibold text-dark">{{ log.nome_usuario or ('ID: ' + log.id_usuario) }}</div>
-                      <small class="text-muted">Usuário ID: {{ log.id_usuario }}</small>
+                      <div class="fw-semibold text-dark">{{ log.usuario_nome }}</div>
+                      <small class="text-muted">{{ log.usuario_email or ('ID: ' + log.usuario_id) }}</small>
                     </div>
                   </div>
                 </td>

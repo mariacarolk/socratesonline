@@ -363,9 +363,10 @@ class LogSistema(db.Model):
     id_log = db.Column(db.Integer, primary_key=True)
     acao = db.Column(db.String(100), nullable=False)
     descricao = db.Column(db.Text, nullable=True)
-    id_usuario = db.Column(db.String(50), nullable=False)  # Alterado para String, sem foreign key
-    nome_usuario = db.Column(db.String(120), nullable=True)  # Novo campo para armazenar nome do usuário
+    usuario_id = db.Column(db.String(50), nullable=False)  # ID do usuário como string
+    usuario_nome = db.Column(db.String(120), nullable=False)  # Nome do usuário
+    usuario_email = db.Column(db.String(120), nullable=True)  # Email do usuário para referência
     data_hora = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     def __repr__(self):
-        return f'<LogSistema {self.acao} - {self.nome_usuario or self.id_usuario} - {self.data_hora}>'
+        return f'<LogSistema {self.acao} - {self.usuario_nome} - {self.data_hora}>'
