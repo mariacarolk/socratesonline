@@ -4,6 +4,7 @@ globs:
 alwaysApply: true
 ---
 - Sempre respeitar o design já utilizado para as demais páginas e manter um padrão, inclusive de paleta de cores
+- Sempre que criar uma nova ação dentro do sistema, criar chamada para gravar um log na tabela log_sistema;
 - Pensar sempre que tudo deve funcionar responsivamente, para desktop e mobile
 - Ao aplicar filtro de datas, usar o filtro de datas padrão para todas as páginas
 - Sempre que houver uma mudança em uma tabela de banco de dados, revisar os forms, os models, os templates e os demais locais onde a tabela é acessada, e tbm fazer a migração do database se necessário.
@@ -13,6 +14,10 @@ alwaysApply: true
 - Não reverter funcionalidades que já foram aprovadas pelo usuário sem perguntar antes.
 - Todos os relatórios devem ter opção de exportar para PDF e excel;
 - Todos os cadastros devem seguir o mesmo padrão, com listagemdos dados, filtro para busca livre, filtro avançado com todos os campos e ordenação por campos, além de exportação para pdf e excel;
+- sempre executar comandos de powershell etc separadamente 
+- sempre que criar uma funcionalidade, verificar se existem padrões já implementados no sistema e repetir (ex: botões de excluir, editar, etc)
+- todos os ajustes que forem feitos no sistema, considerar a versão produção (railway) e aplicar as instruções se for necessário
+- nunca realizar subida pro git automática
 
 ### Regras para criar e aplicar migrações (Alembic/Flask-Migrate) neste projeto
 
@@ -106,11 +111,3 @@ pip install -r requirements.txt
 - Manter consistência nos IDs de revisão; podem ser legíveis (ex.: `adicionar_campo_xyz`), mas devem ser únicos.
 - Nunca referenciar nomes de arquivos em `down_revision`; sempre o conteúdo de `revision` da migração anterior.
 - Em SQLite, preferir `op.batch_alter_table` para adicionar/alterar colunas.
-
-sempre executar comandos de powershell etc separadamente 
-
-sempre que criar uma funcionalidade, verificar se existem padrões já implementados no sistema e repetir (ex: botões de excluir, editar, etc)
-
-todos os ajustes que forem feitos no sistema, considerar a versão produção (railway) e aplicar as instruções se for necessário
-
-nunca realizar subida pro git automática

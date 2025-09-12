@@ -60,9 +60,19 @@ class ColaboradorForm(FlaskForm):
     email = StringField('Email', validators=[InputRequired(), Email()])
     categorias = MultiCheckboxField('Categorias', coerce=int, validators=[InputRequired(message="Selecione pelo menos uma categoria")])
     
+    # Campos de senha (opcionais para edição, obrigatórios para cadastro)
+    password = PasswordField('Senha', validators=[Optional(), Length(min=6, message="Senha deve ter pelo menos 6 caracteres")])
+    confirm_password = PasswordField('Confirmar Senha', validators=[Optional(), Length(min=6, message="Confirmação deve ter pelo menos 6 caracteres")])
+    
     def __init__(self, *args, **kwargs):
         self.colaborador_id = kwargs.pop('colaborador_id', None)
+        self.is_edit_mode = kwargs.pop('is_edit_mode', False)
         super(ColaboradorForm, self).__init__(*args, **kwargs)
+        
+        # Se não for modo de edição (cadastro), tornar senhas obrigatórias
+        if not self.is_edit_mode:
+            self.password.validators = [InputRequired(message="Senha é obrigatória"), Length(min=6, message="Senha deve ter pelo menos 6 caracteres")]
+            self.confirm_password.validators = [InputRequired(message="Confirmação de senha é obrigatória"), Length(min=6, message="Confirmação deve ter pelo menos 6 caracteres")]
     
     def validate_email(self, field):
         from models import Colaborador, Usuario
@@ -87,6 +97,10 @@ class ColaboradorForm(FlaskForm):
             # Em caso de erro na validação, registrar mas não bloquear
             print(f"DEBUG: Erro na validação de email: {str(e)}")
             # Não re-raise o erro para não bloquear o cadastro por problemas de DB
+    
+    def validate_confirm_password(self, field):
+        if self.password.data and field.data and field.data != self.password.data:
+            raise ValidationError('As senhas não coincidem.')
 
 class AutoCadastroForm(FlaskForm):
     # Dados pessoais

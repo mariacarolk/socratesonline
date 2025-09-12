@@ -561,6 +561,10 @@ def login():
                 session['categoria'] = usuario.colaborador.categorias[0].nome.lower()
             else:
                 session['categoria'] = 'administrativo'  # padrão
+            
+            # Registrar log de login
+            registrar_log('Login', f'Usuário "{usuario.nome}" fez login no sistema', usuario.id)
+            
             return redirect(url_for('dashboard'))
         else:
             # Credenciais incorretas
@@ -573,6 +577,13 @@ def login():
 
 @app.route('/logout')
 def logout():
+    # Registrar log de logout antes de limpar a sessão
+    user_id = session.get('user_id')
+    if user_id:
+        usuario = Usuario.query.get(user_id)
+        if usuario:
+            registrar_log('Logout', f'Usuário "{usuario.nome}" fez logout do sistema', user_id)
+    
     session.pop('user_id', None)
     session.pop('categoria', None)
     session.pop('email', None)
@@ -748,9 +759,23 @@ def cadastrar_colaborador():
             
             print(f"DEBUG: {categorias_adicionadas} categorias adicionadas")
             
+            # Criar usuário automaticamente se senha foi fornecida
+            if form.password.data and form.password.data.strip():
+                print("DEBUG: Criando usuário para o colaborador...")
+                hashed_password = generate_password_hash(form.password.data)
+                novo_usuario = Usuario(
+                    nome=nome_limpo,
+                    email=email_limpo,
+                    senha_hash=hashed_password,
+                    id_colaborador=novo.id_colaborador
+                )
+                db.session.add(novo_usuario)
+                print("DEBUG: Usuário criado!")
+            
             db.session.commit()
             print("DEBUG: Commit realizado com sucesso!")
             flash('Colaborador cadastrado com sucesso!', 'success')
+            # Redirecionar para limpar o formulário
             return redirect(url_for('cadastrar_colaborador'))
             
         except Exception as e:
@@ -799,7 +824,7 @@ def editar_colaborador(id):
         return redirect(url_for('cadastrar_categoria_colaborador'))
     
     colaborador = Colaborador.query.get_or_404(id)
-    form = ColaboradorForm(colaborador_id=id)
+    form = ColaboradorForm(colaborador_id=id, is_edit_mode=True)
     
     # Configurar as choices sempre, antes de qualquer validação
     form.categorias.choices = [(c.id_categoria_colaborador, c.nome) for c in categorias_existentes]
@@ -871,6 +896,9 @@ def editar_colaborador(id):
             
             db.session.commit()
             
+            # Registrar log da operação
+            registrar_log('Editar Colaborador', f'Colaborador "{colaborador.nome}" editado')
+            
             if email_mudou and usuario_associado:
                 flash(f'Colaborador atualizado com sucesso! O email do usuário de login também foi atualizado para {email_novo}.', 'success')
             else:
@@ -917,6 +945,10 @@ def excluir_colaborador(id):
     if usuario_associado:
         flash(f'Não é possível excluir este colaborador pois ele possui um usuário associado. Exclua o usuário primeiro.', 'danger')
         return redirect(url_for('cadastrar_colaborador'))
+    
+    # Registrar log da operação antes da exclusão
+    nome_colaborador = colaborador.nome
+    registrar_log('Excluir Colaborador', f'Colaborador "{nome_colaborador}" excluído')
     
     db.session.delete(colaborador)
     db.session.commit()
@@ -2363,11 +2395,14 @@ def novo_evento():
             else:
                 print("âŒ ERRO: Evento não encontrado no banco após commit!")
             
-            # Verificar as despesas APÃ“S o commit
+            # Verificar as despesas APÃ"S o commit
             despesas_depois = DespesaEvento.query.filter_by(id_evento=novo.id_evento).all()
-            print(f"\n=== DESPESAS NO EVENTO APÃ“S O COMMIT ===")
+            print(f"\n=== DESPESAS NO EVENTO APÃ"S O COMMIT ===")
             for desp in despesas_depois:
                 print(f"ID Despesa: {desp.id_despesa}, Valor SALVO: {desp.valor}, Tipo: {desp.despesa.id_tipo_despesa}")
+            
+            # Registrar log da operação
+            registrar_log('Criar Evento', f'Evento "{novo.nome}" criado - {novo.cidade}/{novo.estado} ({novo.data_inicio.strftime("%d/%m/%Y") if novo.data_inicio else "sem data"})')
             
             flash('Evento e despesas/receitas cadastrados com sucesso!', 'success')
             return redirect(url_for('editar_evento', id=novo.id_evento))
@@ -2727,11 +2762,14 @@ def editar_evento(id):
             else:
                 print("âŒ ERRO: Evento não encontrado no banco após commit!")
             
-            # Verificar as despesas APÃ“S o commit
+            # Verificar as despesas APÃ"S o commit
             despesas_depois = DespesaEvento.query.filter_by(id_evento=evento.id_evento).all()
-            print(f"\n=== DESPESAS NO EVENTO APÃ“S O COMMIT ===")
+            print(f"\n=== DESPESAS NO EVENTO APÃ"S O COMMIT ===")
             for desp in despesas_depois:
                 print(f"ID Despesa: {desp.id_despesa}, Valor SALVO: {desp.valor}, Tipo: {desp.despesa.id_tipo_despesa}")
+            
+            # Registrar log da operação
+            registrar_log('Editar Evento', f'Evento "{evento.nome}" editado - {evento.cidade}/{evento.estado}')
             
             flash('Evento atualizado com sucesso!', 'success')
             return redirect(url_for('editar_evento', id=evento.id_evento))
@@ -2956,6 +2994,9 @@ def excluir_evento(id):
         if db.engine.dialect.name == 'sqlite':
             db.session.execute(text("PRAGMA foreign_keys=ON"))
             db.session.commit()
+        
+        # Registrar log da operação
+        registrar_log('Excluir Evento', f'Evento "{nome_evento}" excluído')
         
         print(f"Evento '{nome_evento}' excluído com sucesso!")
         flash(f'Evento "{nome_evento}" excluído com sucesso!', 'success')
@@ -5865,6 +5906,11 @@ def despesas_empresa():
             
             db.session.add(despesa_empresa)
             db.session.commit()
+            
+            # Registrar log da operação
+            despesa_nome = Despesa.query.get(form.despesa_id.data).nome if form.despesa_id.data else "Despesa"
+            registrar_log('Criar Despesa Empresa', f'Despesa "{despesa_nome}" da empresa cadastrada - R$ {form.valor.data:.2f}')
+            
             flash('Despesa da empresa cadastrada com sucesso!', 'success')
             return redirect(url_for('despesas_empresa'))
             
@@ -5908,6 +5954,11 @@ def receitas_empresa():
             
             db.session.add(receita_empresa)
             db.session.commit()
+            
+            # Registrar log da operação
+            receita_nome = Receita.query.get(form.receita_id.data).nome if form.receita_id.data else "Receita"
+            registrar_log('Criar Receita Empresa', f'Receita "{receita_nome}" da empresa cadastrada - R$ {form.valor.data:.2f}')
+            
             flash('Receita da empresa cadastrada com sucesso!', 'success')
             return redirect(url_for('receitas_empresa'))
             
@@ -5978,6 +6029,11 @@ def editar_despesa_empresa(id):
             despesa_empresa.qtd_pessoas = form.qtd_pessoas.data
             
             db.session.commit()
+            
+            # Registrar log da operação
+            despesa_nome = Despesa.query.get(form.despesa_id.data).nome if form.despesa_id.data else "Despesa"
+            registrar_log('Editar Despesa Empresa', f'Despesa "{despesa_nome}" da empresa editada - R$ {form.valor.data:.2f}')
+            
             flash('Despesa da empresa atualizada com sucesso!', 'success')
             return redirect(url_for('despesas_empresa'))
             
@@ -6020,6 +6076,11 @@ def editar_receita_empresa(id):
             receita_empresa.observacoes = form.observacoes.data
             
             db.session.commit()
+            
+            # Registrar log da operação
+            receita_nome = Receita.query.get(form.receita_id.data).nome if form.receita_id.data else "Receita"
+            registrar_log('Editar Receita Empresa', f'Receita "{receita_nome}" da empresa editada - R$ {form.valor.data:.2f}')
+            
             flash('Receita da empresa atualizada com sucesso!', 'success')
             return redirect(url_for('receitas_empresa'))
             
@@ -6041,6 +6102,10 @@ def excluir_despesa_empresa(id):
     
     try:
         despesa_empresa = DespesaEmpresa.query.get_or_404(id)
+        
+        # Registrar log da operação antes da exclusão
+        despesa_nome = despesa_empresa.despesa.nome if despesa_empresa.despesa else "Despesa"
+        registrar_log('Excluir Despesa Empresa', f'Despesa "{despesa_nome}" da empresa excluída - R$ {despesa_empresa.valor:.2f}')
         
         # Excluir arquivo de comprovante se existir
         if despesa_empresa.comprovante:
@@ -6070,6 +6135,11 @@ def excluir_receita_empresa(id):
     
     try:
         receita_empresa = ReceitaEmpresa.query.get_or_404(id)
+        
+        # Registrar log da operação antes da exclusão
+        receita_nome = receita_empresa.receita.nome if receita_empresa.receita else "Receita"
+        registrar_log('Excluir Receita Empresa', f'Receita "{receita_nome}" da empresa excluída - R$ {receita_empresa.valor:.2f}')
+        
         db.session.delete(receita_empresa)
         db.session.commit()
         flash('Receita da empresa excluída com sucesso!', 'success')

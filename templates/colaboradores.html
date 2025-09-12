@@ -53,7 +53,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-12 mb-3">
                     {{ form.categorias.label(class="form-label") }}
                     <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
                         {% for subfield in form.categorias %}
@@ -67,6 +67,30 @@
                         Por favor, selecione pelo menos uma categoria.
                     </div>
                 </div>
+                
+                {% if not colaborador_editando %}
+                <!-- Campos de senha apenas no cadastro -->
+                <div class="col-md-6 mb-3">
+                    {{ form.password.label(class="form-label") }} <span class="text-danger">*</span>
+                    <div class="input-group">
+                        {{ form.password(class="form-control", placeholder="Digite a senha", required=true, minlength="6") }}
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe uma senha com pelo menos 6 caracteres.
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.confirm_password.label(class="form-label") }} <span class="text-danger">*</span>
+                    <div class="input-group">
+                        {{ form.confirm_password(class="form-control", placeholder="Confirme a senha", required=true, minlength="6") }}
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, confirme a senha.
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
             <div class="d-flex justify-content-end">
                 {% if colaborador_editando %}
@@ -81,6 +105,11 @@
                         <i class="bi bi-save me-2"></i>Salvar
                     {% endif %}
                 </button>
+                {% if not colaborador_editando %}
+                    <button type="button" class="btn btn-secondary ms-2" onclick="limparFormulario()">
+                        <i class="bi bi-x-circle me-2"></i>Limpar
+                    </button>
+                {% endif %}
             </div>
         </form>
     </div>
@@ -219,22 +248,15 @@
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 
-                                {% if session.categoria == 'administrativo' %}
-                                    {% if col.usuario %}
-                                        <!-- Botões para colaborador COM usuário -->
-                                        <a href="{{ url_for('editar_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-info" title="Editar Usuário">
-                                            <i class="bi bi-person-gear"></i>
-                                        </a>
-                                        <a href="{{ url_for('excluir_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-warning" 
-                                           onclick="return confirm('Tem certeza que deseja excluir o usuário de {{ col.nome }}?')" title="Excluir Usuário">
-                                            <i class="bi bi-person-x"></i>
-                                        </a>
-                                    {% else %}
-                                        <!-- Botão para colaborador SEM usuário -->
-                                        <a href="{{ url_for('criar_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-success" title="Criar Usuário">
-                                            <i class="bi bi-person-plus"></i>
-                                        </a>
-                                    {% endif %}
+                                {% if session.categoria == 'administrativo' and col.usuario and col.email != 'root@socratesonline.com' %}
+                                    <!-- Botões para colaborador COM usuário (exceto root) -->
+                                    <a href="{{ url_for('editar_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-info" title="Editar Usuário">
+                                        <i class="bi bi-person-gear"></i>
+                                    </a>
+                                    <a href="{{ url_for('excluir_usuario', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-warning" 
+                                       onclick="return confirm('Tem certeza que deseja excluir o usuário de {{ col.nome }}?')" title="Excluir Usuário">
+                                        <i class="bi bi-person-x"></i>
+                                    </a>
                                 {% endif %}
                                 
                                 <a href="{{ url_for('excluir_colaborador', id=col.id_colaborador) }}" class="btn btn-sm btn-outline-danger" 
@@ -411,6 +433,43 @@
             
             row.style.display = shouldShow ? '' : 'none';
         }
+    }
+
+    // Função para limpar o formulário
+    function limparFormulario() {
+        // Limpar campos de texto
+        document.querySelector('input[name="nome"]').value = '';
+        document.querySelector('input[name="telefone"]').value = '';
+        document.querySelector('input[name="email"]').value = '';
+        
+        // Limpar campos de senha (se existirem)
+        const senhaField = document.querySelector('input[name="password"]');
+        const confirmSenhaField = document.querySelector('input[name="confirm_password"]');
+        if (senhaField) senhaField.value = '';
+        if (confirmSenhaField) confirmSenhaField.value = '';
+        
+        // Desmarcar todas as categorias
+        const categorias = document.querySelectorAll('input[name="categorias"]');
+        categorias.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Remover validação visual
+        const form = document.querySelector('form.needs-validation');
+        form.classList.remove('was-validated');
+        
+        // Remover mensagens de erro
+        const errorMsgs = document.querySelectorAll('.categoria-error');
+        errorMsgs.forEach(msg => msg.remove());
+        
+        // Remover bordas de erro
+        const categoriaContainer = document.querySelector('div[class*="border rounded"]');
+        if (categoriaContainer) {
+            categoriaContainer.classList.remove('is-invalid');
+            categoriaContainer.style.borderColor = '';
+        }
+        
+        console.log('Formulário limpo!');
     }
 </script>
 {% endblock %}
