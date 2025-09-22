@@ -85,7 +85,7 @@
                                                     <td>{{ item.despesa_nome }}</td>
                                                     <td>{{ item.data_vencimento.strftime('%d/%m/%Y') if item.data_vencimento else '—' }}</td>
                                                     <td>{{ item.fornecedor_nome or '-' }}</td>
-                                                    <td class="text-end">R$ {{ "%.2f"|format(item.valor)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                                                    <td class="text-end">R$ {{ "%.2f"|format(item.valor_exibicao)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
@@ -272,7 +272,7 @@
                                                     <td>{{ item.despesa_nome }}</td>
                                                     <td>{{ item.data_vencimento.strftime('%d/%m/%Y') if item.data_vencimento else '—' }}</td>
                                                     <td>{{ item.fornecedor_nome or '-' }}</td>
-                                                    <td class="text-end">R$ {{ "%.2f"|format(item.valor)|replace('.', ',')|replace(',', '.', 1) }}</td>
+                                                    <td class="text-end">R$ {{ "%.2f"|format(item.valor_exibicao)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>

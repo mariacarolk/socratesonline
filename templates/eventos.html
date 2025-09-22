@@ -728,151 +728,8 @@
   </div>
 {% endif %}
 
-<!-- Modal Unificado Adicionar Despesa -->
-<div class="modal fade" id="modalAdicionarDespesa" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow rounded-4">
-      <div class="modal-header text-white border-0 rounded-top-4" style="background: linear-gradient(135deg, #dc2626, #b91c1c)">
-        <h5 class="modal-title fw-bold fs-5">
-          <i class="bi bi-credit-card me-2"></i>Adicionar Despesa
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form enctype="multipart/form-data">
-        <div class="modal-body p-4">
-          <div class="row g-3">
-                            <div class="col-12">
-                  <label class="form-label fw-semibold">Categoria da Despesa</label>
-                  <select name="categoria_despesa" class="form-select rounded-3" required>
-                    <option value="">Selecione uma categoria...</option>
-                    {% for categoria in categorias_despesa %}
-                    <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                
-                <div class="col-12">
-                  <label class="form-label fw-semibold">Despesa</label>
-                  <select name="despesa_id" class="form-select rounded-3" required>
-                    <option value="">Primeiro selecione a categoria...</option>
-                  </select>
-                </div>
-            
-            <div class="col-md-6">
-              <label class="form-label fw-medium">Data de Vencimento</label>
-              <input type="date" name="data_vencimento" class="form-control" required value="{{ current_date }}">
-            </div>
-            
-            <div class="col-md-6">
-              <label class="form-label fw-medium">Data de Pagamento</label>
-              <input type="date" name="data_pagamento" class="form-control">
-              <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
-            </div>
-            
-            <div class="col-md-6">
-              <label class="form-label fw-medium">Valor (R$)</label>
-              <input type="text" name="valor" class="form-control" required placeholder="0,00">
-            </div>
-            
-            <div class="col-12">
-              <label class="form-label fw-medium">Fornecedor</label>
-              <select name="fornecedor_id" class="form-select">
-                <option value="">Selecione um fornecedor...</option>
-                {% for fornecedor in fornecedores %}
-                <option value="{{ fornecedor.id_fornecedor }}">{{ fornecedor.nome }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            
-            <div class="col-md-6">
-              <label class="form-label fw-medium">Status</label>
-              <select name="status_pagamento" class="form-select" required>
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-              </select>
-            </div>
-            
-            <div class="col-md-6">
-              <label class="form-label fw-medium">Forma de Pagamento</label>
-              <select name="forma_pagamento" class="form-select" required>
-                <option value="débito">Débito</option>
-                <option value="crédito">Crédito</option>
-                <option value="espécie">Espécie</option>
-                <option value="pix">Pix</option>
-              </select>
-            </div>
-            
-            <div class="col-12">
-              <label class="form-label fw-medium">Pago por</label>
-              <input type="text" name="pago_por" class="form-control">
-            </div>
-            
-            <div class="col-12">
-              <label class="form-label fw-medium">Comprovante</label>
-              <input type="file" name="comprovante" class="form-control" 
-                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-              <div class="form-text">
-                <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
-              </div>
-            </div>
-            
-            <div class="col-12">
-              <label class="form-label fw-medium">Observações</label>
-              <textarea name="observacoes" class="form-control" rows="3"></textarea>
-            </div>
-            
-            <div class="col-12">
-              <div class="form-check">
-                <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_modal" value="1">
-                <label class="form-check-label fw-medium" for="despesa_cabeca_modal">
-                  Despesa da cabeça
-                </label>
-              </div>
-            </div>
-            
-            <!-- Campos de quantidade para despesas de alimentação -->
-            <div class="row" id="modal-campos-alimentacao" style="display: none;">
-              <div class="col-12 mb-3">
-                <div class="alert alert-info border-0 rounded-3" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe);">
-                  <i class="bi bi-info-circle me-2 text-blue-600"></i>
-                  <strong>Despesa de Alimentação:</strong> Preencha as informações adicionais abaixo
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Quantidade de Dias</label>
-                <div class="input-group">
-                  <input type="number" name="qtd_dias" class="form-control rounded-3" id="modal_qtd_dias" min="1" placeholder="Ex: 5">
-                  <span class="input-group-text rounded-end-3"><i class="bi bi-calendar-range text-primary"></i></span>
-                </div>
-                <div class="form-text">
-                  <small class="text-muted">Quantidade de dias que a alimentação deve cobrir</small>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Quantidade de Pessoas</label>
-                <div class="input-group">
-                  <input type="number" name="qtd_pessoas" class="form-control rounded-3" id="modal_qtd_pessoas" min="1" placeholder="Ex: 10">
-                  <span class="input-group-text rounded-end-3"><i class="bi bi-people text-primary"></i></span>
-                </div>
-                <div class="form-text">
-                  <small class="text-muted">Número de pessoas que serão alimentadas</small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-                      <div class="modal-footer border-0 bg-light bg-opacity-50 rounded-bottom-4">
-                <button type="button" class="btn btn-light border rounded-3" data-bs-dismiss="modal">
-                  <i class="bi bi-x-circle me-2"></i>Cancelar
-                </button>
-                <button type="submit" class="btn text-white rounded-3 px-4" style="background: linear-gradient(135deg, #dc2626, #b91c1c)">
-                  <i class="bi bi-plus-circle me-2"></i>Adicionar Despesa
-                </button>
-              </div>
-      </form>
-    </div>
-  </div>
-</div>
+<!-- Incluir Modal Unificado -->
+{% include 'modal_despesa_unificado.html' %}
 
 <!-- Estilos refinados da página -->
 <style>
@@ -2267,7 +2124,8 @@ function preencherDespesas(eventoId, categorias) {
                   <th>Status</th>
                   <th>Fornecedor</th>
                   <th>Cabeça</th>
-                  <th class="text-end">Valor</th>
+                  <th class="text-end">Valor Real</th>
+                  <th class="text-end">Valor Pago SO</th>
                 </tr>
               </thead>
               <tbody>`;
@@ -2284,6 +2142,7 @@ function preencherDespesas(eventoId, categorias) {
           <td>${item.fornecedor_nome || '—'}</td>
           <td>${item.despesa_cabeca ? '<i class="bi bi-check-circle text-success"></i>' : '—'}</td>
           <td class="text-end fw-bold text-danger">${formatarMoeda(item.valor)}</td>
+          <td class="text-end fw-bold text-primary">${item.valor_pago_socrates ? formatarMoeda(item.valor_pago_socrates) : '—'}</td>
         </tr>`;
     });
     
@@ -2321,6 +2180,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
+  
 });
 
 // Utility function para detectar dispositivos móveis
@@ -2334,6 +2194,141 @@ if (isMobileDevice()) {
 } else {
     document.documentElement.classList.add('desktop-device');
 }
+</script>
+
+<!-- Modal usa a mesma lógica da edição do evento -->
+
+<!-- Configurar modal para contexto de eventos (cópia exata da lógica da edição) -->
+<script>
+// Função para carregar despesas por categoria no modal (cópia da edição)
+function carregarDespesasPorCategoriaEventos(categoriaId, despesaIdSelecionada) {
+    console.log('🔍 === CARREGANDO DESPESAS EVENTOS ===');
+    console.log('Categoria ID:', categoriaId);
+    console.log('Despesa ID Selecionada:', despesaIdSelecionada);
+    
+    var selectDespesa = document.getElementById('modal_despesa_item');
+    
+    // Limpar opções
+    selectDespesa.innerHTML = '<option value="">Carregando...</option>';
+    
+    if (!categoriaId) {
+        selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+        return;
+    }
+    
+    // Fazer requisição para buscar despesas da categoria
+    fetch(`/api/despesas-por-categoria/${categoriaId}`)
+        .then(response => {
+            console.log('📡 Resposta da API:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📋 Despesas recebidas:', data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            selectDespesa.innerHTML = '<option value="">Selecione uma despesa...</option>';
+            
+            if (data.length === 0) {
+                selectDespesa.innerHTML = '<option value="">Nenhuma despesa encontrada para esta categoria</option>';
+                return;
+            }
+            
+            data.forEach(despesa => {
+                const option = document.createElement('option');
+                option.value = despesa.id_despesa;
+                option.textContent = despesa.nome;
+                if (despesaIdSelecionada && despesa.id_despesa == despesaIdSelecionada) {
+                    option.selected = true;
+                }
+                if (despesa.valor_medio) {
+                    option.setAttribute('data-valor-medio', despesa.valor_medio.toFixed(2).replace('.', ','));
+                }
+                selectDespesa.appendChild(option);
+            });
+            
+            // Adicionar listener para verificação de alimentação (se não existir)
+            if (!selectDespesa.hasAttribute('data-listener-added')) {
+                selectDespesa.addEventListener('change', function() {
+                    console.log('🔄 Despesa selecionada na tela eventos, verificando alimentação...');
+                    verificarDespesaAlimentacaoEventos(this, null); // evento ID não é necessário aqui
+                });
+                selectDespesa.setAttribute('data-listener-added', 'true');
+            }
+            
+            console.log('✅ Despesas carregadas com sucesso!');
+        })
+        .catch(error => {
+            console.error('❌ Erro ao carregar despesas:', error);
+            selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
+        });
+}
+
+// ✅ FUNÇÃO PARA ABRIR MODAL (chamada pelos botões da tela)
+function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = '', nomeCategoria = '', isFixa = '', valorMedio = '') {
+    console.log('🚀 === ABRINDO MODAL DESPESA EVENTOS ===');
+    console.log('Evento ID:', eventoId);
+    console.log('Categoria ID:', categoriaId);
+    
+    // Verificar se o modal existe
+    const modalElement = document.getElementById('modalAdicionarDespesa');
+    if (!modalElement) {
+        console.error('❌ Modal modalAdicionarDespesa não encontrado!');
+        return;
+    }
+    
+    // Abrir o modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+    
+    // Limpar formulário primeiro
+    const form = modalElement.querySelector('form');
+    if (form) {
+        form.reset();
+        console.log('📝 Formulário resetado');
+    }
+    
+    // Se há categoria pré-selecionada, selecionar e carregar despesas
+    if (categoriaId) {
+        const selectCategoria = document.getElementById('modal_despesa_categoria');
+        if (selectCategoria) {
+            console.log('🎯 Selecionando categoria:', categoriaId);
+            selectCategoria.value = categoriaId;
+            carregarDespesasPorCategoriaEventos(categoriaId);
+        } else {
+            console.error('❌ Select de categoria não encontrado!');
+        }
+    }
+    
+    console.log('✅ Modal aberto com sucesso!');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ CONFIGURAR EVENT LISTENER PARA CATEGORIA (cópia exata da edição)
+    var modalDespesaCategoria = document.getElementById('modal_despesa_categoria');
+    console.log('🎯 Configurando event listener para modal_despesa_categoria na tela eventos:', !!modalDespesaCategoria);
+    
+    if (modalDespesaCategoria) {
+        modalDespesaCategoria.addEventListener('change', function() {
+            console.log('🔄 Categoria selecionada na tela eventos:', this.value);
+            console.log('🔄 Chamando carregarDespesasPorCategoriaEventos...');
+            carregarDespesasPorCategoriaEventos(this.value); // Usar nossa função específica
+            
+            // Limpar campo de valor quando trocar categoria
+            const inputValor = document.getElementById('modal_despesa_valor');
+            if (inputValor) {
+                inputValor.value = '';
+                inputValor.placeholder = '0,00';
+                console.log('💰 Campo valor limpo');
+            }
+        });
+        console.log('✅ Event listener configurado com sucesso na tela eventos!');
+    } else {
+        console.error('❌ Elemento modal_despesa_categoria não encontrado no DOM!');
+    }
+});
 </script>
 
 {% endblock %}

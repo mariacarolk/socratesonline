@@ -376,7 +376,19 @@
 - **Ações:**
   - Exportação: `/relatorios/veiculos/exportar/<string:formato>` *(Linha 5729)*
 
-### **6. Custo da Frota**
+### **6. Veículos**
+- **Rota:** `/relatorios/veiculos-servicos`
+- **Função:** `relatorio_veiculos_servicos()` *(Linha 7420)*
+- **Template:** `relatorio_veiculos_servicos.html`
+- **Funcionalidades:**
+  - Filtros por veículo e tipo de serviço
+  - Gráficos de serviços por tipo (quantidade e valores)
+  - Top 10 veículos por custo total
+  - Detalhamento de multas, IPVA, licenciamento e manutenção
+- **Ações:**
+  - Exportação: `/relatorios/veiculos-servicos/exportar/<string:formato>` *(Linha 7582)*
+
+### **7. Custo da Frota**
 - **Rota:** `/relatorios/custo-frota`
 - **Função:** `relatorio_custo_frota()` *(Linha 6412)*
 - **Template:** `relatorio_custo_frota.html`

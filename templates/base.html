@@ -161,6 +161,9 @@
                     <a class="nav-link {% if request.endpoint == 'relatorio_veiculos' %}active{% endif %}" href="{{ url_for('relatorio_veiculos') }}">
                         <i class="bi bi-car-front"></i> Veículos e Eventos
                     </a>
+                    <a class="nav-link {% if request.endpoint == 'relatorio_veiculos_servicos' %}active{% endif %}" href="{{ url_for('relatorio_veiculos_servicos') }}">
+                        <i class="bi bi-gear"></i> Veículos
+                    </a>
                     <a class="nav-link {% if request.endpoint == 'relatorio_custo_frota' %}active{% endif %}" href="{{ url_for('relatorio_custo_frota') }}">
                         <i class="bi bi-fuel-pump"></i> Custo da Frota
                     </a>

@@ -184,6 +184,7 @@ class DespesaEvento(db.Model):
     data_vencimento = db.Column(db.Date, nullable=False)
     data_pagamento = db.Column(db.Date, nullable=True)
     valor = db.Column(db.Float, nullable=False)
+    valor_pago_socrates = db.Column(db.Float, nullable=True)
     id_fornecedor = db.Column(db.Integer, db.ForeignKey('fornecedor.id_fornecedor'))
     status_pagamento = db.Column(db.String(20), nullable=False)
     forma_pagamento = db.Column(db.String(20), nullable=False)
@@ -231,6 +232,83 @@ class Veiculo(db.Model):
     observacoes = db.Column(db.String)
     id_categoria_veiculo = db.Column(db.Integer, db.ForeignKey('categoria_veiculo.id_categoria_veiculo'))
 
+class MultaVeiculo(db.Model):
+    __tablename__ = 'multa_veiculo'
+    id_multa = db.Column(db.Integer, primary_key=True)
+    id_veiculo = db.Column(db.Integer, db.ForeignKey('veiculo.id_veiculo'), nullable=False)
+    numero_ait = db.Column(db.String(50), nullable=True)
+    data_infracao = db.Column(db.Date, nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
+    valor_original = db.Column(db.Float, nullable=False)
+    valor_pago = db.Column(db.Float, nullable=True)
+    local_infracao = db.Column(db.String(200), nullable=True)
+    tipo_infracao = db.Column(db.String(100), nullable=False)
+    orgao_autuador = db.Column(db.String(100), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Pendente')  # Pendente, Pago, Contestado
+    observacoes = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    veiculo = db.relationship('Veiculo', backref='multas')
+
+class IpvaVeiculo(db.Model):
+    __tablename__ = 'ipva_veiculo'
+    id_ipva = db.Column(db.Integer, primary_key=True)
+    id_veiculo = db.Column(db.Integer, db.ForeignKey('veiculo.id_veiculo'), nullable=False)
+    ano_exercicio = db.Column(db.Integer, nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
+    valor_ipva = db.Column(db.Float, nullable=False)
+    valor_taxa_detran = db.Column(db.Float, nullable=True)
+    valor_multa_juros = db.Column(db.Float, nullable=True)
+    valor_total = db.Column(db.Float, nullable=False)
+    valor_pago = db.Column(db.Float, nullable=True)
+    numero_documento = db.Column(db.String(50), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Pendente')  # Pendente, Pago, Atrasado
+    observacoes = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    veiculo = db.relationship('Veiculo', backref='ipvas')
+
+class LicenciamentoVeiculo(db.Model):
+    __tablename__ = 'licenciamento_veiculo'
+    id_licenciamento = db.Column(db.Integer, primary_key=True)
+    id_veiculo = db.Column(db.Integer, db.ForeignKey('veiculo.id_veiculo'), nullable=False)
+    ano_exercicio = db.Column(db.Integer, nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True)
+    valor_licenciamento = db.Column(db.Float, nullable=False)
+    valor_taxa_detran = db.Column(db.Float, nullable=True)
+    valor_multa_juros = db.Column(db.Float, nullable=True)
+    valor_total = db.Column(db.Float, nullable=False)
+    valor_pago = db.Column(db.Float, nullable=True)
+    numero_documento = db.Column(db.String(50), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Pendente')  # Pendente, Pago, Atrasado
+    observacoes = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    veiculo = db.relationship('Veiculo', backref='licenciamentos')
+
+class ManutencaoVeiculo(db.Model):
+    __tablename__ = 'manutencao_veiculo'
+    id_manutencao = db.Column(db.Integer, primary_key=True)
+    id_veiculo = db.Column(db.Integer, db.ForeignKey('veiculo.id_veiculo'), nullable=False)
+    data_servico = db.Column(db.Date, nullable=False)
+    tipo_manutencao = db.Column(db.String(100), nullable=False)  # Preventiva, Corretiva, Revisão
+    descricao = db.Column(db.Text, nullable=False)
+    fornecedor_servico = db.Column(db.String(200), nullable=True)
+    km_veiculo = db.Column(db.Integer, nullable=True)
+    valor_servico = db.Column(db.Float, nullable=False)
+    valor_pecas = db.Column(db.Float, nullable=True)
+    valor_total = db.Column(db.Float, nullable=False)
+    data_proxima_revisao = db.Column(db.Date, nullable=True)
+    km_proxima_revisao = db.Column(db.Integer, nullable=True)
+    garantia_dias = db.Column(db.Integer, nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    veiculo = db.relationship('Veiculo', backref='manutencoes')
+
 class EquipeEvento(db.Model):
     __tablename__ = 'equipe_evento'
     id_equipe_evento = db.Column(db.Integer, primary_key=True)
@@ -269,6 +347,7 @@ class DespesaEmpresa(db.Model):
     data_vencimento = db.Column(db.Date, nullable=False)
     data_pagamento = db.Column(db.Date, nullable=True)
     valor = db.Column(db.Float, nullable=False)
+    valor_pago_socrates = db.Column(db.Float, nullable=True)
     id_fornecedor = db.Column(db.Integer, db.ForeignKey('fornecedor.id_fornecedor'))
     status_pagamento = db.Column(db.String(20), nullable=False)
     forma_pagamento = db.Column(db.String(20), nullable=False)

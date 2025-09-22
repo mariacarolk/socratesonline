@@ -1,4 +1,5 @@
 ﻿from datetime import date, timedelta, datetime
+from collections import defaultdict
 import os
 import io
 from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, make_response, send_file
@@ -6,7 +7,8 @@ from models import (
     Usuario, Circo, CategoriaColaborador, Colaborador, ColaboradorCategoria,
     Elenco, CategoriaFornecedor, Fornecedor, CategoriaReceita, Receita,
     CategoriaDespesa, Despesa, Evento, DespesaEvento, ReceitaEvento,
-    CategoriaVeiculo, Veiculo, EquipeEvento, ElencoEvento, FornecedorEvento, 
+    CategoriaVeiculo, Veiculo, MultaVeiculo, IpvaVeiculo, LicenciamentoVeiculo, ManutencaoVeiculo,
+    EquipeEvento, ElencoEvento, FornecedorEvento, 
     DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento, Parametro,
     Escola, VisitaEscola, LogSistema
 )
@@ -14,6 +16,7 @@ from forms import (
     UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm, AutoCadastroForm,
     ElencoForm, CategoriaFornecedorForm, FornecedorForm, CategoriaReceitaForm, ReceitaForm,
     CategoriaDespesaForm, DespesaForm, EventoForm, CategoriaVeiculoForm, VeiculoForm,
+    MultaVeiculoForm, IpvaVeiculoForm, LicenciamentoVeiculoForm, ManutencaoVeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
     DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm, ParametroForm,
     EscolaForm, VisitaEscolaForm
@@ -74,7 +77,7 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def calcular_lucro_evento(id_evento):
+def     calcular_lucro_evento(id_evento):
     """
     Função unificada para calcular o lucro real de um evento
     usando a mesma lógica do relatório de fechamento.
@@ -95,11 +98,27 @@ def calcular_lucro_evento(id_evento):
     # Calcular receitas do evento
     total_receitas = db.session.query(func.sum(ReceitaEvento.valor)).filter_by(id_evento=id_evento).scalar() or 0
     
-    # Calcular despesas de cabeça
-    despesas_cabeca = db.session.query(func.sum(DespesaEvento.valor)).filter_by(
+    # Calcular despesas de cabeça (com flag despesa_cabeca=True)
+    despesas_cabeca_flag = db.session.query(func.sum(DespesaEvento.valor)).filter_by(
         id_evento=id_evento, 
         despesa_cabeca=True
     ).scalar() or 0
+    
+    # Calcular despesas da categoria "PAGAS PELO CIRCO"
+    despesas_pagas_pelo_circo = db.session.query(func.sum(DespesaEvento.valor)).join(
+        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+    ).join(
+        CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
+    ).filter(
+        DespesaEvento.id_evento == id_evento,
+        or_(
+            CategoriaDespesa.nome.ilike('%PAGAS PELO CIRCO%'),
+            CategoriaDespesa.nome.ilike('%PAGO PELO CIRCO%')
+        )
+    ).scalar() or 0
+    
+    # Total de despesas de cabeça = despesas com flag + despesas pagas pelo circo
+    despesas_cabeca = despesas_cabeca_flag + despesas_pagas_pelo_circo
     
     # Calcular total líquido (receitas - despesas de cabeça)
     total_liquido = total_receitas - despesas_cabeca
@@ -115,7 +134,8 @@ def calcular_lucro_evento(id_evento):
     ).filter(
         DespesaEvento.id_evento == id_evento,
         DespesaEvento.despesa_cabeca == True,
-        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
+        ~CategoriaDespesa.nome.ilike('%PAGAS PELO CIRCO%'),
+        ~CategoriaDespesa.nome.ilike('%PAGO PELO CIRCO%')
     ).scalar() or 0
     
     # Repasse total = 50% show + reembolso mídias
@@ -128,7 +148,8 @@ def calcular_lucro_evento(id_evento):
         CategoriaDespesa, Despesa.id_categoria_despesa == CategoriaDespesa.id_categoria_despesa
     ).filter(
         DespesaEvento.id_evento == id_evento,
-        CategoriaDespesa.nome.notin_(['PAGAS PELO CIRCO', 'PAGO PELO CIRCO'])
+        ~CategoriaDespesa.nome.ilike('%PAGAS PELO CIRCO%'),
+        ~CategoriaDespesa.nome.ilike('%PAGO PELO CIRCO%')
     ).scalar() or 0
     
     # Resultado do show = repasse total - total despesas sócrates (LUCRO REAL)
@@ -1341,7 +1362,8 @@ def excluir_categoria_despesa(id):
     categoria = CategoriaDespesa.query.get_or_404(id)
     
     # Proteger categoria "PAGAS PELO CIRCO" e "PAGO PELO CIRCO"
-    if categoria.nome.upper() in ['PAGAS PELO CIRCO', 'PAGO PELO CIRCO']:
+    categoria_nome_upper = categoria.nome.upper()
+    if 'PAGAS PELO CIRCO' in categoria_nome_upper or 'PAGO PELO CIRCO' in categoria_nome_upper:
         flash('Não é possível excluir esta categoria pois ela é protegida pelo sistema.', 'danger')
         return redirect(url_for('cadastrar_categoria_despesa'))
     
@@ -1938,96 +1960,121 @@ def listar_eventos():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    # Obter informações do usuário logado
-    usuario = Usuario.query.get(session['user_id'])
-    if not usuario or not usuario.colaborador:
-        flash('Erro ao carregar informações do usuário.', 'danger')
-        return redirect(url_for('login'))
-    
-    # Verificar se é administrador
-    is_admin = is_admin_user()
+    try:
+        # Obter informações do usuário logado
+        usuario = Usuario.query.get(session['user_id'])
+        if not usuario or not usuario.colaborador:
+            flash('Erro ao carregar informações do usuário.', 'danger')
+            return redirect(url_for('login'))
+        
+        # Verificar se é administrador
+        is_admin = is_admin_user()
 
-    # Processar filtro de período
-    period = request.args.get('period', '90dias')  # Default para 90 dias
-    data_inicio = None
-    data_fim = None
-    
-    if period == 'hoje':
-        data_inicio = data_fim = date.today()
-    elif period == 'ontem':
-        data_inicio = data_fim = date.today() - timedelta(days=1)
-    elif period == '7dias':
-        data_fim = date.today()
-        data_inicio = data_fim - timedelta(days=6)
-    elif period == 'mes':
-        data_fim = date.today()
-        data_inicio = data_fim.replace(day=1)
-    elif period == 'custom':
-        data_inicio_str = request.args.get('data_inicio')
-        data_fim_str = request.args.get('data_fim')
-        if data_inicio_str and data_fim_str:
-            try:
-                data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
-                data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
-            except ValueError:
-                flash('Datas inválidas fornecidas.', 'warning')
-                # Fallback para 90 dias
+        # Processar filtro de período
+        period = request.args.get('period', '90dias')  # Default para 90 dias
+        data_inicio = None
+        data_fim = None
+        
+        if period == 'hoje':
+            data_inicio = data_fim = date.today()
+        elif period == 'ontem':
+            data_inicio = data_fim = date.today() - timedelta(days=1)
+        elif period == '7dias':
+            data_fim = date.today()
+            data_inicio = data_fim - timedelta(days=6)
+        elif period == 'mes':
+            data_fim = date.today()
+            data_inicio = data_fim.replace(day=1)
+        elif period == 'custom':
+            data_inicio_str = request.args.get('data_inicio')
+            data_fim_str = request.args.get('data_fim')
+            if data_inicio_str and data_fim_str:
+                try:
+                    data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+                    data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
+                except ValueError:
+                    flash('Datas inválidas fornecidas.', 'warning')
+                    # Fallback para 90 dias
+                    data_fim = date.today()
+                    data_inicio = data_fim - timedelta(days=90)
+            else:
+                # Se custom mas sem datas, usar 90 dias
                 data_fim = date.today()
                 data_inicio = data_fim - timedelta(days=90)
         else:
-            # Se custom mas sem datas, usar 90 dias
-            data_fim = date.today()
-            data_inicio = data_fim - timedelta(days=90)
-    else:
-        # Default: últimos 90 dias (incluindo eventos futuros)
-        data_fim = date.today() + timedelta(days=365)  # Incluir eventos futuros
-        data_inicio = date.today() - timedelta(days=90)
-    
+            # Default: últimos 90 dias (incluindo eventos futuros)
+            data_fim = date.today() + timedelta(days=365)  # Incluir eventos futuros
+            data_inicio = date.today() - timedelta(days=90)
+        
 
-    
-    # Filtrar eventos baseado no tipo de usuário
-    eventos_query = Evento.query.filter(
-        Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado'])
-    )
-    
-    # Aplicar filtro de data se definido
-    if data_inicio:
-        eventos_query = eventos_query.filter(Evento.data_inicio >= data_inicio)
-    if data_fim:
-        eventos_query = eventos_query.filter(Evento.data_inicio <= data_fim)
-    
-    if not is_admin:
-        # Produtores veem apenas seus eventos
-        eventos_query = eventos_query.filter_by(id_produtor=usuario.colaborador.id_colaborador)
-
-    
-    eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
-    
-
-    
-    # Buscar dados para os modais de adição rápida
-    categorias_receita = CategoriaReceita.query.all()
-    categorias_despesa = CategoriaDespesa.query.filter(
-        CategoriaDespesa.id_categoria_despesa.in_(
-            db.session.query(Despesa.id_categoria_despesa).filter(
-                Despesa.id_tipo_despesa.in_([1, 2])
-            ).distinct()
+        
+        # Filtrar eventos baseado no tipo de usuário
+        eventos_query = Evento.query.filter(
+            Evento.status.in_(['planejamento', 'a realizar', 'em andamento', 'realizado'])
         )
-    ).all()
-    fornecedores = Fornecedor.query.order_by(Fornecedor.nome).all()
-    current_date = date.today().strftime('%Y-%m-%d')
+        
+        # Aplicar filtro de data se definido
+        if data_inicio:
+            eventos_query = eventos_query.filter(Evento.data_inicio >= data_inicio)
+        if data_fim:
+            eventos_query = eventos_query.filter(Evento.data_inicio <= data_fim)
+        
+        if not is_admin:
+            # Produtores veem apenas seus eventos
+            eventos_query = eventos_query.filter_by(id_produtor=usuario.colaborador.id_colaborador)
+
+        
+        eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
+        
+
+        
+        # Buscar dados para os modais de adição rápida
+        categorias_receita = CategoriaReceita.query.all()
+        categorias_despesa = CategoriaDespesa.query.filter(
+            CategoriaDespesa.id_categoria_despesa.in_(
+                db.session.query(Despesa.id_categoria_despesa).filter(
+                    Despesa.id_tipo_despesa.in_([1, 2])
+                ).distinct()
+            )
+        ).all()
+        fornecedores = Fornecedor.query.order_by(Fornecedor.nome).all()
+        current_date = date.today().strftime('%Y-%m-%d')
+        
+        # Gravar log da ação
+        try:
+            log_entry = LogSistema(
+                usuario_id=str(session['user_id']),
+                usuario_nome=usuario.nome,
+                usuario_email=usuario.email,
+                acao='Visualizar Eventos',
+                descricao=f'Usuário acessou a listagem de eventos com filtro: {period}'
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as log_error:
+            print(f"Erro ao gravar log: {log_error}")
+        
+        # Converter objetos para dicionários simples para evitar problemas de serialização
+        categorias_receita_dict = [{'id': cat.id_categoria_receita, 'nome': cat.nome} for cat in categorias_receita]
+        categorias_despesa_dict = [{'id': cat.id_categoria_despesa, 'nome': cat.nome} for cat in categorias_despesa]
+        fornecedores_dict = [{'id': forn.id_fornecedor, 'nome': forn.nome} for forn in fornecedores]
+        
+        return render_template('eventos.html', 
+                             eventos=eventos, 
+                             is_admin=is_admin, 
+                             usuario=usuario,
+                             categorias_receita=categorias_receita_dict,
+                             categorias_despesa=categorias_despesa_dict,
+                             fornecedores=fornecedores_dict,
+                             current_date=current_date,
+                             period=period,
+                             data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else '',
+                             data_fim=data_fim.strftime('%Y-%m-%d') if data_fim else '')
     
-    return render_template('eventos.html', 
-                         eventos=eventos, 
-                         is_admin=is_admin, 
-                         usuario=usuario,
-                         categorias_receita=categorias_receita,
-                         categorias_despesa=categorias_despesa,
-                         fornecedores=fornecedores,
-                         current_date=current_date,
-                         period=period,
-                         data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else '',
-                         data_fim=data_fim.strftime('%Y-%m-%d') if data_fim else '')
+    except Exception as e:
+        print(f"Erro na rota de eventos: {str(e)}")
+        flash('Erro interno do servidor. Tente novamente.', 'danger')
+        return redirect(url_for('dashboard'))
 
 # Endpoints de API para carregamento dinÃ¢mico nos modais
 @app.route('/api/despesas-por-categoria/<int:categoria_id>')
@@ -2397,7 +2444,7 @@ def novo_evento():
             
             # Verificar as despesas APÃ"S o commit
             despesas_depois = DespesaEvento.query.filter_by(id_evento=novo.id_evento).all()
-            print(f"\n=== DESPESAS NO EVENTO APÃ"S O COMMIT ===")
+            print(f"\n=== DESPESAS NO EVENTO APÓS O COMMIT ===")
             for desp in despesas_depois:
                 print(f"ID Despesa: {desp.id_despesa}, Valor SALVO: {desp.valor}, Tipo: {desp.despesa.id_tipo_despesa}")
             
@@ -2764,7 +2811,7 @@ def editar_evento(id):
             
             # Verificar as despesas APÃ"S o commit
             despesas_depois = DespesaEvento.query.filter_by(id_evento=evento.id_evento).all()
-            print(f"\n=== DESPESAS NO EVENTO APÃ"S O COMMIT ===")
+            print(f"\n=== DESPESAS NO EVENTO APÓS O COMMIT ===")
             for desp in despesas_depois:
                 print(f"ID Despesa: {desp.id_despesa}, Valor SALVO: {desp.valor}, Tipo: {desp.despesa.id_tipo_despesa}")
             
@@ -2826,7 +2873,8 @@ def editar_evento(id):
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None,
                 'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else '',
                 'qtd_dias_atual': despesas_evento_dict[d.id_despesa].qtd_dias if d.id_despesa in despesas_ja_cadastradas else None,
-                'qtd_pessoas_atual': despesas_evento_dict[d.id_despesa].qtd_pessoas if d.id_despesa in despesas_ja_cadastradas else None
+                'qtd_pessoas_atual': despesas_evento_dict[d.id_despesa].qtd_pessoas if d.id_despesa in despesas_ja_cadastradas else None,
+                'valor_pago_socrates_atual': float(despesas_evento_dict[d.id_despesa].valor_pago_socrates) if d.id_despesa in despesas_ja_cadastradas and despesas_evento_dict[d.id_despesa].valor_pago_socrates else None
             } for d in despesas_fixas],  # TODAS as despesas fixas
             'variaveis': [{
                 'id_despesa': d.id_despesa, 
@@ -2849,7 +2897,8 @@ def editar_evento(id):
                 'id_despesa_evento': despesas_evento_dict[d.id_despesa].id_despesa_evento if d.id_despesa in despesas_ja_cadastradas else None,
                 'comprovante_atual': despesas_evento_dict[d.id_despesa].comprovante if d.id_despesa in despesas_ja_cadastradas else '',
                 'qtd_dias_atual': despesas_evento_dict[d.id_despesa].qtd_dias if d.id_despesa in despesas_ja_cadastradas else None,
-                'qtd_pessoas_atual': despesas_evento_dict[d.id_despesa].qtd_pessoas if d.id_despesa in despesas_ja_cadastradas else None
+                'qtd_pessoas_atual': despesas_evento_dict[d.id_despesa].qtd_pessoas if d.id_despesa in despesas_ja_cadastradas else None,
+                'valor_pago_socrates_atual': float(despesas_evento_dict[d.id_despesa].valor_pago_socrates) if d.id_despesa in despesas_ja_cadastradas and despesas_evento_dict[d.id_despesa].valor_pago_socrates else None
             } for d in despesas_variaveis]  # TODAS as despesas variáveis (cadastradas e não cadastradas)
         }
 
@@ -2889,6 +2938,7 @@ def editar_evento(id):
                 'comprovante_atual': despesa_evento.comprovante or '',
                 'qtd_dias_atual': despesa_evento.qtd_dias,
                 'qtd_pessoas_atual': despesa_evento.qtd_pessoas,
+                'valor_pago_socrates_atual': float(despesa_evento.valor_pago_socrates) if despesa_evento.valor_pago_socrates else None,
                 'tipo': despesa_evento.despesa.id_tipo_despesa
             }
             
@@ -3479,8 +3529,10 @@ def relatorio_fechamento_evento(id_evento):
     total_liquido = calculo['total_liquido']
     cinquenta_porcento_show = calculo['cinquenta_porcento_show']
     repasse_total = calculo['repasse_total']
-    total_despesas_socrates = calculo['total_despesas_socrates']
-    resultado_show = calculo['resultado_show']
+    # Usar o total baseado nos valores exibidos ao invés do cálculo da função
+    total_despesas_socrates = dados['totais_calculados']['total_despesas_socrates_exibidas']
+    # Recalcular o resultado do show com os valores corretos
+    resultado_show = repasse_total - total_despesas_socrates
     
     return render_template('relatorio_fechamento_evento.html', 
                          evento=evento,
@@ -3606,6 +3658,701 @@ def excluir_veiculo(id):
     db.session.commit()
     flash('Veículo excluído com sucesso!', 'success')
     return redirect(url_for('cadastrar_veiculo'))
+
+# =============================================================================
+# ROTAS PARA SERVIÇOS DE VEÍCULOS (MULTAS, IPVA, LICENCIAMENTO, MANUTENÇÃO)
+# =============================================================================
+
+# ==================== MULTAS ====================
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/multas')
+def listar_multas_veiculo(id_veiculo):
+    """Lista todas as multas de um veículo específico"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    multas = MultaVeiculo.query.filter_by(id_veiculo=id_veiculo).order_by(MultaVeiculo.data_infracao.desc()).all()
+    
+    # Se for requisição para modal, retornar apenas o conteúdo
+    if request.args.get('modal') == '1':
+        return render_template('modal_content_servicos.html', 
+                             veiculo=veiculo, 
+                             servicos=multas, 
+                             tipo_servico='multas',
+                             titulo='Multas')
+    
+    return render_template('servicos_veiculo.html', 
+                         veiculo=veiculo, 
+                         servicos=multas, 
+                         tipo_servico='multas',
+                         titulo='Multas')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/multas/nova', methods=['GET', 'POST'])
+def nova_multa_veiculo(id_veiculo):
+    """Cadastra nova multa para o veículo"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    form = MultaVeiculoForm()
+    
+    if form.validate_on_submit():
+        try:
+            nova_multa = MultaVeiculo(
+                id_veiculo=id_veiculo,
+                numero_ait=form.numero_ait.data,
+                data_infracao=form.data_infracao.data,
+                data_vencimento=form.data_vencimento.data,
+                data_pagamento=form.data_pagamento.data,
+                valor_original=float(form.valor_original.data),
+                valor_pago=float(form.valor_pago.data) if form.valor_pago.data else None,
+                local_infracao=form.local_infracao.data,
+                tipo_infracao=form.tipo_infracao.data,
+                orgao_autuador=form.orgao_autuador.data,
+                status=form.status.data,
+                observacoes=form.observacoes.data
+            )
+            
+            db.session.add(nova_multa)
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Cadastrar Multa Veículo",
+                descricao=f"Nova multa cadastrada para o veículo {veiculo.nome} - {form.tipo_infracao.data}"
+            )
+            
+            # Se for requisição AJAX, retornar JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'message': 'Multa cadastrada com sucesso!'
+                })
+            
+            flash('Multa cadastrada com sucesso!', 'success')
+            return redirect(url_for('listar_multas_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            
+            # Se for requisição AJAX, retornar JSON com erro
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': False,
+                    'message': f'Erro ao cadastrar multa: {str(e)}'
+                })
+            
+            flash(f'Erro ao cadastrar multa: {str(e)}', 'danger')
+    else:
+        # Se houver erros de validação e for AJAX, retornar os erros
+        if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'message': 'Dados inválidos.',
+                'errors': form.errors
+            })
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             tipo_servico='multa',
+                             acao='nova')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         tipo_servico='multa',
+                         acao='nova')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/multas/<int:id_multa>/editar', methods=['GET', 'POST'])
+def editar_multa_veiculo(id_veiculo, id_multa):
+    """Edita uma multa existente"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    multa = MultaVeiculo.query.filter_by(id_multa=id_multa, id_veiculo=id_veiculo).first_or_404()
+    form = MultaVeiculoForm(obj=multa)
+    
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(multa)
+            multa.valor_original = float(form.valor_original.data)
+            multa.valor_pago = float(form.valor_pago.data) if form.valor_pago.data else None
+            
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Editar Multa Veículo",
+                descricao=f"Multa editada para o veículo {veiculo.nome} - {form.tipo_infracao.data}"
+            )
+            
+            flash('Multa atualizada com sucesso!', 'success')
+            return redirect(url_for('listar_multas_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar multa: {str(e)}', 'danger')
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             servico=multa,
+                             tipo_servico='multa',
+                             acao='editar')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         servico=multa,
+                         tipo_servico='multa',
+                         acao='editar')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/multas/<int:id_multa>/excluir', methods=['POST'])
+def excluir_multa_veiculo(id_veiculo, id_multa):
+    """Exclui uma multa"""
+    if 'user_id' not in session:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': 'Sessão expirada'})
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    multa = MultaVeiculo.query.filter_by(id_multa=id_multa, id_veiculo=id_veiculo).first_or_404()
+    
+    try:
+        tipo_infracao = multa.tipo_infracao
+        db.session.delete(multa)
+        db.session.commit()
+        
+        # Registrar log
+        registrar_log(
+            acao="Excluir Multa Veículo",
+            descricao=f"Multa excluída do veículo {veiculo.nome} - {tipo_infracao}"
+        )
+        
+        # Se for requisição AJAX, retornar JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'message': 'Multa excluída com sucesso!'
+            })
+        
+        flash('Multa excluída com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        
+        # Se for requisição AJAX, retornar JSON com erro
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'message': f'Erro ao excluir multa: {str(e)}'
+            })
+        
+        flash(f'Erro ao excluir multa: {str(e)}', 'danger')
+    
+    return redirect(url_for('listar_multas_veiculo', id_veiculo=id_veiculo))
+
+# ==================== IPVA ====================
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/ipva')
+def listar_ipva_veiculo(id_veiculo):
+    """Lista todos os IPVAs de um veículo específico"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    ipvas = IpvaVeiculo.query.filter_by(id_veiculo=id_veiculo).order_by(IpvaVeiculo.ano_exercicio.desc()).all()
+    
+    # Se for requisição para modal, retornar apenas o conteúdo
+    if request.args.get('modal') == '1':
+        return render_template('modal_content_servicos.html', 
+                             veiculo=veiculo, 
+                             servicos=ipvas, 
+                             tipo_servico='ipva',
+                             titulo='IPVA')
+    
+    return render_template('servicos_veiculo.html', 
+                         veiculo=veiculo, 
+                         servicos=ipvas, 
+                         tipo_servico='ipva',
+                         titulo='IPVA')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/ipva/novo', methods=['GET', 'POST'])
+def novo_ipva_veiculo(id_veiculo):
+    """Cadastra novo IPVA para o veículo"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    form = IpvaVeiculoForm()
+    
+    if form.validate_on_submit():
+        try:
+            novo_ipva = IpvaVeiculo(
+                id_veiculo=id_veiculo,
+                ano_exercicio=form.ano_exercicio.data,
+                data_vencimento=form.data_vencimento.data,
+                data_pagamento=form.data_pagamento.data,
+                valor_ipva=float(form.valor_ipva.data),
+                valor_taxa_detran=float(form.valor_taxa_detran.data) if form.valor_taxa_detran.data else None,
+                valor_multa_juros=float(form.valor_multa_juros.data) if form.valor_multa_juros.data else None,
+                valor_total=float(form.valor_total.data),
+                valor_pago=float(form.valor_pago.data) if form.valor_pago.data else None,
+                numero_documento=form.numero_documento.data,
+                status=form.status.data,
+                observacoes=form.observacoes.data
+            )
+            
+            db.session.add(novo_ipva)
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Cadastrar IPVA Veículo",
+                descricao=f"Novo IPVA cadastrado para o veículo {veiculo.nome} - Ano {form.ano_exercicio.data}"
+            )
+            
+            # Se for requisição AJAX, retornar JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'message': 'IPVA cadastrado com sucesso!'
+                })
+            
+            flash('IPVA cadastrado com sucesso!', 'success')
+            return redirect(url_for('listar_ipva_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            
+            # Se for requisição AJAX, retornar JSON com erro
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': False,
+                    'message': f'Erro ao cadastrar IPVA: {str(e)}'
+                })
+            
+            flash(f'Erro ao cadastrar IPVA: {str(e)}', 'danger')
+    else:
+        # Se houver erros de validação e for AJAX, retornar os erros
+        if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'message': 'Dados inválidos.',
+                'errors': form.errors
+            })
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             tipo_servico='ipva',
+                             acao='novo')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         tipo_servico='ipva',
+                         acao='novo')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/ipva/<int:id_ipva>/editar', methods=['GET', 'POST'])
+def editar_ipva_veiculo(id_veiculo, id_ipva):
+    """Edita um IPVA existente"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    ipva = IpvaVeiculo.query.filter_by(id_ipva=id_ipva, id_veiculo=id_veiculo).first_or_404()
+    form = IpvaVeiculoForm(obj=ipva)
+    
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(ipva)
+            ipva.valor_ipva = float(form.valor_ipva.data)
+            ipva.valor_taxa_detran = float(form.valor_taxa_detran.data) if form.valor_taxa_detran.data else None
+            ipva.valor_multa_juros = float(form.valor_multa_juros.data) if form.valor_multa_juros.data else None
+            ipva.valor_total = float(form.valor_total.data)
+            ipva.valor_pago = float(form.valor_pago.data) if form.valor_pago.data else None
+            
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Editar IPVA Veículo",
+                descricao=f"IPVA editado para o veículo {veiculo.nome} - Ano {form.ano_exercicio.data}"
+            )
+            
+            flash('IPVA atualizado com sucesso!', 'success')
+            return redirect(url_for('listar_ipva_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar IPVA: {str(e)}', 'danger')
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             servico=ipva,
+                             tipo_servico='ipva',
+                             acao='editar')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         servico=ipva,
+                         tipo_servico='ipva',
+                         acao='editar')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/ipva/<int:id_ipva>/excluir')
+def excluir_ipva_veiculo(id_veiculo, id_ipva):
+    """Exclui um IPVA"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    ipva = IpvaVeiculo.query.filter_by(id_ipva=id_ipva, id_veiculo=id_veiculo).first_or_404()
+    
+    try:
+        ano_exercicio = ipva.ano_exercicio
+        db.session.delete(ipva)
+        db.session.commit()
+        
+        # Registrar log
+        registrar_log(
+            acao="Excluir IPVA Veículo",
+            descricao=f"IPVA excluído do veículo {veiculo.nome} - Ano {ano_exercicio}"
+        )
+        
+        flash('IPVA excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir IPVA: {str(e)}', 'danger')
+    
+    return redirect(url_for('listar_ipva_veiculo', id_veiculo=id_veiculo))
+
+# ==================== LICENCIAMENTO ====================
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/licenciamento')
+def listar_licenciamento_veiculo(id_veiculo):
+    """Lista todos os licenciamentos de um veículo específico"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    licenciamentos = LicenciamentoVeiculo.query.filter_by(id_veiculo=id_veiculo).order_by(LicenciamentoVeiculo.ano_exercicio.desc()).all()
+    
+    # Se for requisição para modal, retornar apenas o conteúdo
+    if request.args.get('modal') == '1':
+        return render_template('modal_content_servicos.html', 
+                             veiculo=veiculo, 
+                             servicos=licenciamentos, 
+                             tipo_servico='licenciamento',
+                             titulo='Licenciamento')
+    
+    return render_template('servicos_veiculo.html', 
+                         veiculo=veiculo, 
+                         servicos=licenciamentos, 
+                         tipo_servico='licenciamento',
+                         titulo='Licenciamento')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/licenciamento/novo', methods=['GET', 'POST'])
+def novo_licenciamento_veiculo(id_veiculo):
+    """Cadastra novo licenciamento para o veículo"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    form = LicenciamentoVeiculoForm()
+    
+    if form.validate_on_submit():
+        try:
+            novo_licenciamento = LicenciamentoVeiculo(
+                id_veiculo=id_veiculo,
+                ano_exercicio=form.ano_exercicio.data,
+                data_vencimento=form.data_vencimento.data,
+                data_pagamento=form.data_pagamento.data,
+                valor_licenciamento=float(form.valor_licenciamento.data),
+                valor_taxa_detran=float(form.valor_taxa_detran.data) if form.valor_taxa_detran.data else None,
+                valor_multa_juros=float(form.valor_multa_juros.data) if form.valor_multa_juros.data else None,
+                valor_total=float(form.valor_total.data),
+                valor_pago=float(form.valor_pago.data) if form.valor_pago.data else None,
+                numero_documento=form.numero_documento.data,
+                status=form.status.data,
+                observacoes=form.observacoes.data
+            )
+            
+            db.session.add(novo_licenciamento)
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Cadastrar Licenciamento Veículo",
+                descricao=f"Novo licenciamento cadastrado para o veículo {veiculo.nome} - Ano {form.ano_exercicio.data}"
+            )
+            
+            flash('Licenciamento cadastrado com sucesso!', 'success')
+            return redirect(url_for('listar_licenciamento_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar licenciamento: {str(e)}', 'danger')
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             tipo_servico='licenciamento',
+                             acao='novo')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         tipo_servico='licenciamento',
+                         acao='novo')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/licenciamento/<int:id_licenciamento>/editar', methods=['GET', 'POST'])
+def editar_licenciamento_veiculo(id_veiculo, id_licenciamento):
+    """Edita um licenciamento existente"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    licenciamento = LicenciamentoVeiculo.query.filter_by(id_licenciamento=id_licenciamento, id_veiculo=id_veiculo).first_or_404()
+    form = LicenciamentoVeiculoForm(obj=licenciamento)
+    
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(licenciamento)
+            licenciamento.valor_licenciamento = float(form.valor_licenciamento.data)
+            licenciamento.valor_taxa_detran = float(form.valor_taxa_detran.data) if form.valor_taxa_detran.data else None
+            licenciamento.valor_multa_juros = float(form.valor_multa_juros.data) if form.valor_multa_juros.data else None
+            licenciamento.valor_total = float(form.valor_total.data)
+            licenciamento.valor_pago = float(form.valor_pago.data) if form.valor_pago.data else None
+            
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Editar Licenciamento Veículo",
+                descricao=f"Licenciamento editado para o veículo {veiculo.nome} - Ano {form.ano_exercicio.data}"
+            )
+            
+            flash('Licenciamento atualizado com sucesso!', 'success')
+            return redirect(url_for('listar_licenciamento_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar licenciamento: {str(e)}', 'danger')
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             servico=licenciamento,
+                             tipo_servico='licenciamento',
+                             acao='editar')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         servico=licenciamento,
+                         tipo_servico='licenciamento',
+                         acao='editar')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/licenciamento/<int:id_licenciamento>/excluir')
+def excluir_licenciamento_veiculo(id_veiculo, id_licenciamento):
+    """Exclui um licenciamento"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    licenciamento = LicenciamentoVeiculo.query.filter_by(id_licenciamento=id_licenciamento, id_veiculo=id_veiculo).first_or_404()
+    
+    try:
+        ano_exercicio = licenciamento.ano_exercicio
+        db.session.delete(licenciamento)
+        db.session.commit()
+        
+        # Registrar log
+        registrar_log(
+            acao="Excluir Licenciamento Veículo",
+            descricao=f"Licenciamento excluído do veículo {veiculo.nome} - Ano {ano_exercicio}"
+        )
+        
+        flash('Licenciamento excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir licenciamento: {str(e)}', 'danger')
+    
+    return redirect(url_for('listar_licenciamento_veiculo', id_veiculo=id_veiculo))
+
+# ==================== MANUTENÇÃO ====================
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/manutencao')
+def listar_manutencao_veiculo(id_veiculo):
+    """Lista todas as manutenções de um veículo específico"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    manutencoes = ManutencaoVeiculo.query.filter_by(id_veiculo=id_veiculo).order_by(ManutencaoVeiculo.data_servico.desc()).all()
+    
+    # Se for requisição para modal, retornar apenas o conteúdo
+    if request.args.get('modal') == '1':
+        return render_template('modal_content_servicos.html', 
+                             veiculo=veiculo, 
+                             servicos=manutencoes, 
+                             tipo_servico='manutencao',
+                             titulo='Manutenção')
+    
+    return render_template('servicos_veiculo.html', 
+                         veiculo=veiculo, 
+                         servicos=manutencoes, 
+                         tipo_servico='manutencao',
+                         titulo='Manutenção')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/manutencao/nova', methods=['GET', 'POST'])
+def nova_manutencao_veiculo(id_veiculo):
+    """Cadastra nova manutenção para o veículo"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    form = ManutencaoVeiculoForm()
+    
+    if form.validate_on_submit():
+        try:
+            nova_manutencao = ManutencaoVeiculo(
+                id_veiculo=id_veiculo,
+                data_servico=form.data_servico.data,
+                tipo_manutencao=form.tipo_manutencao.data,
+                descricao=form.descricao.data,
+                fornecedor_servico=form.fornecedor_servico.data,
+                km_veiculo=form.km_veiculo.data,
+                valor_servico=float(form.valor_servico.data),
+                valor_pecas=float(form.valor_pecas.data) if form.valor_pecas.data else None,
+                valor_total=float(form.valor_total.data),
+                data_proxima_revisao=form.data_proxima_revisao.data,
+                km_proxima_revisao=form.km_proxima_revisao.data,
+                garantia_dias=form.garantia_dias.data,
+                observacoes=form.observacoes.data
+            )
+            
+            db.session.add(nova_manutencao)
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Cadastrar Manutenção Veículo",
+                descricao=f"Nova manutenção cadastrada para o veículo {veiculo.nome} - {form.tipo_manutencao.data}"
+            )
+            
+            flash('Manutenção cadastrada com sucesso!', 'success')
+            return redirect(url_for('listar_manutencao_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar manutenção: {str(e)}', 'danger')
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             tipo_servico='manutencao',
+                             acao='nova')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         tipo_servico='manutencao',
+                         acao='nova')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/manutencao/<int:id_manutencao>/editar', methods=['GET', 'POST'])
+def editar_manutencao_veiculo(id_veiculo, id_manutencao):
+    """Edita uma manutenção existente"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    manutencao = ManutencaoVeiculo.query.filter_by(id_manutencao=id_manutencao, id_veiculo=id_veiculo).first_or_404()
+    form = ManutencaoVeiculoForm(obj=manutencao)
+    
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(manutencao)
+            manutencao.valor_servico = float(form.valor_servico.data)
+            manutencao.valor_pecas = float(form.valor_pecas.data) if form.valor_pecas.data else None
+            manutencao.valor_total = float(form.valor_total.data)
+            
+            db.session.commit()
+            
+            # Registrar log
+            registrar_log(
+                acao="Editar Manutenção Veículo",
+                descricao=f"Manutenção editada para o veículo {veiculo.nome} - {form.tipo_manutencao.data}"
+            )
+            
+            flash('Manutenção atualizada com sucesso!', 'success')
+            return redirect(url_for('listar_manutencao_veiculo', id_veiculo=id_veiculo))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar manutenção: {str(e)}', 'danger')
+    
+    # Se for requisição para modal, retornar apenas o formulário
+    if request.args.get('modal') == '1':
+        return render_template('modal_form_servico_veiculo.html', 
+                             form=form, 
+                             veiculo=veiculo, 
+                             servico=manutencao,
+                             tipo_servico='manutencao',
+                             acao='editar')
+    
+    return render_template('modal_servico_veiculo.html', 
+                         form=form, 
+                         veiculo=veiculo, 
+                         servico=manutencao,
+                         tipo_servico='manutencao',
+                         acao='editar')
+
+@app.route('/cadastros/veiculos/<int:id_veiculo>/manutencao/<int:id_manutencao>/excluir')
+def excluir_manutencao_veiculo(id_veiculo, id_manutencao):
+    """Exclui uma manutenção"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    veiculo = Veiculo.query.get_or_404(id_veiculo)
+    manutencao = ManutencaoVeiculo.query.filter_by(id_manutencao=id_manutencao, id_veiculo=id_veiculo).first_or_404()
+    
+    try:
+        tipo_manutencao = manutencao.tipo_manutencao
+        db.session.delete(manutencao)
+        db.session.commit()
+        
+        # Registrar log
+        registrar_log(
+            acao="Excluir Manutenção Veículo",
+            descricao=f"Manutenção excluída do veículo {veiculo.nome} - {tipo_manutencao}"
+        )
+        
+        flash('Manutenção excluída com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir manutenção: {str(e)}', 'danger')
+    
+    return redirect(url_for('listar_manutencao_veiculo', id_veiculo=id_veiculo))
 
 @app.route('/cadastros/despesas', methods=['GET', 'POST'])
 def cadastrar_despesa():
@@ -3767,6 +4514,7 @@ def salvar_despesa_individual(id_evento):
             despesa_cabeca = data.get('despesa_cabeca', False)
             qtd_dias = data.get('qtd_dias', None)
             qtd_pessoas = data.get('qtd_pessoas', None)
+            valor_pago_socrates_str = data.get('valor_pago_socrates', '')
         else:
             # Processar dados do FormData (upload com arquivo)
             despesa_id = request.form.get('despesa_id')
@@ -3780,6 +4528,7 @@ def salvar_despesa_individual(id_evento):
             despesa_cabeca = request.form.get('despesa_cabeca') == '1'
             qtd_dias = request.form.get('qtd_dias', None)
             qtd_pessoas = request.form.get('qtd_pessoas', None)
+            valor_pago_socrates_str = request.form.get('valor_pago_socrates', '')
         
         print(f"=== SALVAMENTO INDIVIDUAL ===")
         print(f"Tipo de dados: {'JSON' if request.content_type and 'application/json' in request.content_type else 'FormData'}")
@@ -3811,6 +4560,29 @@ def salvar_despesa_individual(id_evento):
         except (ValueError, TypeError) as e:
             print(f"Erro ao converter valor '{valor_str}': {e}")
             return jsonify({'success': False, 'message': 'Valor inválido'})
+        
+        # Converter valor pago Sócrates Online
+        valor_pago_socrates_float = None
+        if valor_pago_socrates_str and valor_pago_socrates_str.strip():
+            try:
+                valor_pago_socrates_str = str(valor_pago_socrates_str).strip()
+                
+                # Aplicar mesma lógica de conversão do valor principal
+                if '.' in valor_pago_socrates_str and ',' in valor_pago_socrates_str:
+                    valor_pago_socrates_str = valor_pago_socrates_str.replace('.', '').replace(',', '.')
+                elif ',' in valor_pago_socrates_str and '.' not in valor_pago_socrates_str:
+                    valor_pago_socrates_str = valor_pago_socrates_str.replace(',', '.')
+                
+                valor_pago_socrates_float = float(valor_pago_socrates_str)
+                
+                if valor_pago_socrates_float < 0:
+                    return jsonify({'success': False, 'message': 'Valor pago Sócrates Online não pode ser negativo'})
+                    
+            except (ValueError, TypeError) as e:
+                print(f"Erro ao converter valor pago Sócrates Online '{valor_pago_socrates_str}': {e}")
+                return jsonify({'success': False, 'message': 'Valor pago Sócrates Online inválido'})
+        else:
+            print(f"⚠️  Valor Pago Sócrates vazio ou nulo")
         
         # Converter data
         data_obj = datetime.strptime(data_despesa, '%Y-%m-%d').date() if data_despesa else date.today()
@@ -3861,6 +4633,7 @@ def salvar_despesa_individual(id_evento):
             id_despesa=int(despesa_id),
             data_vencimento=data_obj,
             valor=valor_float,
+            valor_pago_socrates=valor_pago_socrates_float,
             status_pagamento=status_pagamento,
             forma_pagamento=forma_pagamento,
             pago_por=pago_por,
@@ -4689,6 +5462,7 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         # Obter dados do FormData
         despesa_id = request.form.get('despesa_id')
         valor_str = request.form.get('valor', '')
+        valor_pago_socrates_str = request.form.get('valor_pago_socrates', '')
         data_despesa = request.form.get('data_vencimento')
         
         # Validar dados obrigatórios
@@ -4715,6 +5489,28 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
             print(f"Erro ao converter valor '{valor_str}': {e}")
             return jsonify({'success': False, 'message': 'Valor inválido'})
         
+        # Converter valor pago Sócrates Online
+        valor_pago_socrates_float = 0.0
+        if valor_pago_socrates_str and valor_pago_socrates_str.strip():
+            try:
+                valor_pago_socrates_str = str(valor_pago_socrates_str).strip()
+                
+                # Se contém ponto e vírgula, é formato brasileiro (ex: 1.000,50)
+                if '.' in valor_pago_socrates_str and ',' in valor_pago_socrates_str:
+                    valor_pago_socrates_str = valor_pago_socrates_str.replace('.', '').replace(',', '.')
+                # Se contém apenas vírgula, trocar por ponto
+                elif ',' in valor_pago_socrates_str and '.' not in valor_pago_socrates_str:
+                    valor_pago_socrates_str = valor_pago_socrates_str.replace(',', '.')
+                
+                valor_pago_socrates_float = float(valor_pago_socrates_str)
+                
+                if valor_pago_socrates_float < 0:
+                    return jsonify({'success': False, 'message': 'Valor pago Sócrates Online não pode ser negativo'})
+                    
+            except (ValueError, TypeError) as e:
+                print(f"Erro ao converter valor pago Sócrates Online '{valor_pago_socrates_str}': {e}")
+                return jsonify({'success': False, 'message': 'Valor pago Sócrates Online inválido'})
+        
         # Converter data
         try:
             data_obj = datetime.strptime(data_despesa, '%Y-%m-%d').date()
@@ -4725,6 +5521,7 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         despesa_evento.id_despesa = int(despesa_id)
         despesa_evento.data_vencimento = data_obj
         despesa_evento.valor = valor
+        despesa_evento.valor_pago_socrates = valor_pago_socrates_float
         despesa_evento.status_pagamento = request.form.get('status_pagamento', 'pendente')
         despesa_evento.forma_pagamento = request.form.get('forma_pagamento', 'débito')
         despesa_evento.pago_por = request.form.get('pago_por', '')
@@ -4805,9 +5602,15 @@ def editar_despesa_evento(id_evento, despesa_evento_id):
         else:
             despesa_evento.id_fornecedor = None
         
+        # Processar campo despesa_cabeca
+        despesa_cabeca = request.form.get('despesa_cabeca') == '1'
+        despesa_evento.despesa_cabeca = despesa_cabeca
+        print(f"✅ Campo despesa_cabeca atualizado: {despesa_cabeca}")
+        
         db.session.commit()
         
         print(f"✅ Despesa editada com sucesso: ID {despesa_evento_id}")
+        print(f"💰 Valores salvos: valor={valor}, valor_pago_socrates={valor_pago_socrates_float}")
         
         return jsonify({
             'success': True, 
@@ -5113,6 +5916,7 @@ def api_evento_detalhes_completos(id_evento):
                 categoria_formatada['itens'].append({
                     'despesa_nome': item['despesa_nome'],
                     'valor': item['valor'],
+                    'valor_pago_socrates': item['valor_pago_socrates'],
                     'data': item['data'].strftime('%d/%m/%Y') if item['data'] else '',
                     'status_pagamento': item['status_pagamento'],
                     'despesa_cabeca': item['despesa_cabeca'],
@@ -5212,6 +6016,7 @@ def obter_dados_completos_evento(id_evento):
         CategoriaDespesa.nome.label('categoria_nome'),
         Despesa.nome.label('despesa_nome'),
         DespesaEvento.valor,
+        DespesaEvento.valor_pago_socrates,
         DespesaEvento.data_vencimento,
         DespesaEvento.status_pagamento,
         DespesaEvento.despesa_cabeca,
@@ -5237,10 +6042,15 @@ def obter_dados_completos_evento(id_evento):
                 'itens': []
             }
         
-        despesas_agrupadas[item.categoria_nome]['total_categoria'] += float(item.valor)
+        # Usar valor_pago_socrates se disponível, senão usar valor total
+        valor_para_soma = float(item.valor_pago_socrates) if item.valor_pago_socrates else float(item.valor)
+        despesas_agrupadas[item.categoria_nome]['total_categoria'] += valor_para_soma
+        
         despesas_agrupadas[item.categoria_nome]['itens'].append({
             'despesa_nome': item.despesa_nome,
             'valor': float(item.valor),
+            'valor_pago_socrates': float(item.valor_pago_socrates) if item.valor_pago_socrates else None,
+            'valor_exibicao': valor_para_soma,  # Valor que será exibido (prioriza valor_pago_socrates)
             'data': item.data_vencimento,
             'status_pagamento': item.status_pagamento or 'pendente',
             'despesa_cabeca': bool(item.despesa_cabeca),
@@ -5251,17 +6061,59 @@ def obter_dados_completos_evento(id_evento):
     # Calcular valores usando a função unificada (única fonte de verdade)
     calculo = calcular_lucro_evento(id_evento)
     
+    # Filtrar despesas agrupadas excluindo categorias "PAGAS PELO CIRCO" e "PAGO PELO CIRCO"
+    despesas_agrupadas_filtradas = []
+    for categoria in despesas_agrupadas.values():
+        categoria_nome_upper = categoria['categoria_nome'].upper()
+        if 'PAGAS PELO CIRCO' not in categoria_nome_upper and 'PAGO PELO CIRCO' not in categoria_nome_upper:
+            despesas_agrupadas_filtradas.append(categoria)
+    
+    # Filtrar despesas de cabeça - apenas itens com despesa_cabeca=True
+    # EXCETO para categoria "PAGAS PELO CIRCO" que deve aparecer completa
+    despesas_cabeca_agrupadas = []
+    for categoria in despesas_agrupadas.values():
+        categoria_nome_upper = categoria['categoria_nome'].upper()
+        
+        # Se é categoria "PAGAS PELO CIRCO", incluir todos os itens
+        if 'PAGAS PELO CIRCO' in categoria_nome_upper or 'PAGO PELO CIRCO' in categoria_nome_upper:
+            # Garantir que todos os itens tenham valor_exibicao (que já foi calculado anteriormente)
+            despesas_cabeca_agrupadas.append({
+                'categoria_nome': categoria['categoria_nome'],
+                'total_categoria': categoria['total_categoria'],
+                'itens': categoria['itens']  # Estes já têm valor_exibicao
+            })
+        else:
+            # Para outras categorias, filtrar apenas os itens que são despesas de cabeça
+            itens_cabeca = [item for item in categoria['itens'] if item['despesa_cabeca']]
+            
+            if itens_cabeca:  # Se há itens de cabeça nesta categoria
+                # Recalcular o total da categoria apenas com os itens de cabeça
+                total_categoria_cabeca = sum(item['valor_exibicao'] for item in itens_cabeca)
+                
+                despesas_cabeca_agrupadas.append({
+                    'categoria_nome': categoria['categoria_nome'],
+                    'total_categoria': total_categoria_cabeca,
+                    'itens': itens_cabeca
+                })
+    
+    # Calcular o total das despesas de cabeça baseado no que está sendo exibido
+    # (despesas com flag despesa_cabeca=True + todas as despesas PAGAS PELO CIRCO)
+    total_despesas_cabeca_exibidas = sum(categoria['total_categoria'] for categoria in despesas_cabeca_agrupadas)
+    
+    # Calcular o total das despesas Sócrates baseado nos valores exibidos (valor_pago_socrates)
+    total_despesas_socrates_exibidas = sum(categoria['total_categoria'] for categoria in despesas_agrupadas_filtradas)
+    
     return {
         'evento': evento,
         'receitas_agrupadas': list(receitas_agrupadas.values()),
-        'despesas_agrupadas': list(despesas_agrupadas.values()),
-        'despesas_cabeca_agrupadas': [cat for cat in despesas_agrupadas.values() 
-                                     if any(item['despesa_cabeca'] for item in cat['itens'])],
+        'despesas_agrupadas': despesas_agrupadas_filtradas,
+        'despesas_cabeca_agrupadas': despesas_cabeca_agrupadas,
         'totais_calculados': {
             'total_receitas': calculo['total_receitas'],      # Usar valores da função unificada
             'total_despesas': calculo['total_despesas'],      # para garantir consistência
-            'despesas_cabeca_total': calculo['despesas_cabeca'],
-            'reembolso_midias': calculo['reembolso_midias']
+            'despesas_cabeca_total': total_despesas_cabeca_exibidas,  # Total baseado no que é exibido
+            'reembolso_midias': calculo['reembolso_midias'],
+            'total_despesas_socrates_exibidas': total_despesas_socrates_exibidas  # Total baseado nos valores exibidos
         },
         'calculo_financeiro': calculo
     }
@@ -5659,8 +6511,8 @@ def relatorio_veiculos():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    # Verificar se é administrador
-    if session.get('categoria', '').lower() != 'administrativo':
+    # Verificar se é ROOT ou administrador
+    if not (is_root_user() or session.get('categoria', '').lower() == 'administrativo'):
         flash('Acesso restrito a administradores.', 'danger')
         return redirect(url_for('dashboard'))
     
@@ -5719,9 +6571,13 @@ def relatorio_veiculos():
                 dados_veiculos[veiculo_id]['eventos'].append(evento_veiculo)
                 dados_veiculos[veiculo_id]['total_eventos'] += 1
                 
-                # Calcular dias de uso
-                delta = evento_veiculo.data_devolucao - evento_veiculo.data_inicio
-                dados_veiculos[veiculo_id]['dias_uso'] += delta.days + 1
+                # Calcular dias de uso (apenas se ambas as datas existirem)
+                if evento_veiculo.data_devolucao and evento_veiculo.data_inicio:
+                    delta = evento_veiculo.data_devolucao - evento_veiculo.data_inicio
+                    dados_veiculos[veiculo_id]['dias_uso'] += delta.days + 1
+                elif evento_veiculo.data_inicio:
+                    # Se só tem data de início, considera 1 dia
+                    dados_veiculos[veiculo_id]['dias_uso'] += 1
         
         # Buscar categorias para o filtro
         categorias = CategoriaVeiculo.query.order_by(CategoriaVeiculo.nome).all()
@@ -5759,8 +6615,8 @@ def exportar_relatorio_veiculos(formato):
     if 'user_id' not in session:
         return jsonify({'error': 'Não autorizado'}), 401
     
-    # Verificar se é administrador
-    if session.get('categoria', '').lower() != 'administrativo':
+    # Verificar se é ROOT ou administrador
+    if not (is_root_user() or session.get('categoria', '').lower() == 'administrativo'):
         return jsonify({'error': 'Acesso restrito a administradores'}), 403
     
     try:
@@ -5894,6 +6750,7 @@ def despesas_empresa():
                 data_vencimento=form.data_vencimento.data,
                 data_pagamento=form.data_pagamento.data,
                 valor=form.valor.data,
+                valor_pago_socrates=form.valor_pago_socrates.data if form.valor_pago_socrates.data else None,
                 id_fornecedor=form.fornecedor_id.data if form.fornecedor_id.data != 0 else None,
                 status_pagamento=form.status_pagamento.data,
                 forma_pagamento=form.forma_pagamento.data,
@@ -6532,13 +7389,36 @@ def relatorio_custo_frota():
                                 
                                 custo_total += custo_veiculo
                     
+                    # Buscar despesas de combustível do evento
+                    despesas_combustivel = db.session.query(DespesaEvento).join(
+                        Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+                    ).filter(
+                        DespesaEvento.id_evento == evento_id,
+                        Despesa.flag_combustivel == True
+                    ).all()
+                    
+                    # Calcular total gasto em combustível
+                    total_gasto_combustivel = sum(despesa.valor for despesa in despesas_combustivel)
+                    
+                    # Calcular diferença entre real e esperado (real - esperado)
+                    # Positivo: gastou mais que o esperado
+                    # Negativo: gastou menos que o esperado (economia)
+                    diferenca = total_gasto_combustivel - custo_total
+                    percentual_diferenca = 0
+                    if custo_total > 0:
+                        percentual_diferenca = ((total_gasto_combustivel - custo_total) / custo_total) * 100
+                    
                     evento_selecionado = Evento.query.get(evento_id)
                     dados_relatorio = {
                         'evento': evento_selecionado,
                         'custos_veiculos': custos_veiculos,
                         'custo_total': round(custo_total, 2),
                         'preco_gasolina': preco_gasolina,
-                        'total_veiculos': len(custos_veiculos)
+                        'total_veiculos': len(custos_veiculos),
+                        'despesas_combustivel': despesas_combustivel,
+                        'total_gasto_combustivel': round(total_gasto_combustivel, 2),
+                        'diferenca': round(diferenca, 2),
+                        'percentual_diferenca': round(percentual_diferenca, 1)
                     }
                     
                 except ValueError:
@@ -6589,8 +7469,16 @@ def exportar_custo_frota(formato):
             VeiculoEvento.km_fim.isnot(None)
         ).all()
         
+        # Buscar despesas de combustível do evento
+        despesas_combustivel = db.session.query(DespesaEvento).join(
+            Despesa, DespesaEvento.id_despesa == Despesa.id_despesa
+        ).filter(
+            DespesaEvento.id_evento == evento_id,
+            Despesa.flag_combustivel == True
+        ).all()
+        
         # Preparar dados para exportação
-        headers = ['Veículo', 'Placa', 'Motorista', 'KM Inicial', 'KM Final', 'KM Rodados', 'Média KM/L', 'Litros Gastos', 'Custo (R$)']
+        headers = ['Veículo', 'Placa', 'Motorista', 'KM Inicial', 'KM Final', 'KM Rodados', 'Média KM/L', 'Litros Gastos', 'Custo esperado (R$)']
         data = []
         custo_total = 0
         
@@ -6615,9 +7503,42 @@ def exportar_custo_frota(formato):
                         f"R$ {custo_veiculo:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
                     ])
         
-        # Adicionar linha de total
-        data.append(['', '', '', '', '', '', '', 'TOTAL GERAL:', 
+        # Adicionar linha de total esperado
+        data.append(['', '', '', '', '', '', '', 'CUSTO TOTAL ESPERADO:', 
                     f"R$ {custo_total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')])
+        
+        # Adicionar seção de despesas reais
+        if despesas_combustivel:
+            data.append(['', '', '', '', '', '', '', '', ''])  # Linha em branco
+            data.append(['', '', '', '', '', '', '', 'DESPESAS REAIS DE COMBUSTÍVEL:', ''])
+            
+            total_gasto_real = 0
+            for despesa in despesas_combustivel:
+                fornecedor = despesa.fornecedor.nome if despesa.fornecedor else 'Não informado'
+                status = despesa.status_pagamento.title()
+                data_pagamento = despesa.data_pagamento.strftime('%d/%m/%Y') if despesa.data_pagamento else 'Não pago'
+                
+                data.append([
+                    despesa.despesa.nome,
+                    fornecedor,
+                    '',
+                    '',
+                    '',
+                    '',
+                    status,
+                    data_pagamento,
+                    f"R$ {despesa.valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+                ])
+                total_gasto_real += despesa.valor
+            
+            # Total real gasto
+            data.append(['', '', '', '', '', '', '', 'TOTAL REAL GASTO:', 
+                        f"R$ {total_gasto_real:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')])
+            
+            # Diferença
+            diferenca = total_gasto_real - custo_total
+            data.append(['', '', '', '', '', '', '', 'DIFERENÇA (Real - Esperado):', 
+                        f"R$ {diferenca:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')])
         
         today = datetime.now().strftime('%Y-%m-%d')
         filename = f"custo_frota_{evento.nome.replace(' ', '_')}_{today}"
@@ -6635,6 +7556,416 @@ def exportar_custo_frota(formato):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/relatorios/veiculos-servicos')
+def relatorio_veiculos_servicos():
+    """Relatório simplificado de veículos e seus serviços"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verificar se é ROOT ou administrador
+    if not (is_root_user() or session.get('categoria', '').lower() == 'administrativo'):
+        flash('Acesso restrito a administradores.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # Obter filtros
+        veiculo_filtro = request.args.get('veiculo', '')
+        servico_filtro = request.args.get('servico', '')
+        
+        # Buscar todos os veículos para o filtro
+        veiculos = db.session.query(Veiculo).join(CategoriaVeiculo).order_by(
+            CategoriaVeiculo.nome, Veiculo.nome
+        ).all()
+        
+        # Query base - depende do filtro de veículo
+        if veiculo_filtro:
+            veiculos_selecionados = [v for v in veiculos if str(v.id_veiculo) == veiculo_filtro]
+        else:
+            veiculos_selecionados = veiculos
+        
+        # Dados dos serviços por veículo
+        dados_veiculos = []
+        
+        # Estatísticas gerais
+        total_multas = 0
+        total_ipva = 0
+        total_licenciamento = 0
+        total_manutencao = 0
+        valor_total_geral = 0
+        
+        for veiculo in veiculos_selecionados:
+            # Buscar serviços do veículo
+            multas = MultaVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            ipvas = IpvaVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            licenciamentos = LicenciamentoVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            manutencoes = ManutencaoVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            
+            # Calcular totais por tipo de serviço
+            valor_multas = sum(m.valor_pago or m.valor_original for m in multas)
+            valor_ipva = sum(i.valor_total for i in ipvas)
+            valor_licenciamento = sum(l.valor_total for l in licenciamentos)
+            valor_manutencao = sum(m.valor_total for m in manutencoes)
+            
+            # Contar serviços
+            qtd_multas = len(multas)
+            qtd_ipva = len(ipvas)
+            qtd_licenciamento = len(licenciamentos)
+            qtd_manutencao = len(manutencoes)
+            
+            # Filtrar por tipo de serviço se especificado
+            if servico_filtro:
+                if servico_filtro == 'multas' and qtd_multas == 0:
+                    continue
+                elif servico_filtro == 'ipva' and qtd_ipva == 0:
+                    continue
+                elif servico_filtro == 'licenciamento' and qtd_licenciamento == 0:
+                    continue
+                elif servico_filtro == 'manutencao' and qtd_manutencao == 0:
+                    continue
+            
+            # Adicionar aos dados
+            dados_veiculo = {
+                'veiculo': veiculo,
+                'multas': {
+                    'quantidade': qtd_multas,
+                    'valor': valor_multas,
+                    'servicos': multas
+                },
+                'ipva': {
+                    'quantidade': qtd_ipva,
+                    'valor': valor_ipva,
+                    'servicos': ipvas
+                },
+                'licenciamento': {
+                    'quantidade': qtd_licenciamento,
+                    'valor': valor_licenciamento,
+                    'servicos': licenciamentos
+                },
+                'manutencao': {
+                    'quantidade': qtd_manutencao,
+                    'valor': valor_manutencao,
+                    'servicos': manutencoes
+                },
+                'total_valor': valor_multas + valor_ipva + valor_licenciamento + valor_manutencao
+            }
+            
+            dados_veiculos.append(dados_veiculo)
+            
+            # Somar aos totais gerais
+            total_multas += qtd_multas
+            total_ipva += qtd_ipva
+            total_licenciamento += qtd_licenciamento
+            total_manutencao += qtd_manutencao
+            valor_total_geral += dados_veiculo['total_valor']
+        
+        # Preparar dados para gráficos baseados no filtro de serviço
+        graficos_data = {}
+        
+        if servico_filtro:
+            # Gráficos específicos para o tipo de serviço selecionado
+            if servico_filtro == 'multas':
+                # Buscar todas as multas dos veículos filtrados
+                todas_multas = []
+                for dados in dados_veiculos:
+                    todas_multas.extend(dados['multas']['servicos'])
+                
+                # Top 10 veículos por multas
+                veiculos_multas = sorted(dados_veiculos, key=lambda x: x['multas']['valor'], reverse=True)[:10]
+                graficos_data['veiculos_top'] = {
+                    'labels': [d['veiculo'].nome for d in veiculos_multas if d['multas']['valor'] > 0],
+                    'data': [d['multas']['valor'] for d in veiculos_multas if d['multas']['valor'] > 0]
+                }
+                
+                # Multas por status
+                multas_por_status = {}
+                for multa in todas_multas:
+                    status = multa.status
+                    multas_por_status[status] = multas_por_status.get(status, 0) + 1
+                
+                if multas_por_status:
+                    graficos_data['servicos_por_status'] = {
+                        'labels': list(multas_por_status.keys()),
+                        'data': list(multas_por_status.values())
+                    }
+                
+                # Multas por mês (últimos 12 meses)
+                multas_por_mes = defaultdict(int)
+                for multa in todas_multas:
+                    if multa.data_infracao:
+                        mes_ano = multa.data_infracao.strftime('%Y-%m')
+                        multas_por_mes[mes_ano] += 1
+                
+                if multas_por_mes:
+                    meses_ordenados = sorted(multas_por_mes.keys())[-12:]  # Últimos 12 meses
+                    graficos_data['tendencia_temporal'] = {
+                        'labels': [datetime.strptime(m, '%Y-%m').strftime('%m/%Y') for m in meses_ordenados],
+                        'data': [multas_por_mes[m] for m in meses_ordenados]
+                    }
+                
+            elif servico_filtro == 'ipva':
+                # Top 10 veículos por IPVA
+                veiculos_ipva = sorted(dados_veiculos, key=lambda x: x['ipva']['valor'], reverse=True)[:10]
+                graficos_data['veiculos_top'] = {
+                    'labels': [d['veiculo'].nome for d in veiculos_ipva if d['ipva']['valor'] > 0],
+                    'data': [d['ipva']['valor'] for d in veiculos_ipva if d['ipva']['valor'] > 0]
+                }
+                
+                # IPVA por ano de exercício
+                todas_ipvas = []
+                for dados in dados_veiculos:
+                    todas_ipvas.extend(dados['ipva']['servicos'])
+                
+                ipva_por_ano = {}
+                for ipva in todas_ipvas:
+                    ano = ipva.ano_exercicio
+                    ipva_por_ano[ano] = ipva_por_ano.get(ano, 0) + ipva.valor_total
+                
+                if ipva_por_ano:
+                    graficos_data['ipva_por_ano'] = {
+                        'labels': [str(ano) for ano in sorted(ipva_por_ano.keys())],
+                        'data': [ipva_por_ano[ano] for ano in sorted(ipva_por_ano.keys())]
+                    }
+                
+            elif servico_filtro == 'licenciamento':
+                # Top 10 veículos por licenciamento
+                veiculos_lic = sorted(dados_veiculos, key=lambda x: x['licenciamento']['valor'], reverse=True)[:10]
+                graficos_data['veiculos_top'] = {
+                    'labels': [d['veiculo'].nome for d in veiculos_lic if d['licenciamento']['valor'] > 0],
+                    'data': [d['licenciamento']['valor'] for d in veiculos_lic if d['licenciamento']['valor'] > 0]
+                }
+                
+                # Licenciamentos por ano
+                todos_licenciamentos = []
+                for dados in dados_veiculos:
+                    todos_licenciamentos.extend(dados['licenciamento']['servicos'])
+                
+                lic_por_ano = {}
+                for lic in todos_licenciamentos:
+                    ano = lic.ano_exercicio
+                    lic_por_ano[ano] = lic_por_ano.get(ano, 0) + lic.valor_total
+                
+                if lic_por_ano:
+                    graficos_data['licenciamento_por_ano'] = {
+                        'labels': [str(ano) for ano in sorted(lic_por_ano.keys())],
+                        'data': [lic_por_ano[ano] for ano in sorted(lic_por_ano.keys())]
+                    }
+                
+            elif servico_filtro == 'manutencao':
+                # Top 10 veículos por manutenção
+                veiculos_manut = sorted(dados_veiculos, key=lambda x: x['manutencao']['valor'], reverse=True)[:10]
+                graficos_data['veiculos_top'] = {
+                    'labels': [d['veiculo'].nome for d in veiculos_manut if d['manutencao']['valor'] > 0],
+                    'data': [d['manutencao']['valor'] for d in veiculos_manut if d['manutencao']['valor'] > 0]
+                }
+                
+                # Manutenção por tipo
+                todas_manutencoes = []
+                for dados in dados_veiculos:
+                    todas_manutencoes.extend(dados['manutencao']['servicos'])
+                
+                manut_por_tipo = {}
+                for manut in todas_manutencoes:
+                    tipo = manut.tipo_manutencao
+                    manut_por_tipo[tipo] = manut_por_tipo.get(tipo, 0) + manut.valor_total
+                
+                if manut_por_tipo:
+                    graficos_data['manutencao_por_tipo'] = {
+                        'labels': list(manut_por_tipo.keys()),
+                        'data': list(manut_por_tipo.values())
+                    }
+                
+                # Tendência mensal de manutenções
+                manut_por_mes = defaultdict(float)
+                for manut in todas_manutencoes:
+                    if manut.data_servico:
+                        mes_ano = manut.data_servico.strftime('%Y-%m')
+                        manut_por_mes[mes_ano] += manut.valor_total
+                
+                if manut_por_mes:
+                    meses_ordenados = sorted(manut_por_mes.keys())[-12:]  # Últimos 12 meses
+                    graficos_data['tendencia_temporal'] = {
+                        'labels': [datetime.strptime(m, '%Y-%m').strftime('%m/%Y') for m in meses_ordenados],
+                        'data': [manut_por_mes[m] for m in meses_ordenados]
+                    }
+        else:
+            # Gráficos gerais (quando nenhum serviço específico é filtrado)
+            graficos_data = {
+                'servicos_por_tipo': {
+                    'labels': ['Multas', 'IPVA', 'Licenciamento', 'Manutenção'],
+                    'data': [total_multas, total_ipva, total_licenciamento, total_manutencao]
+                },
+                'valores_por_tipo': {
+                    'labels': ['Multas', 'IPVA', 'Licenciamento', 'Manutenção'],
+                    'data': [
+                        sum(d['multas']['valor'] for d in dados_veiculos),
+                        sum(d['ipva']['valor'] for d in dados_veiculos),
+                        sum(d['licenciamento']['valor'] for d in dados_veiculos),
+                        sum(d['manutencao']['valor'] for d in dados_veiculos)
+                    ]
+                }
+            }
+            
+            # Gráfico por veículo (top 10)
+            if len(dados_veiculos) > 0:
+                dados_veiculos_ordenados = sorted(dados_veiculos, key=lambda x: x['total_valor'], reverse=True)[:10]
+                graficos_data['veiculos_top'] = {
+                    'labels': [d['veiculo'].nome for d in dados_veiculos_ordenados],
+                    'data': [d['total_valor'] for d in dados_veiculos_ordenados]
+                }
+        
+        # Estatísticas resumo baseadas no filtro
+        if servico_filtro:
+            # Estatísticas específicas do serviço
+            servico_dados = dados_veiculos[0][servico_filtro] if dados_veiculos else {'quantidade': 0, 'valor': 0}
+            total_servicos_filtro = sum(d[servico_filtro]['quantidade'] for d in dados_veiculos)
+            total_valor_filtro = sum(d[servico_filtro]['valor'] for d in dados_veiculos)
+            
+            estatisticas = {
+                'total_veiculos': len([d for d in dados_veiculos if d[servico_filtro]['quantidade'] > 0]),
+                'total_servicos': total_servicos_filtro,
+                'valor_total': total_valor_filtro,
+                'media_por_veiculo': total_valor_filtro / len(dados_veiculos) if len(dados_veiculos) > 0 else 0,
+                'servico_selecionado': servico_filtro
+            }
+        else:
+            # Estatísticas gerais
+            estatisticas = {
+                'total_veiculos': len(dados_veiculos),
+                'total_servicos': total_multas + total_ipva + total_licenciamento + total_manutencao,
+                'valor_total': valor_total_geral,
+                'media_por_veiculo': valor_total_geral / len(dados_veiculos) if len(dados_veiculos) > 0 else 0
+            }
+        
+        # Opções para filtros
+        tipos_servico = [
+            {'value': '', 'label': 'Todos os Serviços'},
+            {'value': 'multas', 'label': 'Multas'},
+            {'value': 'ipva', 'label': 'IPVA'},
+            {'value': 'licenciamento', 'label': 'Licenciamento'},
+            {'value': 'manutencao', 'label': 'Manutenção'}
+        ]
+        
+        # Gravar log
+        registrar_log('VISUALIZAR', f'Relatório de Veículos e Serviços visualizado')
+        
+        return render_template(
+            'relatorio_veiculos_servicos.html',
+            dados_veiculos=dados_veiculos,
+            veiculos=veiculos,
+            tipos_servico=tipos_servico,
+            graficos_data=graficos_data,
+            estatisticas=estatisticas,
+            veiculo_filtro=veiculo_filtro,
+            servico_filtro=servico_filtro
+        )
+        
+    except Exception as e:
+        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+@app.route('/relatorios/veiculos-servicos/exportar/<string:formato>')
+def exportar_relatorio_veiculos_servicos(formato):
+    """Exportar relatório de veículos e serviços"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    # Verificar se é ROOT ou administrador
+    if not (is_root_user() or session.get('categoria', '').lower() == 'administrativo'):
+        return jsonify({'error': 'Acesso restrito a administradores'}), 403
+    
+    try:
+        # Obter filtros
+        veiculo_filtro = request.args.get('veiculo', '')
+        servico_filtro = request.args.get('servico', '')
+        
+        # Buscar veículos
+        veiculos = db.session.query(Veiculo).join(CategoriaVeiculo).order_by(
+            CategoriaVeiculo.nome, Veiculo.nome
+        ).all()
+        
+        # Aplicar filtro de veículo
+        if veiculo_filtro:
+            veiculos = [v for v in veiculos if str(v.id_veiculo) == veiculo_filtro]
+        
+        # Preparar dados para exportação
+        headers = ['Veículo', 'Categoria', 'Placa', 'Multas (Qtd)', 'Multas (Valor)', 
+                  'IPVA (Qtd)', 'IPVA (Valor)', 'Licenciamento (Qtd)', 'Licenciamento (Valor)',
+                  'Manutenção (Qtd)', 'Manutenção (Valor)', 'Total Geral']
+        
+        data = []
+        
+        for veiculo in veiculos:
+            # Buscar serviços
+            multas = MultaVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            ipvas = IpvaVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            licenciamentos = LicenciamentoVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            manutencoes = ManutencaoVeiculo.query.filter_by(id_veiculo=veiculo.id_veiculo).all()
+            
+            # Calcular valores
+            valor_multas = sum(m.valor_pago or m.valor_original for m in multas)
+            valor_ipva = sum(i.valor_total for i in ipvas)
+            valor_licenciamento = sum(l.valor_total for l in licenciamentos)
+            valor_manutencao = sum(m.valor_total for m in manutencoes)
+            
+            qtd_multas = len(multas)
+            qtd_ipva = len(ipvas)
+            qtd_licenciamento = len(licenciamentos)
+            qtd_manutencao = len(manutencoes)
+            
+            # Filtrar por tipo de serviço se especificado
+            if servico_filtro:
+                if servico_filtro == 'multas' and qtd_multas == 0:
+                    continue
+                elif servico_filtro == 'ipva' and qtd_ipva == 0:
+                    continue
+                elif servico_filtro == 'licenciamento' and qtd_licenciamento == 0:
+                    continue
+                elif servico_filtro == 'manutencao' and qtd_manutencao == 0:
+                    continue
+            
+            total_geral = valor_multas + valor_ipva + valor_licenciamento + valor_manutencao
+            
+            data.append([
+                veiculo.nome,
+                veiculo.categoria.nome if veiculo.categoria else 'N/A',
+                veiculo.placa or 'N/A',
+                qtd_multas,
+                f"R$ {valor_multas:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                qtd_ipva,
+                f"R$ {valor_ipva:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                qtd_licenciamento,
+                f"R$ {valor_licenciamento:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                qtd_manutencao,
+                f"R$ {valor_manutencao:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                f"R$ {total_geral:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+            ])
+        
+        today = datetime.now().strftime('%Y-%m-%d')
+        filename = f"relatorio_veiculos_servicos_{today}"
+        
+        # Título do relatório
+        titulo = "Relatório de Veículos e Serviços"
+        if veiculo_filtro:
+            veiculo_obj = next((v for v in veiculos if str(v.id_veiculo) == veiculo_filtro), None)
+            if veiculo_obj:
+                titulo += f" - {veiculo_obj.nome}"
+        if servico_filtro:
+            servicos_map = {'multas': 'Multas', 'ipva': 'IPVA', 'licenciamento': 'Licenciamento', 'manutencao': 'Manutenção'}
+            titulo += f" - {servicos_map.get(servico_filtro, 'Todos')}"
+        
+        # Gravar log
+        registrar_log('EXPORTAR', f'Relatório de Veículos e Serviços exportado ({formato.upper()})')
+        
+        if formato == 'excel':
+            return criar_excel_response(headers, data, filename)
+        elif formato == 'pdf':
+            return criar_pdf_response(headers, data, titulo, filename)
+        else:
+            return jsonify({'error': 'Formato não suportado'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/administrativo/logs')
 def listar_logs():

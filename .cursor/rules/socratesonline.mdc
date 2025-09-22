@@ -3,6 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
+- O SISTEMA USA POSTGRES, utilizar somente esse banco pra qualquer alteração
 - Sempre respeitar o design já utilizado para as demais páginas e manter um padrão, inclusive de paleta de cores
 - Sempre que criar uma nova ação dentro do sistema, criar chamada para gravar um log na tabela log_sistema;
 - Pensar sempre que tudo deve funcionar responsivamente, para desktop e mobile

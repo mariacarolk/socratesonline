@@ -71,6 +71,22 @@ function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = ''
         }
     }
     
+    // Aplicar máscara de moeda no campo valor pago Sócrates Online
+    const inputValorPagoSocrates = form.querySelector('[name="valor_pago_socrates"]');
+    if (inputValorPagoSocrates) {
+        inputValorPagoSocrates.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value === '') {
+                e.target.value = '';
+                return;
+            }
+            value = (value / 100).toFixed(2);
+            value = value.replace('.', ',');
+            value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            e.target.value = value;
+        });
+    }
+    
     // Atualizar título do modal
     const titulo = document.querySelector('#modalAdicionarDespesa .modal-title');
     if (titulo) {
@@ -88,11 +104,19 @@ function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = ''
         form.setAttribute('onsubmit', 'adicionarDespesaEvento(event)');
     } else if (eventoId) {
         form.setAttribute('onsubmit', `adicionarDespesaCompleta(event, '${eventoId}')`);
-        
-        // Configurar onChange para categoria na tela de eventos
+    }
+    
+    // Configurar onChange para categoria na tela de eventos (sempre que houver eventoId)
+    if (eventoId && !isNovoEvento) {
         const selectCategoria = form.querySelector('[name="categoria_despesa"]');
         if (selectCategoria) {
+            // Remover evento anterior se existir
+            selectCategoria.removeAttribute('onchange');
+            
+            // Configurar novo evento
             selectCategoria.setAttribute('onchange', `carregarDespesasPorCategoria(this, '${eventoId}')`);
+            
+            console.log('🔧 Evento onChange configurado para categoria na tela de eventos');
         }
     }
     
@@ -160,4 +184,5 @@ function aplicarMascaraMoeda(selector) {
 // Inicializar máscaras quando o documento carregar
 document.addEventListener('DOMContentLoaded', function() {
     aplicarMascaraMoeda('input[name="valor"]');
+    aplicarMascaraMoeda('input[name="valor_pago_socrates"]');
 }); 

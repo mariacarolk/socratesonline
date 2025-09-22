@@ -1,8 +1,8 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField, BooleanField
+from wtforms import StringField, PasswordField, SelectField, IntegerField, FloatField, TextAreaField, SelectMultipleField, HiddenField, BooleanField, DecimalField
 from wtforms.fields.datetime import DateField, TimeField, DateTimeLocalField
-from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional
+from wtforms.validators import InputRequired, Email, Length, ValidationError, DataRequired, Optional, NumberRange
 from wtforms.widgets import CheckboxInput, ListWidget
 from datetime import date, datetime
 
@@ -432,7 +432,8 @@ class DespesaEventoForm(FlaskForm):
     despesa_id = SelectField('Despesa', coerce=int, validators=[DataRequired()])
     data_vencimento = DateField('Data de Vencimento', validators=[DataRequired()])
     data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
-    valor = FloatField('Valor', validators=[DataRequired()])
+    valor = FloatField('Valor Real', validators=[DataRequired()])
+    valor_pago_socrates = FloatField('Valor Pago Sócrates Online', validators=[Optional()])
     fornecedor_id = SelectField('Fornecedor', coerce=int, validators=[Optional()])
     status_pagamento = SelectField('Status', choices=[
         ('pendente', 'Pendente'),
@@ -455,7 +456,8 @@ class DespesaEmpresaForm(FlaskForm):
     despesa_id = SelectField('Despesa', coerce=int, validators=[DataRequired()])
     data_vencimento = DateField('Data de Vencimento', validators=[DataRequired()])
     data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
-    valor = StringField('Valor', validators=[DataRequired()])  # Mudou para StringField para aceitar formato brasileiro
+    valor = StringField('Valor Real', validators=[DataRequired()])  # Mudou para StringField para aceitar formato brasileiro
+    valor_pago_socrates = StringField('Valor Pago Sócrates Online', validators=[Optional()])
     fornecedor_id = SelectField('Fornecedor', coerce=int, validators=[Optional()])
     status_pagamento = SelectField('Status', choices=[
         ('pendente', 'Pendente'),
@@ -623,3 +625,131 @@ class VisitaEscolaForm(FlaskForm):
                                ],
                                default='agendada',
                                validators=[InputRequired(message="Status é obrigatório")])
+
+# Formulários para serviços de veículos
+
+class MultaVeiculoForm(FlaskForm):
+    numero_ait = StringField('Número do AIT', validators=[Optional()])
+    data_infracao = DateField('Data da Infração', validators=[InputRequired(message="Data da infração é obrigatória")], default=date.today)
+    data_vencimento = DateField('Data de Vencimento', validators=[InputRequired(message="Data de vencimento é obrigatória")])
+    data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
+    valor_original = DecimalField('Valor Original (R$)', validators=[InputRequired(message="Valor original é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    valor_pago = DecimalField('Valor Pago (R$)', validators=[Optional()], places=2)
+    local_infracao = StringField('Local da Infração', validators=[Optional()])
+    tipo_infracao = StringField('Tipo de Infração', validators=[InputRequired(message="Tipo de infração é obrigatório")])
+    orgao_autuador = StringField('Órgão Autuador', validators=[Optional()])
+    status = SelectField('Status', 
+                        choices=[
+                            ('Pendente', 'Pendente'),
+                            ('Pago', 'Pago'),
+                            ('Contestado', 'Contestado')
+                        ],
+                        default='Pendente',
+                        validators=[InputRequired(message="Status é obrigatório")])
+    observacoes = TextAreaField('Observações', validators=[Optional()])
+    
+    def validate_data_vencimento(self, field):
+        if field.data and self.data_infracao.data and field.data < self.data_infracao.data:
+            raise ValidationError('A data de vencimento não pode ser anterior à data da infração.')
+    
+    def validate_data_pagamento(self, field):
+        if field.data and self.data_infracao.data and field.data < self.data_infracao.data:
+            raise ValidationError('A data de pagamento não pode ser anterior à data da infração.')
+    
+    def validate_valor_pago(self, field):
+        if field.data and self.valor_original.data and float(field.data) > float(self.valor_original.data) * 1.5:
+            raise ValidationError('Valor pago parece muito alto comparado ao valor original. Verifique os dados.')
+
+class IpvaVeiculoForm(FlaskForm):
+    ano_exercicio = IntegerField('Ano de Exercício', validators=[InputRequired(message="Ano de exercício é obrigatório"), NumberRange(min=2000, max=2050, message="Ano deve estar entre 2000 e 2050")])
+    data_vencimento = DateField('Data de Vencimento', validators=[InputRequired(message="Data de vencimento é obrigatória")])
+    data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
+    valor_ipva = DecimalField('Valor do IPVA (R$)', validators=[InputRequired(message="Valor do IPVA é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    valor_taxa_detran = DecimalField('Taxa DETRAN (R$)', validators=[Optional()], places=2)
+    valor_multa_juros = DecimalField('Multa/Juros (R$)', validators=[Optional()], places=2)
+    valor_total = DecimalField('Valor Total (R$)', validators=[InputRequired(message="Valor total é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    valor_pago = DecimalField('Valor Pago (R$)', validators=[Optional()], places=2)
+    numero_documento = StringField('Número do Documento', validators=[Optional()])
+    status = SelectField('Status', 
+                        choices=[
+                            ('Pendente', 'Pendente'),
+                            ('Pago', 'Pago'),
+                            ('Atrasado', 'Atrasado')
+                        ],
+                        default='Pendente',
+                        validators=[InputRequired(message="Status é obrigatório")])
+    observacoes = TextAreaField('Observações', validators=[Optional()])
+    
+    def validate_ano_exercicio(self, field):
+        current_year = datetime.now().year
+        if field.data and (field.data < current_year - 10 or field.data > current_year + 1):
+            raise ValidationError(f'Ano de exercício deve estar entre {current_year - 10} e {current_year + 1}.')
+
+class LicenciamentoVeiculoForm(FlaskForm):
+    ano_exercicio = IntegerField('Ano de Exercício', validators=[InputRequired(message="Ano de exercício é obrigatório"), NumberRange(min=2000, max=2050, message="Ano deve estar entre 2000 e 2050")])
+    data_vencimento = DateField('Data de Vencimento', validators=[InputRequired(message="Data de vencimento é obrigatória")])
+    data_pagamento = DateField('Data de Pagamento', validators=[Optional()])
+    valor_licenciamento = DecimalField('Valor do Licenciamento (R$)', validators=[InputRequired(message="Valor do licenciamento é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    valor_taxa_detran = DecimalField('Taxa DETRAN (R$)', validators=[Optional()], places=2)
+    valor_multa_juros = DecimalField('Multa/Juros (R$)', validators=[Optional()], places=2)
+    valor_total = DecimalField('Valor Total (R$)', validators=[InputRequired(message="Valor total é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    valor_pago = DecimalField('Valor Pago (R$)', validators=[Optional()], places=2)
+    numero_documento = StringField('Número do Documento', validators=[Optional()])
+    status = SelectField('Status', 
+                        choices=[
+                            ('Pendente', 'Pendente'),
+                            ('Pago', 'Pago'),
+                            ('Atrasado', 'Atrasado')
+                        ],
+                        default='Pendente',
+                        validators=[InputRequired(message="Status é obrigatório")])
+    observacoes = TextAreaField('Observações', validators=[Optional()])
+    
+    def validate_ano_exercicio(self, field):
+        current_year = datetime.now().year
+        if field.data and (field.data < current_year - 10 or field.data > current_year + 1):
+            raise ValidationError(f'Ano de exercício deve estar entre {current_year - 10} e {current_year + 1}.')
+
+class ManutencaoVeiculoForm(FlaskForm):
+    data_servico = DateField('Data do Serviço', validators=[InputRequired(message="Data do serviço é obrigatória")], default=date.today)
+    tipo_manutencao = SelectField('Tipo de Manutenção', 
+                                 choices=[
+                                     ('Preventiva', 'Preventiva'),
+                                     ('Corretiva', 'Corretiva'),
+                                     ('Revisão', 'Revisão'),
+                                     ('Troca de Óleo', 'Troca de Óleo'),
+                                     ('Pneus', 'Pneus'),
+                                     ('Freios', 'Freios'),
+                                     ('Ar Condicionado', 'Ar Condicionado'),
+                                     ('Elétrica', 'Elétrica'),
+                                     ('Motor', 'Motor'),
+                                     ('Transmissão', 'Transmissão'),
+                                     ('Suspensão', 'Suspensão'),
+                                     ('Outros', 'Outros')
+                                 ],
+                                 validators=[InputRequired(message="Tipo de manutenção é obrigatório")])
+    descricao = TextAreaField('Descrição do Serviço', validators=[InputRequired(message="Descrição é obrigatória")])
+    fornecedor_servico = StringField('Fornecedor/Oficina', validators=[Optional()])
+    km_veiculo = IntegerField('KM do Veículo', validators=[Optional(), NumberRange(min=0, message="KM não pode ser negativo")])
+    valor_servico = DecimalField('Valor do Serviço (R$)', validators=[InputRequired(message="Valor do serviço é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    valor_pecas = DecimalField('Valor das Peças (R$)', validators=[Optional()], places=2)
+    valor_total = DecimalField('Valor Total (R$)', validators=[InputRequired(message="Valor total é obrigatório"), NumberRange(min=0.01, message="Valor deve ser maior que zero")], places=2)
+    data_proxima_revisao = DateField('Próxima Revisão', validators=[Optional()])
+    km_proxima_revisao = IntegerField('KM Próxima Revisão', validators=[Optional(), NumberRange(min=0, message="KM não pode ser negativo")])
+    garantia_dias = IntegerField('Garantia (dias)', validators=[Optional(), NumberRange(min=0, message="Garantia não pode ser negativa")])
+    observacoes = TextAreaField('Observações', validators=[Optional()])
+    
+    def validate_data_proxima_revisao(self, field):
+        if field.data and self.data_servico.data and field.data <= self.data_servico.data:
+            raise ValidationError('A data da próxima revisão deve ser posterior à data do serviço.')
+    
+    def validate_km_proxima_revisao(self, field):
+        if field.data and self.km_veiculo.data and field.data <= self.km_veiculo.data:
+            raise ValidationError('A quilometragem da próxima revisão deve ser maior que a atual.')
+    
+    def validate_valor_total(self, field):
+        if field.data and self.valor_servico.data:
+            valor_pecas = self.valor_pecas.data or 0
+            valor_esperado = float(self.valor_servico.data) + float(valor_pecas)
+            if abs(float(field.data) - valor_esperado) > 0.01:
+                raise ValidationError('Valor total deve ser igual à soma do valor do serviço e das peças.')

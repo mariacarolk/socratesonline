@@ -1,0 +1,612 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>{{ titulo }} - {{ veiculo.nome }}</h3>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('cadastrar_veiculo') }}">Veículos</a></li>
+            <li class="breadcrumb-item active">{{ titulo }}</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Informações do Veículo -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-truck me-2"></i>Informações do Veículo
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Nome:</strong> {{ veiculo.nome }}
+            </div>
+            <div class="col-md-3">
+                <strong>Marca/Modelo:</strong> {{ veiculo.marca or '—' }}{% if veiculo.marca and veiculo.modelo %}/{% endif %}{{ veiculo.modelo or '—' }}
+            </div>
+            <div class="col-md-2">
+                <strong>Ano:</strong> {{ veiculo.ano or '—' }}
+            </div>
+            <div class="col-md-2">
+                <strong>Placa:</strong> {{ veiculo.placa or '—' }}
+            </div>
+            <div class="col-md-2">
+                <strong>Categoria:</strong> {{ veiculo.categoria.nome if veiculo.categoria else '—' }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Serviços -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">{{ titulo }}</h5>
+        <div>
+            {% if tipo_servico == 'multas' %}
+                <button type="button" class="btn btn-primary" onclick="abrirModalNovo('multa')">
+                    <i class="bi bi-plus me-1"></i>Nova Multa
+                </button>
+            {% elif tipo_servico == 'ipva' %}
+                <button type="button" class="btn btn-primary" onclick="abrirModalNovo('ipva')">
+                    <i class="bi bi-plus me-1"></i>Novo IPVA
+                </button>
+            {% elif tipo_servico == 'licenciamento' %}
+                <button type="button" class="btn btn-primary" onclick="abrirModalNovo('licenciamento')">
+                    <i class="bi bi-plus me-1"></i>Novo Licenciamento
+                </button>
+            {% elif tipo_servico == 'manutencao' %}
+                <button type="button" class="btn btn-primary" onclick="abrirModalNovo('manutencao')">
+                    <i class="bi bi-plus me-1"></i>Nova Manutenção
+                </button>
+            {% endif %}
+            
+            <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                <i class="bi bi-download me-1"></i>Exportar
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if servicos %}
+        <!-- Campo de Busca -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Buscar {{ titulo.lower() }}..." onkeyup="searchTable()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-striped sortable-table" id="servicosTable">
+                <thead>
+                    <tr>
+                        {% if tipo_servico == 'multas' %}
+                        <th>Data Infração</th>
+                        <th>Tipo</th>
+                        <th>Local</th>
+                        <th>Vencimento</th>
+                        <th>Valor Original</th>
+                        <th>Status</th>
+                        {% elif tipo_servico == 'ipva' %}
+                        <th>Ano Exercício</th>
+                        <th>Vencimento</th>
+                        <th>Valor IPVA</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        {% elif tipo_servico == 'licenciamento' %}
+                        <th>Ano Exercício</th>
+                        <th>Vencimento</th>
+                        <th>Valor Licenciamento</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        {% elif tipo_servico == 'manutencao' %}
+                        <th>Data Serviço</th>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th>KM</th>
+                        <th>Valor Total</th>
+                        {% endif %}
+                        <th class="text-center no-sort" style="width: 100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for servico in servicos %}
+                    <tr>
+                        {% if tipo_servico == 'multas' %}
+                        <td>{{ servico.data_infracao.strftime('%d/%m/%Y') if servico.data_infracao else '—' }}</td>
+                        <td>{{ servico.tipo_infracao or '—' }}</td>
+                        <td>{{ servico.local_infracao or '—' }}</td>
+                        <td>{{ servico.data_vencimento.strftime('%d/%m/%Y') if servico.data_vencimento else '—' }}</td>
+                        <td>R$ {{ "{:,.2f}".format(servico.valor_original).replace(',', 'X').replace('.', ',').replace('X', '.') if servico.valor_original else '0,00' }}</td>
+                        <td>
+                            {% if servico.status == 'Pago' %}
+                                <span class="badge bg-success">{{ servico.status }}</span>
+                            {% elif servico.status == 'Contestado' %}
+                                <span class="badge bg-warning">{{ servico.status }}</span>
+                            {% else %}
+                                <span class="badge bg-danger">{{ servico.status }}</span>
+                            {% endif %}
+                        </td>
+                        {% elif tipo_servico == 'ipva' %}
+                        <td>{{ servico.ano_exercicio }}</td>
+                        <td>{{ servico.data_vencimento.strftime('%d/%m/%Y') if servico.data_vencimento else '—' }}</td>
+                        <td>R$ {{ "{:,.2f}".format(servico.valor_ipva).replace(',', 'X').replace('.', ',').replace('X', '.') if servico.valor_ipva else '0,00' }}</td>
+                        <td>R$ {{ "{:,.2f}".format(servico.valor_total).replace(',', 'X').replace('.', ',').replace('X', '.') if servico.valor_total else '0,00' }}</td>
+                        <td>
+                            {% if servico.status == 'Pago' %}
+                                <span class="badge bg-success">{{ servico.status }}</span>
+                            {% elif servico.status == 'Atrasado' %}
+                                <span class="badge bg-danger">{{ servico.status }}</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ servico.status }}</span>
+                            {% endif %}
+                        </td>
+                        {% elif tipo_servico == 'licenciamento' %}
+                        <td>{{ servico.ano_exercicio }}</td>
+                        <td>{{ servico.data_vencimento.strftime('%d/%m/%Y') if servico.data_vencimento else '—' }}</td>
+                        <td>R$ {{ "{:,.2f}".format(servico.valor_licenciamento).replace(',', 'X').replace('.', ',').replace('X', '.') if servico.valor_licenciamento else '0,00' }}</td>
+                        <td>R$ {{ "{:,.2f}".format(servico.valor_total).replace(',', 'X').replace('.', ',').replace('X', '.') if servico.valor_total else '0,00' }}</td>
+                        <td>
+                            {% if servico.status == 'Pago' %}
+                                <span class="badge bg-success">{{ servico.status }}</span>
+                            {% elif servico.status == 'Atrasado' %}
+                                <span class="badge bg-danger">{{ servico.status }}</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ servico.status }}</span>
+                            {% endif %}
+                        </td>
+                        {% elif tipo_servico == 'manutencao' %}
+                        <td>{{ servico.data_servico.strftime('%d/%m/%Y') if servico.data_servico else '—' }}</td>
+                        <td>{{ servico.tipo_manutencao or '—' }}</td>
+                        <td>{{ (servico.descricao[:50] + '...') if servico.descricao and servico.descricao|length > 50 else (servico.descricao or '—') }}</td>
+                        <td>{{ "{:,}".format(servico.km_veiculo).replace(',', '.') if servico.km_veiculo else '—' }}</td>
+                        <td>R$ {{ "{:,.2f}".format(servico.valor_total).replace(',', 'X').replace('.', ',').replace('X', '.') if servico.valor_total else '0,00' }}</td>
+                        {% endif %}
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                {% if tipo_servico == 'multas' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalServico" 
+                                            onclick="abrirModalEditar('multa', {{ servico.id_multa }})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="excluirServico('multa', {{ servico.id_multa }}, 'esta multa')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% elif tipo_servico == 'ipva' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalServico" 
+                                            onclick="abrirModalEditar('ipva', {{ servico.id_ipva }})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="excluirServico('ipva', {{ servico.id_ipva }}, 'este IPVA')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% elif tipo_servico == 'licenciamento' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalServico" 
+                                            onclick="abrirModalEditar('licenciamento', {{ servico.id_licenciamento }})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="excluirServico('licenciamento', {{ servico.id_licenciamento }}, 'este licenciamento')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% elif tipo_servico == 'manutencao' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalServico" 
+                                            onclick="abrirModalEditar('manutencao', {{ servico.id_manutencao }})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="excluirServico('manutencao', {{ servico.id_manutencao }}, 'esta manutenção')" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>Nenhum registro de {{ titulo.lower() }} encontrado para este veículo.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para Serviços -->
+<div class="modal fade" id="modalServico" tabindex="-1" aria-labelledby="modalServicoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalServicoLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Novo Serviço
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalServicoContent">
+                    <!-- Conteúdo do modal será carregado via AJAX -->
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-3">Carregando formulário...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Script de filtros avançados -->
+<script src="{{ url_for('static', filename='js/advanced-filters.js') }}"></script>
+
+<script>
+    // Variáveis globais
+    const veiculoId = {{ veiculo.id_veiculo }};
+    const tipoServico = '{{ tipo_servico }}';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar sistema de filtros avançados
+        if (document.getElementById('servicosTable')) {
+            initializeAdvancedFilters('servicosTable', '{{ titulo }}');
+        }
+    });
+
+    // Função de busca em tempo real
+    function searchTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('servicosTable');
+        const tbody = table.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            let shouldShow = false;
+            
+            // Busca em todas as colunas de texto (exceto a última que são as ações)
+            const cells = row.getElementsByTagName('td');
+            for (let j = 0; j < cells.length - 1; j++) {
+                const cellText = cells[j].textContent || cells[j].innerText;
+                if (cellText.toLowerCase().indexOf(filter) > -1) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        }
+    }
+
+    // Função para abrir modal de novo serviço
+    function abrirModalNovo(tipo) {
+        const modalElement = document.getElementById('modalServico');
+        const modalTitle = document.getElementById('modalServicoLabel');
+        const modalContent = document.getElementById('modalServicoContent');
+        
+        if (!modalElement) {
+            console.error('Modal não encontrado!');
+            return;
+        }
+        
+        // Abrir o modal primeiro
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Atualizar título
+        const titulos = {
+            'multa': '🚨 Nova Multa',
+            'ipva': '📄 Novo IPVA',
+            'licenciamento': '✅ Novo Licenciamento',
+            'manutencao': '🔧 Nova Manutenção'
+        };
+        modalTitle.innerHTML = `<i class="bi bi-plus-circle me-2"></i>${titulos[tipo]}`;
+        
+        // Mostrar loading
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3">Carregando formulário...</p>
+            </div>
+        `;
+        
+        // Carregar formulário via AJAX
+        const urls = {
+            'multa': `/cadastros/veiculos/${veiculoId}/multas/nova?modal=1`,
+            'ipva': `/cadastros/veiculos/${veiculoId}/ipva/novo?modal=1`,
+            'licenciamento': `/cadastros/veiculos/${veiculoId}/licenciamento/novo?modal=1`,
+            'manutencao': `/cadastros/veiculos/${veiculoId}/manutencao/nova?modal=1`
+        };
+        
+        fetch(urls[tipo])
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                initializarFormularioModal(tipo);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar formulário:', error);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Erro ao carregar o formulário. Tente novamente.
+                    </div>
+                `;
+            });
+    }
+
+    // Função para abrir modal de edição
+    function abrirModalEditar(tipo, id) {
+        const modalElement = document.getElementById('modalServico');
+        const modalTitle = document.getElementById('modalServicoLabel');
+        const modalContent = document.getElementById('modalServicoContent');
+        
+        if (!modalElement) {
+            console.error('Modal não encontrado!');
+            return;
+        }
+        
+        // Abrir o modal primeiro
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Atualizar título
+        const titulos = {
+            'multa': '🚨 Editar Multa',
+            'ipva': '📄 Editar IPVA',
+            'licenciamento': '✅ Editar Licenciamento',
+            'manutencao': '🔧 Editar Manutenção'
+        };
+        modalTitle.innerHTML = `<i class="bi bi-pencil me-2"></i>${titulos[tipo]}`;
+        
+        // Mostrar loading
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3">Carregando dados...</p>
+            </div>
+        `;
+        
+        // Carregar formulário de edição via AJAX
+        const urls = {
+            'multa': `/cadastros/veiculos/${veiculoId}/multas/${id}/editar?modal=1`,
+            'ipva': `/cadastros/veiculos/${veiculoId}/ipva/${id}/editar?modal=1`,
+            'licenciamento': `/cadastros/veiculos/${veiculoId}/licenciamento/${id}/editar?modal=1`,
+            'manutencao': `/cadastros/veiculos/${veiculoId}/manutencao/${id}/editar?modal=1`
+        };
+        
+        fetch(urls[tipo])
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                initializarFormularioModal(tipo);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar formulário:', error);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Erro ao carregar os dados. Tente novamente.
+                    </div>
+                `;
+            });
+    }
+
+    // Função para inicializar formulário no modal
+    function initializarFormularioModal(tipo) {
+        // Validação de formulário
+        const form = document.querySelector('#modalServicoContent form');
+        if (form) {
+            form.classList.add('needs-validation');
+            
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                if (!form.checkValidity()) {
+                    event.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+                
+                // Enviar formulário via AJAX
+                const formData = new FormData(form);
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Fechar modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('modalServico'));
+                        modal.hide();
+                        
+                        // Mostrar mensagem de sucesso
+                        mostrarToast(data.message, 'success');
+                        
+                        // Recarregar a página para atualizar a lista
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        // Mostrar erros do formulário
+                        if (data.errors) {
+                            mostrarErrosFormulario(data.errors);
+                        } else {
+                            mostrarToast(data.message || 'Erro ao salvar dados.', 'danger');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao enviar formulário:', error);
+                    mostrarToast('Erro ao salvar dados. Tente novamente.', 'danger');
+                });
+            });
+        }
+        
+        // Inicializar cálculos automáticos conforme o tipo
+        if (tipo === 'ipva' || tipo === 'licenciamento') {
+            initCalculoAutomaticoValorTotal(tipo);
+        } else if (tipo === 'manutencao') {
+            initCalculoAutomaticoManutencao();
+        }
+    }
+
+    // Função para excluir serviço
+    function excluirServico(tipo, id, descricao) {
+        if (!confirm(`Tem certeza que deseja excluir ${descricao}?`)) {
+            return;
+        }
+        
+        const urls = {
+            'multa': `/cadastros/veiculos/${veiculoId}/multas/${id}/excluir`,
+            'ipva': `/cadastros/veiculos/${veiculoId}/ipva/${id}/excluir`,
+            'licenciamento': `/cadastros/veiculos/${veiculoId}/licenciamento/${id}/excluir`,
+            'manutencao': `/cadastros/veiculos/${veiculoId}/manutencao/${id}/excluir`
+        };
+        
+        fetch(urls[tipo], {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarToast(data.message, 'success');
+                // Recarregar a página para atualizar a lista
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                mostrarToast(data.message || 'Erro ao excluir registro.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao excluir:', error);
+            mostrarToast('Erro ao excluir registro. Tente novamente.', 'danger');
+        });
+    }
+
+    // Função para mostrar toast
+    function mostrarToast(message, type) {
+        // Criar toast dinamicamente
+        const toastContainer = document.getElementById('toast-container') || createToastContainer();
+        
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Remover toast após ser escondido
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+
+    // Função para criar container de toasts
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // Função para mostrar erros do formulário
+    function mostrarErrosFormulario(errors) {
+        for (const field in errors) {
+            const input = document.querySelector(`[name="${field}"]`);
+            if (input) {
+                input.classList.add('is-invalid');
+                
+                // Remover feedback anterior
+                const existingFeedback = input.parentNode.querySelector('.invalid-feedback');
+                if (existingFeedback) {
+                    existingFeedback.remove();
+                }
+                
+                // Adicionar novo feedback
+                const feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                feedback.textContent = errors[field][0];
+                input.parentNode.appendChild(feedback);
+            }
+        }
+    }
+
+    // Funções para cálculos automáticos
+    function initCalculoAutomaticoValorTotal(tipo) {
+        const valorPrincipal = document.querySelector(`input[name="valor_${tipo === 'ipva' ? 'ipva' : 'licenciamento'}"]`);
+        const valorTaxa = document.querySelector('input[name="valor_taxa_detran"]');
+        const valorMulta = document.querySelector('input[name="valor_multa_juros"]');
+        const valorTotal = document.querySelector('input[name="valor_total"]');
+        
+        function calcularTotal() {
+            const principal = parseFloat(valorPrincipal?.value) || 0;
+            const taxa = parseFloat(valorTaxa?.value) || 0;
+            const multa = parseFloat(valorMulta?.value) || 0;
+            if (valorTotal) {
+                valorTotal.value = (principal + taxa + multa).toFixed(2);
+            }
+        }
+        
+        valorPrincipal?.addEventListener('input', calcularTotal);
+        valorTaxa?.addEventListener('input', calcularTotal);
+        valorMulta?.addEventListener('input', calcularTotal);
+    }
+
+    function initCalculoAutomaticoManutencao() {
+        const valorServico = document.querySelector('input[name="valor_servico"]');
+        const valorPecas = document.querySelector('input[name="valor_pecas"]');
+        const valorTotal = document.querySelector('input[name="valor_total"]');
+        
+        function calcularTotal() {
+            const servico = parseFloat(valorServico?.value) || 0;
+            const pecas = parseFloat(valorPecas?.value) || 0;
+            if (valorTotal) {
+                valorTotal.value = (servico + pecas).toFixed(2);
+            }
+        }
+        
+        valorServico?.addEventListener('input', calcularTotal);
+        valorPecas?.addEventListener('input', calcularTotal);
+    }
+</script>
+{% endblock %}

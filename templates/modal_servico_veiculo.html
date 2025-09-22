@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>
+        {% if acao == 'nova' or acao == 'novo' %}
+            {% if tipo_servico == 'multa' %}Cadastrar Nova Multa{% endif %}
+            {% if tipo_servico == 'ipva' %}Cadastrar Novo IPVA{% endif %}
+            {% if tipo_servico == 'licenciamento' %}Cadastrar Novo Licenciamento{% endif %}
+            {% if tipo_servico == 'manutencao' %}Cadastrar Nova Manutenção{% endif %}
+        {% else %}
+            {% if tipo_servico == 'multa' %}Editar Multa{% endif %}
+            {% if tipo_servico == 'ipva' %}Editar IPVA{% endif %}
+            {% if tipo_servico == 'licenciamento' %}Editar Licenciamento{% endif %}
+            {% if tipo_servico == 'manutencao' %}Editar Manutenção{% endif %}
+        {% endif %}
+        - {{ veiculo.nome }}
+    </h3>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('cadastrar_veiculo') }}">Veículos</a></li>
+            <li class="breadcrumb-item">
+                {% if tipo_servico == 'multa' %}
+                    <a href="{{ url_for('listar_multas_veiculo', id_veiculo=veiculo.id_veiculo) }}">Multas</a>
+                {% elif tipo_servico == 'ipva' %}
+                    <a href="{{ url_for('listar_ipva_veiculo', id_veiculo=veiculo.id_veiculo) }}">IPVA</a>
+                {% elif tipo_servico == 'licenciamento' %}
+                    <a href="{{ url_for('listar_licenciamento_veiculo', id_veiculo=veiculo.id_veiculo) }}">Licenciamento</a>
+                {% elif tipo_servico == 'manutencao' %}
+                    <a href="{{ url_for('listar_manutencao_veiculo', id_veiculo=veiculo.id_veiculo) }}">Manutenção</a>
+                {% endif %}
+            </li>
+            <li class="breadcrumb-item active">
+                {% if acao == 'nova' or acao == 'novo' %}Novo{% else %}Editar{% endif %}
+            </li>
+        </ol>
+    </nav>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            {% if tipo_servico == 'multa' %}
+                <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                {% if acao == 'nova' or acao == 'novo' %}Nova Multa{% else %}Editar Multa{% endif %}
+            {% elif tipo_servico == 'ipva' %}
+                <i class="bi bi-receipt text-primary me-2"></i>
+                {% if acao == 'nova' or acao == 'novo' %}Novo IPVA{% else %}Editar IPVA{% endif %}
+            {% elif tipo_servico == 'licenciamento' %}
+                <i class="bi bi-card-checklist text-success me-2"></i>
+                {% if acao == 'nova' or acao == 'novo' %}Novo Licenciamento{% else %}Editar Licenciamento{% endif %}
+            {% elif tipo_servico == 'manutencao' %}
+                <i class="bi bi-gear text-info me-2"></i>
+                {% if acao == 'nova' or acao == 'novo' %}Nova Manutenção{% else %}Editar Manutenção{% endif %}
+            {% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" class="needs-validation" novalidate>
+            {{ form.hidden_tag() }}
+            
+            {% if tipo_servico == 'multa' %}
+                <!-- Formulário de Multa -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.numero_ait.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.numero_ait(class="form-control", placeholder="Número do AIT") }}
+                            <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.tipo_infracao.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.tipo_infracao(class="form-control", placeholder="Ex: Excesso de velocidade", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-exclamation-triangle"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe o tipo de infração.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_infracao.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_infracao(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data da infração.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_vencimento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_vencimento(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data de vencimento.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_pagamento(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-plus"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_original.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_original(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor original.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_pago.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_pago(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.status.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.status(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.local_infracao.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.local_infracao(class="form-control", placeholder="Local onde ocorreu a infração") }}
+                            <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.orgao_autuador.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.orgao_autuador(class="form-control", placeholder="Ex: PRF, Polícia Civil") }}
+                            <span class="input-group-text"><i class="bi bi-shield"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+            {% elif tipo_servico == 'ipva' %}
+                <!-- Formulário de IPVA -->
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.ano_exercicio.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.ano_exercicio(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe o ano de exercício.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_vencimento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_vencimento(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data de vencimento.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_pagamento(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-plus"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_ipva.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_ipva(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor do IPVA.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_taxa_detran.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_taxa_detran(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_multa_juros.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_multa_juros(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_total.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_total(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor total.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_pago.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_pago(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.numero_documento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.numero_documento(class="form-control", placeholder="Número do documento") }}
+                            <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.status.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.status(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+            {% elif tipo_servico == 'licenciamento' %}
+                <!-- Formulário de Licenciamento (similar ao IPVA) -->
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.ano_exercicio.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.ano_exercicio(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe o ano de exercício.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_vencimento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_vencimento(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data de vencimento.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_pagamento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_pagamento(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-plus"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_licenciamento.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_licenciamento(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor do licenciamento.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_taxa_detran.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_taxa_detran(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_multa_juros.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_multa_juros(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.valor_total.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_total(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor total.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_pago.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_pago(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.numero_documento.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.numero_documento(class="form-control", placeholder="Número do documento") }}
+                            <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.status.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.status(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                        </div>
+                    </div>
+                </div>
+                
+            {% elif tipo_servico == 'manutencao' %}
+                <!-- Formulário de Manutenção -->
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.data_servico.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_servico(class="form-control", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, informe a data do serviço.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.tipo_manutencao.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.tipo_manutencao(class="form-select", required=true) }}
+                            <span class="input-group-text"><i class="bi bi-gear"></i></span>
+                            <div class="invalid-feedback">
+                                Por favor, selecione o tipo de manutenção.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.km_veiculo.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.km_veiculo(class="form-control", placeholder="0") }}
+                            <span class="input-group-text">km</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.fornecedor_servico.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.fornecedor_servico(class="form-control", placeholder="Nome da oficina/fornecedor") }}
+                            <span class="input-group-text"><i class="bi bi-building"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.garantia_dias.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.garantia_dias(class="form-control", placeholder="0") }}
+                            <span class="input-group-text">dias</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_servico.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_servico(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor do serviço.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_pecas.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_pecas(class="form-control", placeholder="0,00") }}
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.valor_total.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_total(class="form-control", placeholder="0,00", required=true) }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor total.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.data_proxima_revisao.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.data_proxima_revisao(class="form-control") }}
+                            <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.km_proxima_revisao.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.km_proxima_revisao(class="form-control", placeholder="0") }}
+                            <span class="input-group-text">km</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.descricao.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.descricao(class="form-control", rows=3, placeholder="Descrição detalhada do serviço realizado", required=true) }}
+                        <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                        <div class="invalid-feedback">
+                            Por favor, informe a descrição do serviço.
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Campo de observações comum a todos -->
+            <div class="mb-3">
+                {{ form.observacoes.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.observacoes(class="form-control", rows=3, placeholder="Observações adicionais (opcional)") }}
+                    <span class="input-group-text"><i class="bi bi-chat-dots"></i></span>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% if tipo_servico == 'multa' %}{{ url_for('listar_multas_veiculo', id_veiculo=veiculo.id_veiculo) }}{% elif tipo_servico == 'ipva' %}{{ url_for('listar_ipva_veiculo', id_veiculo=veiculo.id_veiculo) }}{% elif tipo_servico == 'licenciamento' %}{{ url_for('listar_licenciamento_veiculo', id_veiculo=veiculo.id_veiculo) }}{% elif tipo_servico == 'manutencao' %}{{ url_for('listar_manutencao_veiculo', id_veiculo=veiculo.id_veiculo) }}{% endif %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Validação de formulário
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        {% if tipo_servico == 'ipva' or tipo_servico == 'licenciamento' %}
+        // Cálculo automático do valor total para IPVA e Licenciamento
+        const valorPrincipal = document.querySelector('input[name="valor_{{ "ipva" if tipo_servico == "ipva" else "licenciamento" }}"]');
+        const valorTaxa = document.querySelector('input[name="valor_taxa_detran"]');
+        const valorMulta = document.querySelector('input[name="valor_multa_juros"]');
+        const valorTotal = document.querySelector('input[name="valor_total"]');
+        
+        function calcularTotal() {
+            const principal = parseFloat(valorPrincipal.value) || 0;
+            const taxa = parseFloat(valorTaxa.value) || 0;
+            const multa = parseFloat(valorMulta.value) || 0;
+            valorTotal.value = (principal + taxa + multa).toFixed(2);
+        }
+        
+        valorPrincipal.addEventListener('input', calcularTotal);
+        valorTaxa.addEventListener('input', calcularTotal);
+        valorMulta.addEventListener('input', calcularTotal);
+        {% endif %}
+        
+        {% if tipo_servico == 'manutencao' %}
+        // Cálculo automático do valor total para Manutenção
+        const valorServico = document.querySelector('input[name="valor_servico"]');
+        const valorPecas = document.querySelector('input[name="valor_pecas"]');
+        const valorTotalManutencao = document.querySelector('input[name="valor_total"]');
+        
+        function calcularTotalManutencao() {
+            const servico = parseFloat(valorServico.value) || 0;
+            const pecas = parseFloat(valorPecas.value) || 0;
+            valorTotalManutencao.value = (servico + pecas).toFixed(2);
+        }
+        
+        valorServico.addEventListener('input', calcularTotalManutencao);
+        valorPecas.addEventListener('input', calcularTotalManutencao);
+        {% endif %}
+    });
+</script>
+{% endblock %}

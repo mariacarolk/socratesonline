@@ -168,6 +168,36 @@
                                 <a href="{{ url_for('editar_veiculo', id=v.id_veiculo) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                
+                                <!-- Dropdown para serviços -->
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Serviços">
+                                        <i class="bi bi-tools"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <button class="dropdown-item" onclick="abrirModalServicos('multas', {{ v.id_veiculo }}, '{{ v.nome }}')">
+                                                <i class="bi bi-exclamation-triangle text-warning me-2"></i>Multas
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item" onclick="abrirModalServicos('ipva', {{ v.id_veiculo }}, '{{ v.nome }}')">
+                                                <i class="bi bi-receipt text-primary me-2"></i>IPVA
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item" onclick="abrirModalServicos('licenciamento', {{ v.id_veiculo }}, '{{ v.nome }}')">
+                                                <i class="bi bi-card-checklist text-success me-2"></i>Licenciamento
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item" onclick="abrirModalServicos('manutencao', {{ v.id_veiculo }}, '{{ v.nome }}')">
+                                                <i class="bi bi-gear text-info me-2"></i>Manutenção
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                
                                 <a href="{{ url_for('excluir_veiculo', id=v.id_veiculo) }}" class="btn btn-sm btn-outline-danger" 
                                    onclick="return confirm('Tem certeza que deseja excluir este veículo?')" title="Excluir">
                                     <i class="bi bi-trash"></i>
@@ -238,5 +268,358 @@
             row.style.display = shouldShow ? '' : 'none';
         }
     }
+
+    // Variáveis globais para o modal
+    let modalTipoServico = '';
+    let modalVeiculoId = '';
+
+    // Função para abrir modal de serviços completo
+    function abrirModalServicos(tipoServico, idVeiculo, nomeVeiculo) {
+        console.log(`[DEBUG] abrirModalServicos chamado: ${tipoServico}, veiculo: ${idVeiculo}, nome: ${nomeVeiculo}`);
+        
+        const modalElement = document.getElementById('modalServicosCompleto');
+        const modalTitle = document.getElementById('modalServicosLabel');
+        const modalContent = document.getElementById('modalServicosContent');
+        
+        if (!modalElement) {
+            console.error('Modal de serviços não encontrado!');
+            return;
+        }
+
+        // Armazenar variáveis globais
+        modalTipoServico = tipoServico;
+        modalVeiculoId = idVeiculo;
+        
+        // Exportar para window para acesso global
+        window.modalTipoServico = tipoServico;
+        window.modalVeiculoId = idVeiculo;
+
+        // Abrir o modal
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+
+        // Configurar título
+        const titulos = {
+            'multas': '🚨 Multas',
+            'ipva': '📄 IPVA',
+            'licenciamento': '✅ Licenciamento',
+            'manutencao': '🔧 Manutenção'
+        };
+        modalTitle.innerHTML = `${titulos[tipoServico]} - ${nomeVeiculo}`;
+
+        // Mostrar loading
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3">Carregando dados...</p>
+            </div>
+        `;
+
+        // Carregar conteúdo completo via AJAX
+        const urls = {
+            'multas': `/cadastros/veiculos/${idVeiculo}/multas?modal=1`,
+            'ipva': `/cadastros/veiculos/${idVeiculo}/ipva?modal=1`,
+            'licenciamento': `/cadastros/veiculos/${idVeiculo}/licenciamento?modal=1`,
+            'manutencao': `/cadastros/veiculos/${idVeiculo}/manutencao?modal=1`
+        };
+
+        fetch(urls[tipoServico])
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                
+                // Carregar formulário diretamente
+                setTimeout(() => {
+                    carregarFormularioDirecto(tipoServico, idVeiculo);
+                }, 300);
+                
+                // Reinicializar scripts se necessário
+                if (typeof initializeAdvancedFilters === 'function') {
+                    setTimeout(() => {
+                        const table = modalContent.querySelector('table');
+                        if (table) {
+                            initializeAdvancedFilters(table.id, titulos[tipoServico]);
+                        }
+                    }, 100);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar serviços:', error);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Erro ao carregar os dados. Tente novamente.
+                    </div>
+                `;
+            });
+    }
+
+    // Função específica para carregar formulário no modal de veículos
+    function carregarFormularioDirecto(tipoServico, idVeiculo, idRegistro) {
+        const formContainer = document.getElementById('formContainer');
+        
+        if (!formContainer) {
+            console.error('Container do formulário não encontrado');
+            return;
+        }
+
+        let url;
+        
+        // URLs para carregar formulário (novo ou editar)
+        if (idRegistro) {
+            // Editar registro existente
+            const editUrls = {
+                'multas': `/cadastros/veiculos/${idVeiculo}/multas/${idRegistro}/editar?modal=1`,
+                'ipva': `/cadastros/veiculos/${idVeiculo}/ipva/${idRegistro}/editar?modal=1`,
+                'licenciamento': `/cadastros/veiculos/${idVeiculo}/licenciamento/${idRegistro}/editar?modal=1`,
+                'manutencao': `/cadastros/veiculos/${idVeiculo}/manutencao/${idRegistro}/editar?modal=1`
+            };
+            url = editUrls[tipoServico];
+        } else {
+            // Novo registro
+            const newUrls = {
+                'multas': `/cadastros/veiculos/${idVeiculo}/multas/nova?modal=1`,
+                'ipva': `/cadastros/veiculos/${idVeiculo}/ipva/novo?modal=1`,
+                'licenciamento': `/cadastros/veiculos/${idVeiculo}/licenciamento/novo?modal=1`,
+                'manutencao': `/cadastros/veiculos/${idVeiculo}/manutencao/nova?modal=1`
+            };
+            url = newUrls[tipoServico];
+        }
+
+        console.log('Carregando formulário:', url);
+
+        // Mostrar loading
+        formContainer.innerHTML = `
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2">${idRegistro ? 'Carregando dados...' : 'Carregando formulário...'}</p>
+            </div>
+        `;
+
+        fetch(url)
+            .then(response => {
+                console.log(`[${tipoServico.toUpperCase()}] Resposta recebida:`, response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                console.log(`[${tipoServico.toUpperCase()}] HTML recebido (${html.length} chars), inserindo no container`);
+                if (html.length < 100) {
+                    console.warn(`[${tipoServico.toUpperCase()}] HTML muito pequeno:`, html);
+                }
+                formContainer.innerHTML = html;
+                
+                // Inicializar formulário
+                setTimeout(() => {
+                    console.log(`[${tipoServico.toUpperCase()}] Tentando inicializar formulário...`);
+                    if (typeof window.initializarFormularioModal === 'function') {
+                        try {
+                            window.initializarFormularioModal(tipoServico);
+                            console.log(`[${tipoServico.toUpperCase()}] Formulário inicializado com sucesso`);
+                        } catch (error) {
+                            console.error(`[${tipoServico.toUpperCase()}] Erro ao inicializar formulário:`, error);
+                        }
+                    } else {
+                        console.error(`[${tipoServico.toUpperCase()}] Função initializarFormularioModal não encontrada`);
+                    }
+                }, 100);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar formulário:', error);
+                formContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Erro ao carregar formulário: ${error.message}
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="carregarFormularioDirecto('${tipoServico}', ${idVeiculo}, ${idRegistro || 'null'})">
+                            Tentar Novamente
+                        </button>
+                    </div>
+                `;
+            });
+    }
+
+    // Função para inicializar formulário no modal (adaptada para modal de veículos)
+    window.initializarFormularioModal = function(tipo) {
+        console.log(`[${tipo.toUpperCase()}] Inicializando formulário modal...`);
+        
+        // Validação de formulário
+        const form = document.querySelector('#modalServicosContent form');
+        if (form) {
+            console.log(`[${tipo.toUpperCase()}] Formulário encontrado, adicionando validação`);
+            form.classList.add('needs-validation');
+            
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                if (!form.checkValidity()) {
+                    event.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+                
+                // Enviar formulário via AJAX
+                const formData = new FormData(form);
+                
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Mostrar mensagem de sucesso
+                        alert(data.message || 'Salvo com sucesso!');
+                        
+                        // Recarregar o conteúdo do modal
+                        const modalContent = document.getElementById('modalServicosContent');
+                        const tipoServico = modalTipoServico;
+                        const idVeiculo = modalVeiculoId;
+                        
+                        // Recarregar conteúdo completo
+                        const urls = {
+                            'multas': `/cadastros/veiculos/${idVeiculo}/multas?modal=1`,
+                            'ipva': `/cadastros/veiculos/${idVeiculo}/ipva?modal=1`,
+                            'licenciamento': `/cadastros/veiculos/${idVeiculo}/licenciamento?modal=1`,
+                            'manutencao': `/cadastros/veiculos/${idVeiculo}/manutencao?modal=1`
+                        };
+                        
+                        fetch(urls[tipoServico])
+                            .then(response => response.text())
+                            .then(html => {
+                                modalContent.innerHTML = html;
+                            });
+                    } else {
+                        // Mostrar erros do formulário
+                        if (data.errors) {
+                            mostrarErrosFormulario(data.errors);
+                        } else {
+                            alert(data.message || 'Erro ao salvar dados.');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao enviar formulário:', error);
+                    alert('Erro ao salvar dados. Tente novamente.');
+                });
+            });
+        }
+        
+        // Inicializar cálculos automáticos conforme o tipo
+        if (tipo === 'ipva' || tipo === 'licenciamento') {
+            initCalculoAutomaticoValorTotal(tipo);
+        } else if (tipo === 'manutencao') {
+            initCalculoAutomaticoManutencao();
+        }
+        
+        // Aplicar máscaras de moeda
+        aplicarMascaraMoeda('#modalServicosContent input[type="number"]');
+        aplicarMascaraMoeda('#modalServicosContent input[name*="valor"]');
+    };
+
+    // Funções auxiliares para cálculos (versões simplificadas)
+    function initCalculoAutomaticoValorTotal(tipo) {
+        const valorPrincipal = document.querySelector(`#modalServicosContent input[name="valor_${tipo === 'ipva' ? 'ipva' : 'licenciamento'}"]`);
+        const valorTaxa = document.querySelector('#modalServicosContent input[name="valor_taxa_detran"]');
+        const valorMulta = document.querySelector('#modalServicosContent input[name="valor_multa_juros"]');
+        const valorTotal = document.querySelector('#modalServicosContent input[name="valor_total"]');
+        
+        function calcularTotal() {
+            const principal = parseFloat(valorPrincipal?.value) || 0;
+            const taxa = parseFloat(valorTaxa?.value) || 0;
+            const multa = parseFloat(valorMulta?.value) || 0;
+            if (valorTotal) {
+                valorTotal.value = (principal + taxa + multa).toFixed(2);
+            }
+        }
+        
+        valorPrincipal?.addEventListener('input', calcularTotal);
+        valorTaxa?.addEventListener('input', calcularTotal);
+        valorMulta?.addEventListener('input', calcularTotal);
+    }
+
+    function initCalculoAutomaticoManutencao() {
+        const valorServico = document.querySelector('#modalServicosContent input[name="valor_servico"]');
+        const valorPecas = document.querySelector('#modalServicosContent input[name="valor_pecas"]');
+        const valorTotal = document.querySelector('#modalServicosContent input[name="valor_total"]');
+        
+        function calcularTotal() {
+            const servico = parseFloat(valorServico?.value) || 0;
+            const pecas = parseFloat(valorPecas?.value) || 0;
+            if (valorTotal) {
+                valorTotal.value = (servico + pecas).toFixed(2);
+            }
+        }
+        
+        valorServico?.addEventListener('input', calcularTotal);
+        valorPecas?.addEventListener('input', calcularTotal);
+    }
+
+    function mostrarErrosFormulario(errors) {
+        for (const field in errors) {
+            const input = document.querySelector(`#modalServicosContent [name="${field}"]`);
+            if (input) {
+                input.classList.add('is-invalid');
+                
+                // Remover feedback anterior
+                const existingFeedback = input.parentNode.querySelector('.invalid-feedback');
+                if (existingFeedback) {
+                    existingFeedback.remove();
+                }
+                
+                // Adicionar novo feedback
+                const feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback';
+                feedback.textContent = errors[field][0];
+                input.parentNode.appendChild(feedback);
+            }
+        }
+    }
+
+    function aplicarMascaraMoeda(selector) {
+        const elementos = document.querySelectorAll(selector);
+        elementos.forEach(elemento => {
+            elemento.addEventListener('input', function() {
+                // Implementação básica de máscara de moeda
+                let value = this.value.replace(/\D/g, '');
+                value = (value / 100).toFixed(2);
+                this.value = value;
+            });
+        });
+    }
 </script>
+
+<!-- Modal para Serviços Completos -->
+<div class="modal fade" id="modalServicosCompleto" tabindex="-1" aria-labelledby="modalServicosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalServicosLabel">
+                    <i class="bi bi-tools me-2"></i>Serviços
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalServicosContent">
+                    <!-- Conteúdo será carregado via AJAX -->
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-3">Carregando dados...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %} 

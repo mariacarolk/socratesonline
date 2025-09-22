@@ -337,11 +337,12 @@
                         <thead class="table-light">
                           <tr>
                             <th style="width: 25%;">Despesa</th>
-                            <th style="width: 12%;">Data</th>
-                            <th style="width: 12%;">Valor</th>
-                            <th style="width: 10%;">Status</th>
-                            <th style="width: 10%;">Despesa da Cabeça</th>
-                            <th style="width: 16%;">Observações</th>
+                            <th style="width: 10%;">Data</th>
+                            <th style="width: 10%;">Valor Real</th>
+                            <th style="width: 10%;">Valor Pago SO</th>
+                            <th style="width: 8%;">Status</th>
+                            <th style="width: 8%;">Despesa da Cabeça</th>
+                            <th style="width: 14%;">Observações</th>
                             <th style="width: 15%;">Ações</th>
                             </tr>
                         </thead>
@@ -362,6 +363,19 @@
                               <input type="text" class="form-control form-control-sm despesa-edit d-none" 
                                      id="despesa_valor_{{ despesa.id_despesa }}" 
                                      value="{{ (despesa.valor_atual|string).replace('.', ',') }}"
+                                     oninput="formatarMoeda(this)">
+                                </td>
+                                <td>
+                              <span class="despesa-display">
+                                {% if despesa.valor_pago_socrates_atual %}
+                                  <strong>R$ {{ "%.2f"|format(despesa.valor_pago_socrates_atual) }}</strong>
+                                {% else %}
+                                  <span class="text-muted">-</span>
+                                {% endif %}
+                              </span>
+                              <input type="text" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_valor_pago_socrates_{{ despesa.id_despesa }}" 
+                                     value="{{ (despesa.valor_pago_socrates_atual|string).replace('.', ',') if despesa.valor_pago_socrates_atual else '' }}"
                                      oninput="formatarMoeda(this)">
                                 </td>
                                 <td>
@@ -412,13 +426,14 @@
                                         data-is-fixa="true"
                                         data-data="{{ despesa.data_atual }}"
                                         data-valor="{{ ("%.2f"|format(despesa.valor_atual)) if despesa.valor_atual else "" }}"
+                                        data-valor-pago-socrates="{{ ("%.2f"|format(despesa.valor_pago_socrates_atual)) if despesa.valor_pago_socrates_atual else "" }}"
                                         data-fornecedor="{{ despesa.fornecedor_nome_atual or "" }}"
                                         data-fornecedor-id="{{ despesa.fornecedor_atual or "" }}"
                                         data-status="{{ despesa.status_atual }}"
                                         data-forma="{{ despesa.forma_atual }}"
                                         data-pago-por="{{ despesa.pago_por_atual or "" }}"
                                         data-obs="{{ despesa.obs_atual or "" }}"
-                                        data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
+                                        data-despesa-cabeca="{{ despesa.despesa_cabeca_atual }}"
                                         data-comprovante="{{ despesa.comprovante_atual or "" }}"
                                         data-qtd-dias="{{ despesa.qtd_dias_atual or "" }}"
                                         data-qtd-pessoas="{{ despesa.qtd_pessoas_atual or "" }}"
@@ -483,6 +498,19 @@
                                 </td>
                                 <td>
                               <span class="despesa-display">
+                                {% if despesa.valor_pago_socrates_atual %}
+                                  <strong>R$ {{ "%.2f"|format(despesa.valor_pago_socrates_atual) }}</strong>
+                                {% else %}
+                                  <span class="text-muted">-</span>
+                                {% endif %}
+                              </span>
+                              <input type="text" class="form-control form-control-sm despesa-edit d-none" 
+                                     id="despesa_valor_pago_socrates_{{ despesa.id_despesa }}" 
+                                     value="{{ (despesa.valor_pago_socrates_atual|string).replace('.', ',') if despesa.valor_pago_socrates_atual else '' }}"
+                                     oninput="formatarMoeda(this)">
+                                </td>
+                                <td>
+                              <span class="despesa-display">
                                 <span class="badge bg-{{ 'success' if despesa.status_atual == 'pago' else 'warning' }}" style="font-size: 10px;">
                                   {{ despesa.status_atual|title }}
                                 </span>
@@ -529,13 +557,14 @@
                                         data-is-fixa="false"
                                         data-data="{{ despesa.data_atual }}"
                                         data-valor="{{ ("%.2f"|format(despesa.valor_atual)) if despesa.valor_atual else "" }}"
+                                        data-valor-pago-socrates="{{ ("%.2f"|format(despesa.valor_pago_socrates_atual)) if despesa.valor_pago_socrates_atual else "" }}"
                                         data-fornecedor="{{ despesa.fornecedor_nome_atual or "" }}"
                                         data-fornecedor-id="{{ despesa.fornecedor_atual or "" }}"
                                         data-status="{{ despesa.status_atual }}"
                                         data-forma="{{ despesa.forma_atual }}"
                                         data-pago-por="{{ despesa.pago_por_atual or "" }}"
                                         data-obs="{{ despesa.obs_atual or "" }}"
-                                        data-despesa-cabeca="{{ despesa.despesa_cabeca }}"
+                                        data-despesa-cabeca="{{ despesa.despesa_cabeca_atual }}"
                                         data-comprovante="{{ despesa.comprovante_atual or "" }}"
                                         data-qtd-dias="{{ despesa.qtd_dias_atual or "" }}"
                                         data-qtd-pessoas="{{ despesa.qtd_pessoas_atual or "" }}"
@@ -728,8 +757,11 @@
 </div>
 </div>
 
-<!-- Modal Adicionar Despesa -->
-<div class="modal fade" id="modalAdicionarDespesa" tabindex="-1" aria-hidden="true">
+<!-- Incluir Modal Unificado -->
+{% include 'modal_despesa_unificado.html' %}
+
+<!-- Modal Adicionar Despesa (REMOVIDO - usando modal unificado) -->
+<div class="modal fade" id="modalAdicionarDespesaOLD" tabindex="-1" aria-hidden="true" style="display: none !important;">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-danger text-white border-0">
@@ -738,7 +770,7 @@
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form onsubmit="adicionarDespesaEvento(event)" enctype="multipart/form-data">
+      <form onsubmit="return false;" enctype="multipart/form-data">
         <div class="modal-body p-4">
           <div class="row g-3">
             <div class="col-12">
@@ -759,6 +791,15 @@
             </div>
             
             <div class="col-md-6">
+              <div class="form-check d-flex align-items-center h-100">
+                <input type="checkbox" name="despesa_cabeca" class="form-check-input me-2" id="despesa_cabeca_novo_evento" value="1">
+                <label class="form-check-label fw-medium" for="despesa_cabeca_novo_evento">
+                  Despesa da cabeça
+                </label>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
                 <label class="form-label fw-medium">Data de Vencimento</label>
               <input type="date" name="data_vencimento" class="form-control" id="modal_despesa_data_vencimento" required value="{{ current_date }}">
             </div>
@@ -770,8 +811,13 @@
             </div>
             
             <div class="col-md-6">
-                <label class="form-label fw-medium">Valor (R$)</label>
+                <label class="form-label fw-medium">Valor Real (R$)</label>
                 <input type="text" name="valor" class="form-control" id="modal_despesa_valor" required placeholder="0,00">
+            </div>
+            
+            <div class="col-md-6">
+                <label class="form-label fw-medium">Valor Pago Sócrates Online (R$)</label>
+                <input type="text" name="valor_pago_socrates" class="form-control" id="modal_despesa_valor_pago_socrates" placeholder="0,00">
             </div>
             
             <div class="col-12">
@@ -888,14 +934,6 @@
                 <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="3"></textarea>
             </div>
               
-              <div class="col-12">
-                <div class="form-check">
-                  <input type="checkbox" name="despesa_cabeca" class="form-check-input" id="despesa_cabeca_modal" value="1">
-                  <label class="form-check-label fw-medium" for="despesa_cabeca_modal">
-                    Despesa da cabeça
-                  </label>
-          </div>
-        </div>
             </div>
           </div>
         <div class="modal-footer border-0 bg-light">
@@ -1297,44 +1335,43 @@ function abrirModalReceita(receitaId, categoriaId, nomeReceita, nomeCategoria) {
     modal.show();
 }
 
-// Função para abrir modal de despesa
+// Função para abrir modal de despesa (usando modal unificado)
 function abrirModalDespesa(despesaId, categoriaId, nomeDespesa, nomeCategoria, isFixa, valorMedio) {
-    // Limpar formulário
-    var form = document.querySelector('#modalAdicionarDespesa form');
-    form.reset();
+    const eventoId = obterEventoId();
     
-    // Pré-preencher categoria se fornecida
-    if (categoriaId) {
-        document.getElementById('modal_despesa_categoria').value = categoriaId;
-        // Carregar despesas da categoria
-        carregarDespesasPorCategoriaModal(categoriaId, despesaId);
-    }
-    
-    // Pré-preencher data
-    document.getElementById('modal_despesa_data_vencimento').value = '{{ current_date }}';
-    
-    // Pré-preencher valor médio se disponível
-    if (valorMedio) {
-        const inputValor = document.getElementById('modal_despesa_valor');
-        inputValor.value = valorMedio.replace('.', ',');
-        inputValor.setAttribute('data-valor-medio', valorMedio);
+    if (modalDespesaUnificado) {
+        // Preparar dados pré-preenchidos
+        const dadosPreenchidos = {};
         
-        // Configurar validação de valor médio
-        inputValor.removeEventListener('input', validarValorAoDigitarModal);
-        inputValor.addEventListener('input', validarValorAoDigitarModal);
+        if (categoriaId) {
+            dadosPreenchidos.categoria_id = categoriaId;
+        }
+        
+        if (despesaId) {
+            dadosPreenchidos.despesa_id = despesaId;
+        }
+        
+        if (valorMedio && valorMedio !== 'null' && valorMedio !== '0.00') {
+            dadosPreenchidos.valor = valorMedio;
+        }
+        
+        // Abrir modal unificado
+        modalDespesaUnificado.abrirParaAdicionar('novo_evento', eventoId);
+        
+        // Preencher dados após abrir
+        if (Object.keys(dadosPreenchidos).length > 0) {
+            setTimeout(() => {
+                modalDespesaUnificado.preencherDados(dadosPreenchidos);
+            }, 100);
+        }
+        
+        // Atualizar título se necessário
+        if (nomeDespesa) {
+            setTimeout(() => {
+                document.getElementById('modal-title-text').textContent = 'Cadastrar: ' + nomeDespesa + ' (' + (isFixa === 'true' ? 'Fixa' : 'Variável') + ')';
+            }, 100);
+        }
     }
-    
-    // Atualizar título do modal
-    var titulo = document.querySelector('#modalAdicionarDespesa .modal-title');
-    if (nomeDespesa) {
-        titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Cadastrar: ' + nomeDespesa + ' (' + (isFixa === 'true' ? 'Fixa' : 'Variável') + ')';
-  } else {
-        titulo.innerHTML = '<i class="bi bi-credit-card me-2"></i>Nova Despesa - ' + (nomeCategoria || 'Selecione categoria');
-    }
-    
-    // Abrir modal
-    var modal = new bootstrap.Modal(document.getElementById('modalAdicionarDespesa'));
-    modal.show();
 }
 
 // Função para carregar receitas por categoria no modal
@@ -1755,6 +1792,7 @@ function editarReceita(receitaId) {
 function salvarDespesa(despesaId, isFixa) {
     var data = document.getElementById('despesa_data_vencimento_' + despesaId).value;
     var valor = document.getElementById('despesa_valor_' + despesaId).value;
+    var valorPagoSocrates = document.getElementById('despesa_valor_pago_socrates_' + despesaId).value;
     var fornecedor = document.getElementById('despesa_fornecedor_' + despesaId).value;
     var status = document.getElementById('despesa_status_' + despesaId).value;
     var forma = document.getElementById('despesa_forma_' + despesaId).value;
@@ -1774,6 +1812,7 @@ function salvarDespesa(despesaId, isFixa) {
     despesa_id: despesaId,
                 data: data,
                 valor: valor,
+                valor_pago_socrates: valorPagoSocrates,
                 id_fornecedor: fornecedor || null,
                 status_pagamento: status,
                 forma_pagamento: forma,
@@ -1848,11 +1887,12 @@ function esconderCamposDespesa(despesaId, dadosDespesa, fornecedorNome) {
     // Data (índice 1)
     cells[1].querySelector('.despesa-display').innerHTML = formatarDataBR(dadosDespesa.data_vencimento);
     
-    // Valor (índice 2)
+    // Valor Real (índice 2)
     cells[2].querySelector('.despesa-display').innerHTML = 'R$ ' + dadosDespesa.valor;
     
-    // Fornecedor (índice 3)
-    cells[3].querySelector('.despesa-display').innerHTML = fornecedorNome || '-';
+    // Valor Pago SO (índice 3)
+    cells[3].querySelector('.despesa-display').innerHTML = dadosDespesa.valor_pago_socrates ? 
+        'R$ ' + dadosDespesa.valor_pago_socrates : '<span class="text-muted">-</span>';
     
     // Status (índice 4)
     var statusBadge = dadosDespesa.status_pagamento === 'pago' ? 'success' : 'warning';
@@ -1864,15 +1904,8 @@ function esconderCamposDespesa(despesaId, dadosDespesa, fornecedorNome) {
     var despesaCabecaCheckbox = cells[5].querySelector('.despesa-display input[type="checkbox"]');
     despesaCabecaCheckbox.checked = dadosDespesa.despesa_cabeca;
     
-    // Forma (índice 6)
-    cells[6].querySelector('.despesa-display').innerHTML = 
-        dadosDespesa.forma_pagamento.charAt(0).toUpperCase() + dadosDespesa.forma_pagamento.slice(1);
-    
-    // Pago Por (índice 7)
-    cells[7].querySelector('.despesa-display').innerHTML = dadosDespesa.pago_por || '-';
-    
-    // Observações (índice 8)
-    cells[8].querySelector('.despesa-display').innerHTML = dadosDespesa.observacoes || '-';
+    // Observações (índice 6)
+    cells[6].querySelector('.despesa-display').innerHTML = dadosDespesa.observacoes || '-';
 }
 
 // Função para formatar data para formato brasileiro
@@ -2388,13 +2421,14 @@ function editarDespesaModal(button) {
     const isFixa = button.getAttribute('data-is-fixa') === 'true';
     const data = button.getAttribute('data-data');
     const valor = button.getAttribute('data-valor');
+    const valorPagoSocrates = button.getAttribute('data-valor-pago-socrates');
     const fornecedor = button.getAttribute('data-fornecedor');
     const fornecedorId = button.getAttribute('data-fornecedor-id');
     const status = button.getAttribute('data-status');
     const forma = button.getAttribute('data-forma');
     const pagoPor = button.getAttribute('data-pago-por');
     const obs = button.getAttribute('data-obs');
-    const despesaCabeca = button.getAttribute('data-despesa-cabeca') === 'true';
+    const despesaCabeca = button.getAttribute('data-despesa-cabeca') === 'True';
     
     // Debug logs
     console.log('=== DEBUG MODAL EDIÇÃO ===');
@@ -2406,6 +2440,7 @@ function editarDespesaModal(button) {
     console.log('É Fixa:', isFixa);
     console.log('Data:', data);
     console.log('Valor:', valor);
+    console.log('Valor Pago Sócrates:', valorPagoSocrates);
     console.log('Fornecedor:', fornecedor);
     console.log('Fornecedor ID:', fornecedorId);
     console.log('Status:', status);
@@ -2413,6 +2448,7 @@ function editarDespesaModal(button) {
     console.log('Pago Por:', pagoPor);
     console.log('Obs:', obs);
     console.log('Despesa da Cabeça:', despesaCabeca);
+    console.log('Valor bruto do atributo:', button.getAttribute('data-despesa-cabeca'));
     
     // Limpar formulário
     const form = document.querySelector('#modalAdicionarDespesa form');
@@ -2422,6 +2458,7 @@ function editarDespesaModal(button) {
     document.getElementById('modal_despesa_categoria').value = categoriaId;
     document.getElementById('modal_despesa_data_vencimento').value = data;
     document.getElementById('modal_despesa_valor').value = valor ? valor.replace('.', ',') : '';
+    document.getElementById('modal_despesa_valor_pago_socrates').value = valorPagoSocrates ? valorPagoSocrates.replace('.', ',') : '';
     document.getElementById('modal_despesa_fornecedor_nome').value = fornecedor || '';
     document.getElementById('modal_despesa_fornecedor').value = fornecedorId || '';
     document.getElementById('modal_despesa_status').value = status || 'pendente';
@@ -2442,7 +2479,8 @@ function editarDespesaModal(button) {
     document.getElementById('modal_qtd_pessoas').value = qtdPessoas || '';
     
     // Preencher campo despesa da cabeça
-    document.getElementById('despesa_cabeca_modal').checked = despesaCabeca;
+    document.getElementById('despesa_cabeca_novo_evento').checked = despesaCabeca;
+    console.log('✅ Campo despesa_cabeca_novo_evento marcado como:', despesaCabeca);
     
     // Verificar se deve mostrar campos de alimentação
     // Se já temos valores de quantidade, mostrar os campos imediatamente
@@ -2896,6 +2934,29 @@ console.log('📋 Total de elementos form encontrados:', forms.length);
     }
 }
 </style>
+
+<!-- Script do Modal Unificado -->
+<script src="{{ url_for('static', filename='js/modal-despesa-unificado.js') }}"></script>
+
+<!-- Configurar modal para contexto de novo evento -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Aguardar carregamento do modal unificado
+    setTimeout(() => {
+        if (modalDespesaUnificado) {
+            // Configurar contexto específico para novo evento
+            modalDespesaUnificado.contexto = 'novo_evento';
+            
+            // Substituir botões que abriam o modal antigo
+            const botoesAdicionarDespesa = document.querySelectorAll('[onclick*="abrirModalDespesa"]');
+            botoesAdicionarDespesa.forEach(botao => {
+                const onclickOriginal = botao.getAttribute('onclick');
+                // Manter a chamada original, pois já atualizamos a função
+            });
+        }
+    }, 100);
+});
+</script>
 
 {% endblock %}
 

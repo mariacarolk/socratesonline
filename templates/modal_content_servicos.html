@@ -1,0 +1,244 @@
+<!-- Template para conteúdo completo de serviços no modal -->
+
+<!-- Formulário para Novo Registro -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+            {% if tipo_servico == 'multas' %}
+                <i class="bi bi-plus-circle me-2"></i>Nova Multa
+            {% elif tipo_servico == 'ipva' %}
+                <i class="bi bi-plus-circle me-2"></i>Novo IPVA
+            {% elif tipo_servico == 'licenciamento' %}
+                <i class="bi bi-plus-circle me-2"></i>Novo Licenciamento
+            {% elif tipo_servico == 'manutencao' %}
+                <i class="bi bi-plus-circle me-2"></i>Nova Manutenção
+            {% endif %}
+        </h6>
+    </div>
+    <div class="card-body">
+        <div id="formContainer">
+            <!-- Formulário será carregado automaticamente -->
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando formulário...</span>
+                </div>
+                <p class="mt-2">Carregando formulário...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Listagem de Registros Existentes -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-list me-2"></i>{{ titulo }} Existentes
+        </h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="exportarServicos()">
+            <i class="bi bi-download me-1"></i>Exportar
+        </button>
+    </div>
+    <div class="card-body">
+        {% if servicos %}
+            <!-- Filtros -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Buscar..." onkeyup="filtrarTabela()">
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-muted">{{ servicos|length }} registro(s) encontrado(s)</span>
+                </div>
+            </div>
+
+            <!-- Tabela -->
+            <div class="table-responsive">
+                <table class="table table-hover" id="servicosTable">
+                    <thead class="table-light">
+                        <tr>
+                            {% if tipo_servico == 'multas' %}
+                                <th>AIT</th>
+                                <th>Data Infração</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                            {% elif tipo_servico == 'ipva' %}
+                                <th>Ano</th>
+                                <th>Vencimento</th>
+                                <th>Valor IPVA</th>
+                                <th>Valor Total</th>
+                                <th>Status</th>
+                            {% elif tipo_servico == 'licenciamento' %}
+                                <th>Ano</th>
+                                <th>Vencimento</th>
+                                <th>Valor</th>
+                                <th>Valor Total</th>
+                                <th>Status</th>
+                            {% elif tipo_servico == 'manutencao' %}
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Descrição</th>
+                                <th>Valor Total</th>
+                                <th>KM</th>
+                            {% endif %}
+                            <th width="120">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for servico in servicos %}
+                            <tr>
+                                {% if tipo_servico == 'multas' %}
+                                    <td>{{ servico.numero_ait or '-' }}</td>
+                                    <td>{{ servico.data_infracao.strftime('%d/%m/%Y') if servico.data_infracao else '-' }}</td>
+                                    <td>{{ servico.tipo_infracao or '-' }}</td>
+                                    <td>R$ {{ "%.2f"|format(servico.valor_original) if servico.valor_original else '-' }}</td>
+                                    <td>
+                                        {% if servico.status == 'Pago' %}
+                                            <span class="badge bg-success">{{ servico.status }}</span>
+                                        {% elif servico.status == 'Pendente' %}
+                                            <span class="badge bg-warning">{{ servico.status }}</span>
+                                        {% elif servico.status == 'Atrasado' %}
+                                            <span class="badge bg-danger">{{ servico.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ servico.status or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                {% elif tipo_servico == 'ipva' %}
+                                    <td>{{ servico.ano_exercicio }}</td>
+                                    <td>{{ servico.data_vencimento.strftime('%d/%m/%Y') if servico.data_vencimento else '-' }}</td>
+                                    <td>R$ {{ "%.2f"|format(servico.valor_ipva) if servico.valor_ipva else '-' }}</td>
+                                    <td>R$ {{ "%.2f"|format(servico.valor_total) if servico.valor_total else '-' }}</td>
+                                    <td>
+                                        {% if servico.status == 'Pago' %}
+                                            <span class="badge bg-success">{{ servico.status }}</span>
+                                        {% elif servico.status == 'Pendente' %}
+                                            <span class="badge bg-warning">{{ servico.status }}</span>
+                                        {% elif servico.status == 'Atrasado' %}
+                                            <span class="badge bg-danger">{{ servico.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ servico.status or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                {% elif tipo_servico == 'licenciamento' %}
+                                    <td>{{ servico.ano_exercicio }}</td>
+                                    <td>{{ servico.data_vencimento.strftime('%d/%m/%Y') if servico.data_vencimento else '-' }}</td>
+                                    <td>R$ {{ "%.2f"|format(servico.valor_licenciamento) if servico.valor_licenciamento else '-' }}</td>
+                                    <td>R$ {{ "%.2f"|format(servico.valor_total) if servico.valor_total else '-' }}</td>
+                                    <td>
+                                        {% if servico.status == 'Pago' %}
+                                            <span class="badge bg-success">{{ servico.status }}</span>
+                                        {% elif servico.status == 'Pendente' %}
+                                            <span class="badge bg-warning">{{ servico.status }}</span>
+                                        {% elif servico.status == 'Atrasado' %}
+                                            <span class="badge bg-danger">{{ servico.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ servico.status or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                {% elif tipo_servico == 'manutencao' %}
+                                    <td>{{ servico.data_servico.strftime('%d/%m/%Y') if servico.data_servico else '-' }}</td>
+                                    <td>{{ servico.tipo_manutencao or '-' }}</td>
+                                    <td>{{ servico.descricao or '-' }}</td>
+                                    <td>R$ {{ "%.2f"|format(servico.valor_total) if servico.valor_total else '-' }}</td>
+                                    <td>{{ servico.km_veiculo or '-' }}</td>
+                                {% endif %}
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                onclick="editarServico('{{ tipo_servico }}', {{ servico.id_multa if tipo_servico == 'multas' else servico.id_ipva if tipo_servico == 'ipva' else servico.id_licenciamento if tipo_servico == 'licenciamento' else servico.id_manutencao }})"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="excluirServico('{{ tipo_servico }}', {{ servico.id_multa if tipo_servico == 'multas' else servico.id_ipva if tipo_servico == 'ipva' else servico.id_licenciamento if tipo_servico == 'licenciamento' else servico.id_manutencao }}, '{{ servico.numero_ait if tipo_servico == 'multas' else servico.ano_exercicio if tipo_servico in ['ipva', 'licenciamento'] else servico.tipo_manutencao }}')"
+                                                title="Excluir">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <p class="text-muted mt-2">Nenhum registro de {{ titulo.lower() }} encontrado para este veículo.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Scripts básicos para o modal -->
+<script>
+// Funções simples para filtro e exportação
+function filtrarTabela() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('servicosTable');
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        let shouldShow = false;
+        
+        for (let j = 0; j < cells.length - 1; j++) {
+            const cellText = cells[j].textContent || cells[j].innerText;
+            if (cellText.toLowerCase().indexOf(filter) > -1) {
+                shouldShow = true;
+                break;
+            }
+        }
+        
+        row.style.display = shouldShow ? '' : 'none';
+    }
+}
+
+function editarServico(tipo, id) {
+    if (typeof carregarFormularioDirecto === 'function') {
+        carregarFormularioDirecto(tipo, window.modalVeiculoId, id);
+    }
+}
+
+function excluirServico(tipo, id, descricao) {
+    if (!confirm(`Tem certeza que deseja excluir este registro: ${descricao}?`)) {
+        return;
+    }
+    
+    const urls = {
+        'multas': `/cadastros/veiculos/${window.modalVeiculoId}/multas/${id}/excluir`,
+        'ipva': `/cadastros/veiculos/${window.modalVeiculoId}/ipva/${id}/excluir`,
+        'licenciamento': `/cadastros/veiculos/${window.modalVeiculoId}/licenciamento/${id}/excluir`,
+        'manutencao': `/cadastros/veiculos/${window.modalVeiculoId}/manutencao/${id}/excluir`
+    };
+    
+    fetch(urls[tipo], {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Registro excluído com sucesso!');
+            // Recarregar página
+            window.location.reload();
+        } else {
+            alert(data.message || 'Erro ao excluir registro.');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao excluir registro. Tente novamente.');
+    });
+}
+
+function exportarServicos() {
+    alert('Funcionalidade de exportação será implementada.');
+}
+</script>

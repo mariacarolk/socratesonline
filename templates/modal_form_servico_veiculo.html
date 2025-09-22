@@ -1,0 +1,412 @@
+<!-- Template para formulários dentro dos modais de serviços -->
+<form method="POST" class="needs-validation" novalidate>
+    {{ form.hidden_tag() }}
+    
+    {% if tipo_servico == 'multa' %}
+        <!-- Formulário de Multa -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.numero_ait.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.numero_ait(class="form-control", placeholder="Número do AIT") }}
+                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.tipo_infracao.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.tipo_infracao(class="form-control", placeholder="Ex: Excesso de velocidade", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-exclamation-triangle"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe o tipo de infração.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.data_infracao.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_infracao(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe a data da infração.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.data_vencimento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_vencimento(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe a data de vencimento.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.data_pagamento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_pagamento(class="form-control") }}
+                    <span class="input-group-text"><i class="bi bi-calendar-plus"></i></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.valor_original.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_original(class="form-control", placeholder="0,00", required=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor original.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.valor_pago.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_pago(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.status.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.status(class="form-select", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.local_infracao.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.local_infracao(class="form-control", placeholder="Local onde ocorreu a infração") }}
+                    <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.orgao_autuador.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.orgao_autuador(class="form-control", placeholder="Ex: PRF, Polícia Civil") }}
+                    <span class="input-group-text"><i class="bi bi-shield"></i></span>
+                </div>
+            </div>
+        </div>
+        
+    {% elif tipo_servico == 'ipva' %}
+        <!-- Formulário de IPVA -->
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.ano_exercicio.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.ano_exercicio(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe o ano de exercício.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.data_vencimento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_vencimento(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe a data de vencimento.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.data_pagamento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_pagamento(class="form-control") }}
+                    <span class="input-group-text"><i class="bi bi-calendar-plus"></i></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                {{ form.valor_ipva.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_ipva(class="form-control", placeholder="0,00", required=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor do IPVA.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                {{ form.valor_taxa_detran.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_taxa_detran(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                {{ form.valor_multa_juros.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_multa_juros(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                {{ form.valor_total.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_total(class="form-control", placeholder="0,00", required=true, readonly=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor total.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.valor_pago.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_pago(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.numero_documento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.numero_documento(class="form-control", placeholder="Número do documento") }}
+                    <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.status.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.status(class="form-select", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                </div>
+            </div>
+        </div>
+        
+    {% elif tipo_servico == 'licenciamento' %}
+        <!-- Formulário de Licenciamento (similar ao IPVA) -->
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.ano_exercicio.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.ano_exercicio(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe o ano de exercício.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.data_vencimento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_vencimento(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe a data de vencimento.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.data_pagamento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_pagamento(class="form-control") }}
+                    <span class="input-group-text"><i class="bi bi-calendar-plus"></i></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                {{ form.valor_licenciamento.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_licenciamento(class="form-control", placeholder="0,00", required=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor do licenciamento.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                {{ form.valor_taxa_detran.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_taxa_detran(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                {{ form.valor_multa_juros.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_multa_juros(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                {{ form.valor_total.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_total(class="form-control", placeholder="0,00", required=true, readonly=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor total.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.valor_pago.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_pago(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.numero_documento.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.numero_documento(class="form-control", placeholder="Número do documento") }}
+                    <span class="input-group-text"><i class="bi bi-file-text"></i></span>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.status.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.status(class="form-select", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-flag"></i></span>
+                </div>
+            </div>
+        </div>
+        
+    {% elif tipo_servico == 'manutencao' %}
+        <!-- Formulário de Manutenção -->
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.data_servico.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_servico(class="form-control", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, informe a data do serviço.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.tipo_manutencao.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.tipo_manutencao(class="form-select", required=true) }}
+                    <span class="input-group-text"><i class="bi bi-gear"></i></span>
+                    <div class="invalid-feedback">
+                        Por favor, selecione o tipo de manutenção.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.km_veiculo.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.km_veiculo(class="form-control", placeholder="0") }}
+                    <span class="input-group-text">km</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.fornecedor_servico.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.fornecedor_servico(class="form-control", placeholder="Nome da oficina/fornecedor") }}
+                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.garantia_dias.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.garantia_dias(class="form-control", placeholder="0") }}
+                    <span class="input-group-text">dias</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                {{ form.valor_servico.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_servico(class="form-control", placeholder="0,00", required=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor do serviço.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.valor_pecas.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_pecas(class="form-control", placeholder="0,00") }}
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                {{ form.valor_total.label(class="form-label") }}
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    {{ form.valor_total(class="form-control", placeholder="0,00", required=true, readonly=true) }}
+                    <div class="invalid-feedback">
+                        Por favor, informe o valor total.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                {{ form.data_proxima_revisao.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.data_proxima_revisao(class="form-control") }}
+                    <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                {{ form.km_proxima_revisao.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.km_proxima_revisao(class="form-control", placeholder="0") }}
+                    <span class="input-group-text">km</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            {{ form.descricao.label(class="form-label") }}
+            <div class="input-group">
+                {{ form.descricao(class="form-control", rows=3, placeholder="Descrição detalhada do serviço realizado", required=true) }}
+                <span class="input-group-text"><i class="bi bi-chat-text"></i></span>
+                <div class="invalid-feedback">
+                    Por favor, informe a descrição do serviço.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Campo de observações comum a todos -->
+    <div class="mb-3">
+        {{ form.observacoes.label(class="form-label") }}
+        <div class="input-group">
+            {{ form.observacoes(class="form-control", rows=2, placeholder="Observações adicionais (opcional)") }}
+            <span class="input-group-text"><i class="bi bi-chat-dots"></i></span>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-2"></i>Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-2"></i>Salvar
+        </button>
+    </div>
+</form>

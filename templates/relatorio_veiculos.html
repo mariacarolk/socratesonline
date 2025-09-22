@@ -198,13 +198,27 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="badge bg-info">{{ evento.data_inicio.strftime('%d/%m/%Y') }}</span>
+                                            {% if evento.data_inicio %}
+                                                <span class="badge bg-info">{{ evento.data_inicio.strftime('%d/%m/%Y') }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Sem data</span>
+                                            {% endif %}
                                         </td>
                                         <td>
-                                            <span class="badge bg-warning">{{ evento.data_devolucao.strftime('%d/%m/%Y') }}</span>
+                                            {% if evento.data_devolucao %}
+                                                <span class="badge bg-warning">{{ evento.data_devolucao.strftime('%d/%m/%Y') }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Em uso</span>
+                                            {% endif %}
                                         </td>
                                         <td>
-                                            <span class="badge bg-success">{{ (evento.data_devolucao - evento.data_inicio).days + 1 }} dias</span>
+                                            {% if evento.data_inicio and evento.data_devolucao %}
+                                                <span class="badge bg-success">{{ (evento.data_devolucao - evento.data_inicio).days + 1 }} dias</span>
+                                            {% elif evento.data_inicio %}
+                                                <span class="badge bg-info">Em andamento</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">N/A</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <small>{{ evento.observacoes or '—' }}</small>

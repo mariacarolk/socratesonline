@@ -1,0 +1,149 @@
+<!-- Modal Unificado para Despesas -->
+<div class="modal fade" id="modalAdicionarDespesa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow rounded-4">
+      <div class="modal-header text-white border-0 rounded-top-4" style="background: linear-gradient(135deg, #dc2626, #b91c1c)">
+        <h5 class="modal-title fw-bold fs-5">
+          <i class="bi bi-credit-card me-2"></i><span id="modal-title-text">Adicionar Despesa</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form onsubmit="adicionarDespesaEvento(event)" enctype="multipart/form-data">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <!-- Categoria da Despesa -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Categoria da Despesa</label>
+              <select name="categoria_despesa" class="form-select rounded-3" id="modal_despesa_categoria" required>
+                <option value="">Selecione uma categoria...</option>
+                {% for categoria in categorias_despesa %}
+                <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Despesa -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Despesa</label>
+              <select name="despesa_id" class="form-select rounded-3" id="modal_despesa_item" required>
+                <option value="">Primeiro selecione a categoria...</option>
+              </select>
+            </div>
+            
+            <!-- Despesa da cabeça -->
+            <div class="col-md-6">
+              <div class="form-check d-flex align-items-center h-100">
+                <input type="checkbox" name="despesa_cabeca" class="form-check-input me-2" id="despesa_cabeca_novo_evento" value="1">
+                <label class="form-label fw-medium" for="despesa_cabeca_novo_evento">
+                  Despesa da cabeça
+                </label>
+              </div>
+            </div>
+
+            <!-- Data de Vencimento -->
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Data de Vencimento</label>
+              <input type="date" name="data_vencimento" class="form-control" id="modal_despesa_data_vencimento" required value="{{ current_date }}">
+            </div>
+            
+            <!-- Data de Pagamento -->
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Data de Pagamento</label>
+              <input type="date" name="data_pagamento" class="form-control" id="modal_despesa_data_pagamento">
+              <small class="text-muted">Opcional - preencha apenas se já foi pago</small>
+            </div>
+            
+            <!-- Valor Real -->
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Valor Real (R$)</label>
+              <input type="text" name="valor" class="form-control" id="modal_despesa_valor" required placeholder="0,00">
+            </div>
+            
+            <!-- Valor Pago Sócrates Online -->
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Valor Pago Sócrates Online (R$)</label>
+              <input type="text" name="valor_pago_socrates" class="form-control" id="modal_despesa_valor_pago_socrates" placeholder="0,00">
+            </div>
+            
+            <!-- Fornecedor -->
+            <div class="col-12">
+              <label class="form-label fw-medium">Fornecedor</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="modal_despesa_fornecedor_nome" 
+                       placeholder="Clique para buscar fornecedor..." readonly>
+                <input type="hidden" name="id_fornecedor" id="modal_despesa_fornecedor">
+                <button type="button" class="btn btn-outline-secondary" onclick="abrirBuscaFornecedor()">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="limparFornecedor()" title="Limpar seleção">
+                    <i class="bi bi-x"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Status -->
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Status</label>
+              <select name="status_pagamento" class="form-select" id="modal_despesa_status" required>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+              </select>
+            </div>
+            
+            <!-- Forma de Pagamento -->
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Forma de Pagamento</label>
+              <select name="forma_pagamento" class="form-select" id="modal_despesa_forma" required>
+                <option value="débito">Débito</option>
+                <option value="crédito">Crédito</option>
+                <option value="espécie">Espécie</option>
+                <option value="pix">Pix</option>
+              </select>
+            </div>
+            
+            <!-- Pago por -->
+            <div class="col-12">
+              <label class="form-label fw-medium">Pago por</label>
+              <input type="text" name="pago_por" class="form-control" id="modal_despesa_pago_por" placeholder="Nome da pessoa que pagou">
+            </div>
+            
+            <!-- Campos específicos para alimentação (ocultos por padrão) -->
+            <div class="col-md-6" id="qtd_dias_container" style="display: none;">
+              <label class="form-label fw-medium">Qtd. Dias</label>
+              <input type="number" name="qtd_dias" class="form-control" id="modal_qtd_dias" min="1">
+            </div>
+            
+            <div class="col-md-6" id="qtd_pessoas_container" style="display: none;">
+              <label class="form-label fw-medium">Qtd. Pessoas</label>
+              <input type="number" name="qtd_pessoas" class="form-control" id="modal_qtd_pessoas" min="1">
+            </div>
+            
+            <!-- Comprovante -->
+            <div class="col-12">
+              <label class="form-label fw-medium">Comprovante</label>
+              <input type="file" name="comprovante" class="form-control" id="modal_despesa_comprovante" 
+                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+              <div class="form-text">
+                <small><i class="bi bi-info-circle"></i> Anexe nota fiscal, recibo, comprovante PIX, etc. (máx. 16MB)</small>
+              </div>
+            </div>
+            
+            <!-- Observações -->
+            <div class="col-12">
+              <label class="form-label fw-medium">Observações</label>
+              <textarea name="observacoes" class="form-control" id="modal_despesa_obs" rows="3" placeholder="Observações adicionais..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light border me-2" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-2"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-danger" id="btn_submit_unificado">
+            <i class="bi bi-plus-circle me-2"></i><span id="btn-text">Adicionar Despesa</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

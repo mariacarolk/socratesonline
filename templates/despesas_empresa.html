@@ -87,6 +87,20 @@
                             <small class="text-muted">Use vírgula para separar decimais (ex: 10,50)</small>
                         </div>
                     </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        {{ form.valor_pago_socrates.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.valor_pago_socrates(class="form-control", placeholder="0,00", id="valor_pago_socrates_input") }}
+                            <div class="invalid-feedback">
+                                Por favor, informe o valor no formato 0,00.
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">Opcional - Use vírgula para separar decimais (ex: 10,50)</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -267,10 +281,11 @@
                             <th onclick="sortTable(0)">Data <i class="bi bi-arrow-down-up text-muted"></i></th>
                             <th onclick="sortTable(1)">Despesa <i class="bi bi-arrow-down-up text-muted"></i></th>
                             <th onclick="sortTable(2)">Categoria <i class="bi bi-arrow-down-up text-muted"></i></th>
-                            <th onclick="sortTable(3)">Valor <i class="bi bi-arrow-down-up text-muted"></i></th>
-                            <th onclick="sortTable(4)">Fornecedor <i class="bi bi-arrow-down-up text-muted"></i></th>
-                            <th onclick="sortTable(5)">Status <i class="bi bi-arrow-down-up text-muted"></i></th>
-                            <th onclick="sortTable(6)">Forma Pagamento <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(3)">Valor Real <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(4)">Valor Pago SO <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(5)">Fornecedor <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(6)">Status <i class="bi bi-arrow-down-up text-muted"></i></th>
+                            <th onclick="sortTable(7)">Forma Pagamento <i class="bi bi-arrow-down-up text-muted"></i></th>
                             <th class="text-center" style="width: 150px;">Ações</th>
                         </tr>
                     </thead>
@@ -284,6 +299,15 @@
                                 <span class="fw-bold text-danger">
                                     R$ {{ "%.2f"|format(d.valor)|replace('.', ',') if d.valor else '0,00' }}
                                 </span>
+                            </td>
+                            <td>
+                                {% if d.valor_pago_socrates %}
+                                    <span class="fw-bold text-primary">
+                                        R$ {{ "%.2f"|format(d.valor_pago_socrates)|replace('.', ',') }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
                             </td>
                             <td>{{ d.fornecedor.nome if d.fornecedor else '—' }}</td>
                             <td>
