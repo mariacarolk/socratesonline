@@ -17,87 +17,48 @@ depends_on = None
 
 
 def upgrade():
-    """Adiciona campos valor_pago_socrates sem tentar remover índices inexistentes"""
+    """Adiciona apenas os campos valor_pago_socrates necessários"""
     
-    # Adicionar colunas nas tabelas de despesas
-    with op.batch_alter_table('despesas_empresa', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('valor_pago_socrates', sa.Float(), nullable=True))
+    # Verificar se as tabelas existem antes de tentar alterá-las
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    tables = inspector.get_table_names()
+    
+    # Adicionar colunas nas tabelas de despesas se existirem
+    if 'despesas_empresa' in tables:
+        with op.batch_alter_table('despesas_empresa', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('valor_pago_socrates', sa.Float(), nullable=True))
 
-    with op.batch_alter_table('despesas_evento', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('valor_pago_socrates', sa.Float(), nullable=True))
+    if 'despesas_evento' in tables:
+        with op.batch_alter_table('despesas_evento', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('valor_pago_socrates', sa.Float(), nullable=True))
 
-    # Fazer email obrigatório no colaborador
-    with op.batch_alter_table('colaborador', schema=None) as batch_op:
-        batch_op.alter_column('email',
-               existing_type=sa.VARCHAR(),
-               nullable=False)
-
-    # Corrigir foreign keys para veículos (sem dropar índices)
-    with op.batch_alter_table('ipva_veiculo', schema=None) as batch_op:
-        try:
-            batch_op.drop_constraint('uk_ipva_veiculo_ano', type_='unique')
-        except:
-            pass
-        try:
-            batch_op.drop_constraint('ipva_veiculo_id_veiculo_fkey', type_='foreignkey')
-        except:
-            pass
-        batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
-
-    with op.batch_alter_table('licenciamento_veiculo', schema=None) as batch_op:
-        try:
-            batch_op.drop_constraint('uk_licenciamento_veiculo_ano', type_='unique')
-        except:
-            pass
-        try:
-            batch_op.drop_constraint('licenciamento_veiculo_id_veiculo_fkey', type_='foreignkey')
-        except:
-            pass
-        batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
-
-    with op.batch_alter_table('manutencao_veiculo', schema=None) as batch_op:
-        try:
-            batch_op.drop_constraint('manutencao_veiculo_id_veiculo_fkey', type_='foreignkey')
-        except:
-            pass
-        batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
-
-    with op.batch_alter_table('multa_veiculo', schema=None) as batch_op:
-        try:
-            batch_op.drop_constraint('multa_veiculo_id_veiculo_fkey', type_='foreignkey')
-        except:
-            pass
-        batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
+    # Fazer email obrigatório no colaborador se a tabela existir
+    if 'colaborador' in tables:
+        with op.batch_alter_table('colaborador', schema=None) as batch_op:
+            batch_op.alter_column('email',
+                   existing_type=sa.VARCHAR(),
+                   nullable=False)
 
 
 def downgrade():
-    """Remove as colunas adicionadas"""
+    """Remove as colunas adicionadas se as tabelas existirem"""
     
-    with op.batch_alter_table('multa_veiculo', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('multa_veiculo_id_veiculo_fkey', 'veiculo', ['id_veiculo'], ['id_veiculo'], ondelete='CASCADE')
+    # Verificar se as tabelas existem antes de tentar alterá-las
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    tables = inspector.get_table_names()
+    
+    if 'despesas_evento' in tables:
+        with op.batch_alter_table('despesas_evento', schema=None) as batch_op:
+            batch_op.drop_column('valor_pago_socrates')
 
-    with op.batch_alter_table('manutencao_veiculo', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('manutencao_veiculo_id_veiculo_fkey', 'veiculo', ['id_veiculo'], ['id_veiculo'], ondelete='CASCADE')
+    if 'despesas_empresa' in tables:
+        with op.batch_alter_table('despesas_empresa', schema=None) as batch_op:
+            batch_op.drop_column('valor_pago_socrates')
 
-    with op.batch_alter_table('licenciamento_veiculo', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('licenciamento_veiculo_id_veiculo_fkey', 'veiculo', ['id_veiculo'], ['id_veiculo'], ondelete='CASCADE')
-        batch_op.create_unique_constraint('uk_licenciamento_veiculo_ano', ['id_veiculo', 'ano_exercicio'], postgresql_nulls_not_distinct=False)
-
-    with op.batch_alter_table('ipva_veiculo', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('ipva_veiculo_id_veiculo_fkey', 'veiculo', ['id_veiculo'], ['id_veiculo'], ondelete='CASCADE')
-        batch_op.create_unique_constraint('uk_ipva_veiculo_ano', ['id_veiculo', 'ano_exercicio'], postgresql_nulls_not_distinct=False)
-
-    with op.batch_alter_table('despesas_evento', schema=None) as batch_op:
-        batch_op.drop_column('valor_pago_socrates')
-
-    with op.batch_alter_table('despesas_empresa', schema=None) as batch_op:
-        batch_op.drop_column('valor_pago_socrates')
-
-    with op.batch_alter_table('colaborador', schema=None) as batch_op:
-        batch_op.alter_column('email',
-               existing_type=sa.VARCHAR(),
-               nullable=True)
+    if 'colaborador' in tables:
+        with op.batch_alter_table('colaborador', schema=None) as batch_op:
+            batch_op.alter_column('email',
+                   existing_type=sa.VARCHAR(),
+                   nullable=True)
