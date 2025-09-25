@@ -30,49 +30,119 @@ def upgrade():
         batch_op.add_column(sa.Column('valor_pago_socrates', sa.Float(), nullable=True))
 
     with op.batch_alter_table('escola', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_escola_cidade'))
-        batch_op.drop_index(batch_op.f('idx_escola_estado'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_escola_cidade')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_escola_estado')
+        except:
+            pass
 
     with op.batch_alter_table('ipva_veiculo', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_ipva_veiculo_ano_exercicio'))
-        batch_op.drop_index(batch_op.f('idx_ipva_veiculo_id_veiculo'))
-        batch_op.drop_index(batch_op.f('idx_ipva_veiculo_status'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_ipva_veiculo_ano_exercicio')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_ipva_veiculo_id_veiculo')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_ipva_veiculo_status')
+        except:
+            pass
         batch_op.drop_constraint(batch_op.f('uk_ipva_veiculo_ano'), type_='unique')
         batch_op.drop_constraint(batch_op.f('ipva_veiculo_id_veiculo_fkey'), type_='foreignkey')
         batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
 
     with op.batch_alter_table('licenciamento_veiculo', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_licenciamento_veiculo_ano_exercicio'))
-        batch_op.drop_index(batch_op.f('idx_licenciamento_veiculo_id_veiculo'))
-        batch_op.drop_index(batch_op.f('idx_licenciamento_veiculo_status'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_licenciamento_veiculo_ano_exercicio')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_licenciamento_veiculo_id_veiculo')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_licenciamento_veiculo_status')
+        except:
+            pass
         batch_op.drop_constraint(batch_op.f('uk_licenciamento_veiculo_ano'), type_='unique')
         batch_op.drop_constraint(batch_op.f('licenciamento_veiculo_id_veiculo_fkey'), type_='foreignkey')
         batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
 
     with op.batch_alter_table('log_sistema', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_log_sistema_acao'))
-        batch_op.drop_index(batch_op.f('idx_log_sistema_data_hora'))
-        batch_op.drop_index(batch_op.f('idx_log_sistema_usuario_id'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_log_sistema_acao')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_log_sistema_data_hora')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_log_sistema_usuario_id')
+        except:
+            pass
 
     with op.batch_alter_table('manutencao_veiculo', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_manutencao_veiculo_data_servico'))
-        batch_op.drop_index(batch_op.f('idx_manutencao_veiculo_id_veiculo'))
-        batch_op.drop_index(batch_op.f('idx_manutencao_veiculo_tipo_manutencao'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_manutencao_veiculo_data_servico')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_manutencao_veiculo_id_veiculo')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_manutencao_veiculo_tipo_manutencao')
+        except:
+            pass
         batch_op.drop_constraint(batch_op.f('manutencao_veiculo_id_veiculo_fkey'), type_='foreignkey')
         batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
 
     with op.batch_alter_table('multa_veiculo', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_multa_veiculo_data_infracao'))
-        batch_op.drop_index(batch_op.f('idx_multa_veiculo_id_veiculo'))
-        batch_op.drop_index(batch_op.f('idx_multa_veiculo_status'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_multa_veiculo_data_infracao')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_multa_veiculo_id_veiculo')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_multa_veiculo_status')
+        except:
+            pass
         batch_op.drop_constraint(batch_op.f('multa_veiculo_id_veiculo_fkey'), type_='foreignkey')
         batch_op.create_foreign_key(None, 'veiculo', ['id_veiculo'], ['id_veiculo'])
 
     with op.batch_alter_table('visita_escola', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('idx_visita_escola_data'))
-        batch_op.drop_index(batch_op.f('idx_visita_escola_escola'))
-        batch_op.drop_index(batch_op.f('idx_visita_escola_promotor'))
-        batch_op.drop_index(batch_op.f('idx_visita_escola_status'))
+        # Dropa índices apenas se existirem
+        try:
+            batch_op.drop_index('idx_visita_escola_data')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_visita_escola_escola')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_visita_escola_promotor')
+        except:
+            pass
+        try:
+            batch_op.drop_index('idx_visita_escola_status')
+        except:
+            pass
 
     # ### end Alembic commands ###
 
