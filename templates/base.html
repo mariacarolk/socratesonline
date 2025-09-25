@@ -185,7 +185,7 @@
                 </a>
                 <div class="collapse ps-3" id="submenuMarketing">
                     {% if is_admin_user() or is_root_user() %}
-                    <a class="nav-link {% if request.endpoint == 'marketing_dashboard' %}active{% endif %}" href="{{ url_for('marketing_dashboard') }}">
+                    <a class="nav-link {% if request.endpoint == 'dashboard_escolas' %}active{% endif %}" href="{{ url_for('dashboard_escolas') }}">
                         <i class="fas fa-chart-line"></i> Dashboard Escolas
                     </a>
                     {% endif %}

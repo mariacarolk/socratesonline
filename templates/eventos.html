@@ -166,7 +166,7 @@
               <!-- Botões principais com design mais sofisticado -->
               <div class="action-grid-refined mb-3">
                 <button type="button" class="btn-action-refined btn-despesa-refined" 
-                        onclick="event.stopPropagation(); abrirModalDespesaUnificado('{{ evento.id_evento }}');"
+                        onclick="event.stopPropagation(); abrirModalDespesaUnificado('{{ evento.id_evento }}', '', '', '', 'false', '');"
                         data-action="despesa" data-evento="{{ evento.id_evento }}">
                   <div class="btn-content-refined">
                     <div class="btn-icon-refined">
@@ -272,7 +272,7 @@
                     </li>
                     <li><hr class="dropdown-divider my-2"></li>
                     <li>
-                      <a href="#" class="dropdown-item rounded-2" onclick="abrirModalDespesaUnificado('{{ evento.id_evento }}'); return false;">
+                      <a href="#" class="dropdown-item rounded-2" onclick="abrirModalDespesaUnificado('{{ evento.id_evento }}', '', '', '', 'false', ''); return false;">
                         <i class="bi bi-credit-card me-2 text-danger"></i>Adicionar Despesa
                       </a>
                     </li>
@@ -1272,177 +1272,13 @@ function converterMoedaParaNumero(valorFormatado) {
     return parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.'));
 }
 
-// Função para carregar despesas por categoria
-function carregarDespesasPorCategoria(selectCategoria, eventoId) {
-    const categoriaId = selectCategoria.value;
-    const selectDespesa = selectCategoria.closest('form').querySelector('[name="despesa_id"]');
-    
-    console.log('🔍 Carregando despesas para categoria:', categoriaId);
-    
-    // Limpar opções
-    selectDespesa.innerHTML = '<option value="">Carregando...</option>';
-    
-    if (!categoriaId) {
-        selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
-        return;
-    }
-    
-    // Fazer requisição para buscar despesas da categoria
-    fetch(`/api/despesas-por-categoria/${categoriaId}`)
-        .then(response => {
-            console.log('📡 Resposta da API:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('📋 Despesas recebidas:', data);
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            selectDespesa.innerHTML = '<option value="">Selecione uma despesa...</option>';
-            
-            if (data.length === 0) {
-                selectDespesa.innerHTML = '<option value="">Nenhuma despesa encontrada para esta categoria</option>';
-                return;
-            }
-            
-            data.forEach(despesa => {
-                const option = document.createElement('option');
-                option.value = despesa.id_despesa;
-                option.textContent = despesa.nome;
-                if (despesa.valor_medio) {
-                    option.setAttribute('data-valor-medio', despesa.valor_medio.toFixed(2).replace('.', ','));
-                }
-                selectDespesa.appendChild(option);
-            });
-            
-            // Adicionar listener para verificação de alimentação
-            selectDespesa.addEventListener('change', function() { 
-                console.log('🔄 Despesa selecionada, verificando alimentação...');
-                verificarDespesaAlimentacaoEventos(this, eventoId); 
-            });
-            
-            // A validação de valor médio é gerenciada pelo arquivo valor-medio-despesas.js
-        })
-        .catch(error => {
-            console.error('❌ Erro ao carregar despesas:', error);
-            selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
-            mostrarNotificacao(`❌ Erro ao carregar despesas: ${error.message}`, 'danger');
-        });
-}
+// Função para carregar despesas por categoria - REMOVIDA
 
 // Funções de valor médio removidas - agora gerenciadas pelo arquivo valor-medio-despesas.js
 
 
 
-// Função para verificar se a despesa selecionada é de alimentação (Modal Unificado)
-function verificarDespesaAlimentacaoEventos(selectDespesa, eventoId) {
-    console.log('🔍 === VERIFICANDO ALIMENTAÇÃO EVENTOS (Modal Unificado) ===');
-    
-    const despesaId = selectDespesa.value;
-    // Usar IDs do modal unificado (sem sufixo de evento)
-    const camposAlimentacao = document.getElementById('modal-campos-alimentacao');
-    const qtdDiasInput = document.getElementById('modal_qtd_dias');
-    const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
-    
-    console.log('📋 Elementos encontrados:', {
-        eventoId: eventoId,
-        despesaId: despesaId,
-        camposAlimentacao: !!camposAlimentacao,
-        qtdDiasInput: !!qtdDiasInput,
-        qtdPessoasInput: !!qtdPessoasInput
-    });
-    
-    if (despesaId && despesaId != '0') {
-        console.log('🔄 Fazendo requisição para API...');
-        
-        // Buscar informações da despesa selecionada
-        fetch(`/api/despesa-detalhes/${despesaId}`)
-            .then(response => {
-                console.log('📡 Resposta da API recebida:', response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log('📊 Dados da API:', data);
-                
-                if (data.flag_alimentacao) {
-                    console.log('✅ É despesa de alimentação! Mostrando campos...');
-                    
-                    // Mostrar campos de quantidade
-                    if (camposAlimentacao) {
-                        console.log('🟢 Exibindo campos de alimentação...');
-                        camposAlimentacao.style.display = 'block';
-                        // Remover estilos de debug
-                        camposAlimentacao.style.backgroundColor = '';
-                        camposAlimentacao.style.border = '';
-                        camposAlimentacao.style.padding = '';
-                        camposAlimentacao.style.marginTop = '';
-                        console.log('✅ Campos de alimentação exibidos');
-                    } else {
-                        console.error('❌ Elemento modal-campos-alimentacao não encontrado!');
-                    }
-                    
-                    // Tornar campos obrigatórios
-                    if (qtdDiasInput) {
-                        qtdDiasInput.setAttribute('required', 'required');
-                        console.log('✅ Campo qtd_dias marcado como obrigatório');
-                    }
-                    if (qtdPessoasInput) {
-                        qtdPessoasInput.setAttribute('required', 'required');
-                        console.log('✅ Campo qtd_pessoas marcado como obrigatório');
-                    }
-                } else {
-                    console.log('❌ NÃO é despesa de alimentação. Escondendo campos...');
-                    
-                    // Esconder campos de quantidade
-                    if (camposAlimentacao) {
-                        camposAlimentacao.style.display = 'none';
-                    }
-                    
-                    // Remover obrigatoriedade e limpar valores
-                    if (qtdDiasInput) {
-                        qtdDiasInput.removeAttribute('required');
-                        qtdDiasInput.value = '';
-                    }
-                    if (qtdPessoasInput) {
-                        qtdPessoasInput.removeAttribute('required');
-                        qtdPessoasInput.value = '';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('❌ Erro ao verificar despesa:', error);
-                
-                // Em caso de erro, esconder campos
-                if (camposAlimentacao) {
-                    camposAlimentacao.style.display = 'none';
-                }
-                if (qtdDiasInput) qtdDiasInput.removeAttribute('required');
-                if (qtdPessoasInput) qtdPessoasInput.removeAttribute('required');
-            });
-    } else {
-        console.log('⚠️ Nenhuma despesa selecionada. Escondendo campos...');
-        
-        // Nenhuma despesa selecionada, esconder campos
-        if (camposAlimentacao) {
-            camposAlimentacao.style.display = 'none';
-        }
-        if (qtdDiasInput) {
-            qtdDiasInput.removeAttribute('required');
-            qtdDiasInput.value = '';
-        }
-        if (qtdPessoasInput) {
-            qtdPessoasInput.removeAttribute('required');
-            qtdPessoasInput.value = '';
-        }
-    }
-    
-    console.log('🏁 === FIM DA VERIFICAÇÃO EVENTOS ===');
-}
+// Função para verificar despesa de alimentação - REMOVIDA
 
 // Função para carregar receitas por categoria
 function carregarReceitasPorCategoria(selectCategoria, eventoId) {
@@ -1476,87 +1312,7 @@ function carregarReceitasPorCategoria(selectCategoria, eventoId) {
         });
 }
 
-// Função para adicionar despesa completa (com upload)
-function adicionarDespesaCompleta(event, eventoId) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    
-    // Converter eventoId para número se for string
-    const eventoIdNum = parseInt(eventoId);
-    
-    // Converter valor formatado para número
-    const valorFormatado = formData.get('valor');
-    const valorNumerico = converterMoedaParaNumero(valorFormatado);
-    
-    // Atualizar o valor no FormData
-    formData.set('valor', valorNumerico.toString());
-    
-    // Garantir que o despesa_id seja um número
-    formData.set('despesa_id', parseInt(formData.get('despesa_id')));
-    
-    // Adicionar fornecedor_id com o nome correto para o backend
-    if (formData.get('fornecedor_id')) {
-        formData.set('id_fornecedor', formData.get('fornecedor_id'));
-    }
-    
-    // Desabilitar botão durante envio
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
-    
-    // Enviar dados como FormData (suporta upload de arquivo)
-    fetch(`/eventos/${eventoIdNum}/salvar-despesa`, {
-        method: 'POST',
-        body: formData  // FormData não precisa de Content-Type manual
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            // Mostrar sucesso
-            mostrarNotificacao('✅ Despesa adicionada com sucesso!', 'success');
-            
-            // Fechar modal
-            const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
-            modal.hide();
-            
-            // Limpar formulário
-            form.reset();
-            
-            // Resetar dropdowns
-            const selectDespesa = form.querySelector('[name="despesa_id"]');
-            selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
-            
-            // Limpar campo de comprovante e esconder info do comprovante atual
-            const comprovanteField = document.getElementById(`modal_despesa_comprovante_${eventoId}`);
-            if (comprovanteField) {
-                comprovanteField.value = '';
-            }
-            const comprovanteInfo = document.getElementById(`comprovante_atual_info_${eventoId}`);
-            if (comprovanteInfo) {
-                comprovanteInfo.classList.add('d-none');
-            }
-            
-            // Se foi informado um comprovante, mostrar na notificação
-            if (result.comprovante) {
-                mostrarNotificacao('✅ Despesa e comprovante adicionados com sucesso!', 'success');
-            }
-        } else {
-            mostrarNotificacao('❌ Erro: ' + result.message, 'danger');
-        }
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        mostrarNotificacao('❌ Erro ao adicionar despesa: ' + error.message, 'danger');
-    })
-    .finally(() => {
-        // Reabilitar botão
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    });
-}
+// Função para adicionar despesa completa - REMOVIDA
 
 // Função para adicionar receita rápida
 function adicionarReceitaRapida(event, eventoId) {
@@ -2200,18 +1956,48 @@ if (isMobileDevice()) {
 
 <!-- Configurar modal para contexto de eventos (cópia exata da lógica da edição) -->
 <script>
-// Função para carregar despesas por categoria no modal (cópia da edição)
-function carregarDespesasPorCategoriaEventos(categoriaId, despesaIdSelecionada) {
-    console.log('🔍 === CARREGANDO DESPESAS EVENTOS ===');
-    console.log('Categoria ID:', categoriaId);
-    console.log('Despesa ID Selecionada:', despesaIdSelecionada);
+// Função para carregar despesas por categoria no modal - REMOVIDA
+
+// Função para abrir modal de despesa - REMOVIDA
+
+// Função para carregar despesas por categoria (compatibilidade com despesa-modal.js)
+function carregarDespesasPorCategoria(selectCategoria, eventoId) {
+    const categoriaId = selectCategoria.value;
     
-    var selectDespesa = document.getElementById('modal_despesa_item');
+    console.log('🔍 === DEBUG CARREGAMENTO DESPESAS ===');
+    console.log('Select elemento:', selectCategoria);
+    console.log('Categoria ID:', categoriaId, 'Tipo:', typeof categoriaId);
+    console.log('Categoria ID length:', categoriaId ? categoriaId.length : 'undefined');
+    console.log('Evento ID:', eventoId);
+    console.log('Select options:', Array.from(selectCategoria.options).map(opt => ({ value: opt.value, text: opt.text, selected: opt.selected })));
+    console.log('Select Categoria:', selectCategoria);
+    
+    // Verificar se o elemento modal_despesa_item existe
+    const selectDespesa = document.getElementById('modal_despesa_item');
+    console.log('Select Despesa encontrado:', !!selectDespesa);
+    
+    // Se a classe ModalDespesaUnificado estiver disponível, usar ela
+    if (typeof modalDespesaUnificado !== 'undefined' && modalDespesaUnificado) {
+        console.log('✅ Usando ModalDespesaUnificado.carregarDespesas()');
+        console.log('ModalDespesaUnificado:', modalDespesaUnificado);
+        modalDespesaUnificado.carregarDespesas(categoriaId);
+        return;
+    }
+    
+    // Fallback para implementação manual
+    console.log('⚠️ Usando implementação manual (fallback)');
+    
+    if (!selectDespesa) {
+        console.error('❌ Elemento modal_despesa_item não encontrado!');
+        return;
+    }
     
     // Limpar opções
     selectDespesa.innerHTML = '<option value="">Carregando...</option>';
+    console.log('📝 Opções limpa, iniciando carregamento...');
     
     if (!categoriaId) {
+        console.log('⚠️ Categoria ID vazia');
         selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
         return;
     }
@@ -2220,6 +2006,9 @@ function carregarDespesasPorCategoriaEventos(categoriaId, despesaIdSelecionada) 
     fetch(`/api/despesas-por-categoria/${categoriaId}`)
         .then(response => {
             console.log('📡 Resposta da API:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
@@ -2240,93 +2029,290 @@ function carregarDespesasPorCategoriaEventos(categoriaId, despesaIdSelecionada) 
                 const option = document.createElement('option');
                 option.value = despesa.id_despesa;
                 option.textContent = despesa.nome;
-                if (despesaIdSelecionada && despesa.id_despesa == despesaIdSelecionada) {
-                    option.selected = true;
-                }
                 if (despesa.valor_medio) {
                     option.setAttribute('data-valor-medio', despesa.valor_medio.toFixed(2).replace('.', ','));
                 }
                 selectDespesa.appendChild(option);
             });
             
-            // Adicionar listener para verificação de alimentação (se não existir)
-            if (!selectDespesa.hasAttribute('data-listener-added')) {
-                selectDespesa.addEventListener('change', function() {
-                    console.log('🔄 Despesa selecionada na tela eventos, verificando alimentação...');
-                    verificarDespesaAlimentacaoEventos(this, null); // evento ID não é necessário aqui
-                });
-                selectDespesa.setAttribute('data-listener-added', 'true');
-            }
-            
             console.log('✅ Despesas carregadas com sucesso!');
         })
         .catch(error => {
             console.error('❌ Erro ao carregar despesas:', error);
             selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
+            mostrarNotificacao(`❌ Erro ao carregar despesas: ${error.message}`, 'danger');
         });
 }
 
-// ✅ FUNÇÃO PARA ABRIR MODAL (chamada pelos botões da tela)
-function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = '', nomeCategoria = '', isFixa = '', valorMedio = '') {
-    console.log('🚀 === ABRINDO MODAL DESPESA EVENTOS ===');
-    console.log('Evento ID:', eventoId);
-    console.log('Categoria ID:', categoriaId);
+// Função para adicionar despesa completa (com upload) - Restaurada para compatibilidade
+function adicionarDespesaCompleta(event, eventoId) {
+    event.preventDefault();
     
-    // Verificar se o modal existe
-    const modalElement = document.getElementById('modalAdicionarDespesa');
-    if (!modalElement) {
-        console.error('❌ Modal modalAdicionarDespesa não encontrado!');
-        return;
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Converter eventoId para número se for string
+    const eventoIdNum = parseInt(eventoId);
+    
+    // Converter valor formatado para número
+    const valorFormatado = formData.get('valor');
+    const valorNumerico = converterMoedaParaNumero(valorFormatado);
+    
+    // Atualizar o valor no FormData
+    formData.set('valor', valorNumerico.toString());
+    
+    // Garantir que o despesa_id seja um número
+    formData.set('despesa_id', parseInt(formData.get('despesa_id')));
+    
+    // Adicionar fornecedor_id com o nome correto para o backend
+    if (formData.get('fornecedor_id')) {
+        formData.set('id_fornecedor', formData.get('fornecedor_id'));
     }
     
-    // Abrir o modal
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
+    // Desabilitar botão durante envio
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Adicionando...';
     
-    // Limpar formulário primeiro
-    const form = modalElement.querySelector('form');
-    if (form) {
-        form.reset();
-        console.log('📝 Formulário resetado');
-    }
-    
-    // Se há categoria pré-selecionada, selecionar e carregar despesas
-    if (categoriaId) {
-        const selectCategoria = document.getElementById('modal_despesa_categoria');
-        if (selectCategoria) {
-            console.log('🎯 Selecionando categoria:', categoriaId);
-            selectCategoria.value = categoriaId;
-            carregarDespesasPorCategoriaEventos(categoriaId);
+    // Enviar dados como FormData (suporta upload de arquivo)
+    fetch(`/eventos/${eventoIdNum}/salvar-despesa`, {
+        method: 'POST',
+        body: formData  // FormData não precisa de Content-Type manual
+    })
+    .then(response => {
+        console.log('📡 Resposta recebida - Status:', response.status, 'OK:', response.ok);
+        console.log('📡 Content-Type:', response.headers.get('content-type'));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Verificar se a resposta é realmente JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            // Se não é JSON, ler como texto para debug
+            return response.text().then(text => {
+                console.error('❌ Resposta não é JSON! Conteúdo:', text.substring(0, 500));
+                throw new Error('Servidor retornou HTML em vez de JSON. Verifique o console para detalhes.');
+            });
+        }
+        
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            // Mostrar sucesso
+            mostrarNotificacao('✅ Despesa adicionada com sucesso!', 'success');
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+            modal.hide();
+            
+            // Limpar formulário
+            form.reset();
+            
+            // Resetar dropdowns
+            const selectDespesa = form.querySelector('[name="despesa_id"]');
+            if (selectDespesa) {
+                selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+            }
+            
+            // Se foi informado um comprovante, mostrar na notificação
+            if (result.comprovante) {
+                mostrarNotificacao('✅ Despesa e comprovante adicionados com sucesso!', 'success');
+            }
         } else {
-            console.error('❌ Select de categoria não encontrado!');
+            mostrarNotificacao('❌ Erro: ' + result.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarNotificacao('❌ Erro ao adicionar despesa: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        // Reabilitar botão
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+// Função para converter moeda para número
+function converterMoedaParaNumero(valorFormatado) {
+    if (!valorFormatado) return 0;
+    
+    // Remove pontos de milhares e substitui vírgula por ponto
+    return parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.'));
+}
+
+// Função para mostrar notificações
+function mostrarNotificacao(mensagem, tipo) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.minWidth = '300px';
+    
+    alertDiv.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+</script>
+
+<!-- Incluir script do modal unificado (mesmo usado na edição) -->
+<script src="{{ url_for('static', filename='js/modal-despesa-unificado.js') }}"></script>
+
+<script>
+// Função global para debug manual da API de despesas
+function debugAPI_DespesasPorCategoria(categoriaId) {
+    console.log('🔍 === DEBUG MANUAL API DESPESAS ===');
+    console.log('Categoria ID testada:', categoriaId);
+    
+    fetch(`/api/despesas-por-categoria/${categoriaId}`)
+        .then(response => {
+            console.log('📡 Status da resposta:', response.status);
+            console.log('📡 Headers:', response.headers);
+            console.log('📡 OK:', response.ok);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📋 Dados recebidos:', data);
+            console.log('📋 Tipo dos dados:', typeof data);
+            console.log('📋 É array?', Array.isArray(data));
+            
+            if (data.error) {
+                console.error('❌ Erro na API:', data.error);
+            } else {
+                console.log('✅ Dados processados com sucesso');
+                console.log('✅ Quantidade de despesas:', data.length);
+                data.forEach((despesa, index) => {
+                    console.log(`  ${index + 1}. ${despesa.nome} (ID: ${despesa.id_despesa})`);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erro na requisição:', error);
+        });
+}
+
+// Função global para testar carregamento de despesas
+function debugCarregarDespesas(categoriaId) {
+    console.log('🔍 === DEBUG CARREGAR DESPESAS ===');
+    console.log('Categoria ID:', categoriaId);
+    console.log('Modal instância:', modalDespesaUnificado);
+    
+    if (modalDespesaUnificado && typeof modalDespesaUnificado.carregarDespesas === 'function') {
+        console.log('✅ Chamando modalDespesaUnificado.carregarDespesas()');
+        modalDespesaUnificado.carregarDespesas(categoriaId);
+    } else {
+        console.error('❌ modalDespesaUnificado não está disponível');
+        
+        // Fallback manual
+        const selectDespesa = document.getElementById('modal_despesa_item');
+        if (selectDespesa) {
+            console.log('✅ Elemento modal_despesa_item encontrado, usando fallback');
+            selectDespesa.innerHTML = '<option value="">Carregando...</option>';
+            debugAPI_DespesasPorCategoria(categoriaId);
+        } else {
+            console.error('❌ Elemento modal_despesa_item não encontrado');
         }
     }
-    
-    console.log('✅ Modal aberto com sucesso!');
 }
 
+
+
+
+// Incluir script do modal unificado
 document.addEventListener('DOMContentLoaded', function() {
-    // ✅ CONFIGURAR EVENT LISTENER PARA CATEGORIA (cópia exata da edição)
-    var modalDespesaCategoria = document.getElementById('modal_despesa_categoria');
-    console.log('🎯 Configurando event listener para modal_despesa_categoria na tela eventos:', !!modalDespesaCategoria);
+    // O modal foi inicializado e está funcionando
+    console.log('Modal de despesas pronto');
     
-    if (modalDespesaCategoria) {
-        modalDespesaCategoria.addEventListener('change', function() {
-            console.log('🔄 Categoria selecionada na tela eventos:', this.value);
-            console.log('🔄 Chamando carregarDespesasPorCategoriaEventos...');
-            carregarDespesasPorCategoriaEventos(this.value); // Usar nossa função específica
-            
-            // Limpar campo de valor quando trocar categoria
-            const inputValor = document.getElementById('modal_despesa_valor');
-            if (inputValor) {
-                inputValor.value = '';
-                inputValor.placeholder = '0,00';
-                console.log('💰 Campo valor limpo');
+    // ✅ GARANTIR QUE MODAL UNIFICADO SEJA INICIALIZADO
+    if (typeof modalDespesaUnificado === 'undefined' || !modalDespesaUnificado) {
+        console.log('⚠️ modalDespesaUnificado não encontrado, inicializando...');
+        // O modal unificado será inicializado pelo seu próprio script
+        setTimeout(() => {
+            if (typeof modalDespesaUnificado !== 'undefined') {
+                console.log('✅ modalDespesaUnificado inicializado com sucesso');
+            } else {
+                console.error('❌ modalDespesaUnificado ainda não está disponível');
             }
-        });
-        console.log('✅ Event listener configurado com sucesso na tela eventos!');
+        }, 100);
     } else {
-        console.error('❌ Elemento modal_despesa_categoria não encontrado no DOM!');
+        console.log('✅ modalDespesaUnificado já está disponível');
+    }
+    
+    // ✅ VERIFICAR SE MODAL UNIFICADO ESTÁ FUNCIONANDO CORRETAMENTE
+    const modalCategoriaDespesa = document.getElementById('modal_despesa_categoria');
+    if (modalCategoriaDespesa) {
+        console.log('✅ Verificando se modal unificado está configurado...');
+        
+        // Aguardar um pouco para permitir que o modal unificado se configure primeiro
+        setTimeout(() => {
+            // Verificar se já existe um listener configurado
+            const hasEventListener = modalCategoriaDespesa.hasAttribute('data-listeners-configured');
+            console.log('🔍 Modal unificado já configurado:', hasEventListener);
+            
+            // ✅ DEBUG: Verificar se o select tem opções
+            console.log('🔍 === VERIFICANDO ESTRUTURA DO SELECT ===');
+            console.log('Select categoria encontrado:', !!modalCategoriaDespesa);
+            console.log('Número de opções:', modalCategoriaDespesa.options.length);
+            console.log('Opções disponíveis:');
+            Array.from(modalCategoriaDespesa.options).forEach((opt, idx) => {
+                console.log(`  ${idx}: value="${opt.value}" text="${opt.text}"`);
+            });
+            console.log('Valor atual:', `"${modalCategoriaDespesa.value}"`);
+            console.log('=====================================');
+            
+            if (!hasEventListener) {
+                console.log('⚠️ Modal unificado não configurado, adicionando listener manual');
+                
+                modalCategoriaDespesa.addEventListener('change', function(e) {
+                    const categoriaId = e.target.value;
+                    console.log('🔄 [MANUAL] === EVENT CHANGE DISPARADO ===');
+                    console.log('Target:', e.target);
+                    console.log('Categoria ID:', `"${categoriaId}"`, 'Tipo:', typeof categoriaId, 'Length:', categoriaId.length);
+                    console.log('Selected Index:', e.target.selectedIndex);
+                    console.log('Opção selecionada:', e.target.options[e.target.selectedIndex]);
+                    console.log('Todas as opções:');
+                    Array.from(e.target.options).forEach((opt, idx) => {
+                        console.log(`  ${idx}: value="${opt.value}" text="${opt.text}" selected=${opt.selected}`);
+                    });
+                    
+                    if (categoriaId && categoriaId.trim() !== '') {
+                        console.log('✅ Categoria válida! Chamando carregarDespesasPorCategoria...');
+                        carregarDespesasPorCategoria(e.target, null);
+                    } else {
+                        console.log('⚠️ Categoria vazia ou inválida, limpando despesas');
+                        console.log('Motivo:', !categoriaId ? 'categoriaId é falsy' : 'categoriaId.trim() é vazio');
+                        const selectDespesa = document.getElementById('modal_despesa_item');
+                        if (selectDespesa) {
+                            selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+                        }
+                    }
+                });
+                
+                // Marcar como configurado
+                modalCategoriaDespesa.setAttribute('data-listeners-configured', 'manual');
+                console.log('✅ Event listener manual configurado');
+            } else {
+                console.log('✅ Modal unificado já configurado, usando implementação existente');
+            }
+        }, 500);
+        
+    } else {
+        console.error('❌ Elemento modal_despesa_categoria não encontrado na tela /eventos');
     }
 });
 </script>

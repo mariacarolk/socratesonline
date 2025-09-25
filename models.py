@@ -1,6 +1,6 @@
 from extensions import db
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, date
 
 # Constantes para tipos de despesa
 TIPOS_DESPESA = {
@@ -405,8 +405,8 @@ class Escola(db.Model):
     endereco = db.Column(db.String(300), nullable=False)
     cidade = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.String(2), nullable=False)
-    email = db.Column(db.String(200), nullable=True)
-    whatsapp = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(200), nullable=False)
+    whatsapp = db.Column(db.String(20), nullable=False)
     nome_contato = db.Column(db.String(100), nullable=False)
     cargo_contato = db.Column(db.String(100), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
@@ -421,7 +421,7 @@ class VisitaEscola(db.Model):
     __tablename__ = 'visita_escola'
     id_visita = db.Column(db.Integer, primary_key=True)
     id_escola = db.Column(db.Integer, db.ForeignKey('escola.id_escola'), nullable=False)
-    data_visita = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_visita = db.Column(db.Date, nullable=False, default=date.today)
     id_promotor = db.Column(db.Integer, db.ForeignKey('colaborador.id_colaborador'), nullable=False)
     email_enviado = db.Column(db.Boolean, default=False, nullable=False)
     whatsapp_enviado = db.Column(db.Boolean, default=False, nullable=False)

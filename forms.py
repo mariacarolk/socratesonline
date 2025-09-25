@@ -579,8 +579,8 @@ class EscolaForm(FlaskForm):
     endereco = StringField('Endereço', validators=[InputRequired(message="Endereço é obrigatório")])
     cidade = StringField('Cidade', validators=[InputRequired(message="Cidade é obrigatória")])
     estado = SelectField('Estado', choices=ESTADOS_BRASILEIROS, validators=[InputRequired(message="Estado é obrigatório")])
-    email = StringField('E-mail da Escola', validators=[Optional(), Email(message="E-mail inválido")])
-    whatsapp = StringField('WhatsApp da Escola', validators=[Optional()])
+    email = StringField('E-mail da Escola', validators=[InputRequired(message="E-mail é obrigatório"), Email(message="E-mail inválido")])
+    whatsapp = StringField('WhatsApp da Escola', validators=[InputRequired(message="WhatsApp é obrigatório")])
     nome_contato = StringField('Nome do Contato', validators=[InputRequired(message="Nome do contato é obrigatório")])
     cargo_contato = StringField('Cargo do Contato', validators=[Optional()])
     observacoes = TextAreaField('Observações', validators=[Optional()])
@@ -615,7 +615,7 @@ class EscolaForm(FlaskForm):
 class VisitaEscolaForm(FlaskForm):
     id_escola = SelectField('Escola', coerce=int, validators=[InputRequired(message="Escola é obrigatória")])
     id_promotor = SelectField('Promotor Responsável', coerce=int, validators=[InputRequired(message="Promotor responsável é obrigatório")])
-    data_visita = DateTimeLocalField('Data e Hora da Visita', validators=[InputRequired(message="Data da visita é obrigatória")], default=datetime.now)
+    data_visita = DateField('Data da Visita', validators=[InputRequired(message="Data da visita é obrigatória")], default=date.today)
     observacoes_visita = TextAreaField('Observações da Visita', validators=[Optional()])
     status_visita = SelectField('Status da Visita', 
                                choices=[

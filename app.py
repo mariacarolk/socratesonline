@@ -118,8 +118,8 @@ def     calcular_lucro_evento(id_evento):
     ).scalar() or 0
     
     # Total de despesas de cabeça = despesas com flag + despesas pagas pelo circo
-    despesas_cabeca = despesas_cabeca_flag + despesas_pagas_pelo_circo
-    
+    despesas_cabeca = despesas_cabeca_flag
+
     # Calcular total líquido (receitas - despesas de cabeça)
     total_liquido = total_receitas - despesas_cabeca
     
@@ -1648,8 +1648,8 @@ def historico_visitas_escola(id):
     
     return render_template('historico_visitas_escola.html', escola=escola, visitas=visitas)
 
-@app.route('/marketing/dashboard')
-def marketing_dashboard():
+@app.route('/marketing/dashboard_escolas')
+def dashboard_escolas():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
@@ -1662,12 +1662,13 @@ def marketing_dashboard():
     total_escolas = Escola.query.count()
     total_visitas = VisitaEscola.query.count()
     
-    # Escolas com visitas pendentes de envio de material
+    # Escolas com visitas pendentes de envio de material (apenas visitas REALIZADAS)
     escolas_pendentes_email = db.session.query(Escola).join(VisitaEscola).filter(
         and_(
             Escola.email.isnot(None),
             Escola.email != '',
-            VisitaEscola.email_enviado == False
+            VisitaEscola.email_enviado == False,
+            VisitaEscola.status_visita == 'realizada'  # ✅ Apenas visitas realizadas
         )
     ).distinct().count()
     
@@ -1675,7 +1676,8 @@ def marketing_dashboard():
         and_(
             Escola.whatsapp.isnot(None),
             Escola.whatsapp != '',
-            VisitaEscola.whatsapp_enviado == False
+            VisitaEscola.whatsapp_enviado == False,
+            VisitaEscola.status_visita == 'realizada'  # ✅ Apenas visitas realizadas
         )
     ).distinct().count()
     
@@ -1704,7 +1706,7 @@ def marketing_dashboard():
         func.count(VisitaEscola.id_visita).label('total_visitas')
     ).join(VisitaEscola).group_by(Escola.id_escola).order_by(func.count(VisitaEscola.id_visita).desc()).limit(5).all()
     
-    return render_template('marketing_dashboard.html',
+    return render_template('dashboard_escolas.html',
                          total_escolas=total_escolas,
                          total_visitas=total_visitas,
                          escolas_pendentes_email=escolas_pendentes_email,
@@ -1722,10 +1724,19 @@ def enviar_email_marketing(escola, colaborador):
     Função para enviar email de marketing para uma escola
     """
     try:
-        # Verificar se as configurações de email estão definidas
-        if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
-            print("❌ Configurações de email não definidas")
-            return False
+        # Verificar serviço de email configurado
+        mail_service = app.config.get('MAIL_SERVICE', 'smtp')
+        
+        if mail_service == 'aws_ses':
+            # Usar AWS SES
+            if not app.config.get('AWS_ACCESS_KEY_ID') or not app.config.get('AWS_SECRET_ACCESS_KEY'):
+                print("❌ Credenciais AWS não definidas")
+                return False
+        else:
+            # Usar SMTP tradicional
+            if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+                print("❌ Configurações de email não definidas")
+                return False
         
         # Criar mensagem de email
         assunto = f"Circo Stankowich - Proposta de Apresentação para {escola.nome}"
@@ -1818,15 +1829,62 @@ def enviar_email_marketing(escola, colaborador):
         {colaborador.telefone or 'Telefone disponível via email'}
         """
         
-        # Criar e enviar mensagem
-        msg = Message(
-            subject=assunto,
-            recipients=[escola.email],
-            html=corpo_html,
-            body=corpo_texto
-        )
-        
-        mail.send(msg)
+        # Enviar email baseado no serviço configurado
+        print(f"🔍 DEBUG enviar_email_marketing: Usando serviço {mail_service}")
+        if mail_service == 'aws_ses':
+            # Usar AWS SES
+            from services.aws_email_service import aws_email_service
+            
+            # Configurar BCC para o remetente (cópia oculta)
+            bcc_emails = [app.config.get('MAIL_DEFAULT_SENDER')]
+            
+            resultado = aws_email_service.send_email(
+                recipient=escola.email,
+                subject=assunto,
+                html_body=corpo_html,
+                text_body=corpo_texto,
+                sender=app.config.get('MAIL_DEFAULT_SENDER'),
+                bcc=bcc_emails
+            )
+            
+            if not resultado['success']:
+                print(f"❌ DEBUG: Erro AWS SES: {resultado['error_message']}")
+                
+                # Se erro for "email não verificado" e estamos em Sandbox, tentar enviar para o remetente
+                if 'not verified' in resultado['error_message'].lower():
+                    print(f"🔄 DEBUG: Tentando enviar para o remetente (modo Sandbox)")
+                    resultado_fallback = aws_email_service.send_email(
+                        recipient=app.config.get('MAIL_DEFAULT_SENDER'),  # Seu Gmail verificado
+                        subject=f"[TESTE SANDBOX] {assunto} - Escola: {escola.nome}",
+                        html_body=corpo_html.replace(escola.nome_contato or 'Responsável', 
+                                                   f"Responsável da {escola.nome}"),
+                        text_body=corpo_texto.replace(escola.nome_contato or 'Responsável',
+                                                    f"Responsável da {escola.nome}"),
+                        sender=app.config.get('MAIL_DEFAULT_SENDER'),
+                        bcc=bcc_emails
+                    )
+                    
+                    if resultado_fallback['success']:
+                        print(f"✅ DEBUG: Email de teste enviado para {app.config.get('MAIL_DEFAULT_SENDER')}")
+                        return True
+                    else:
+                        print(f"❌ DEBUG: Falha no fallback: {resultado_fallback['error_message']}")
+                        
+                return False
+                
+            print(f"✅ DEBUG: Email enviado via AWS SES - Message ID: {resultado['message_id']}")
+            
+        else:
+            # Usar SMTP tradicional
+            msg = Message(
+                subject=assunto,
+                recipients=[escola.email],
+                html=corpo_html,
+                body=corpo_texto
+            )
+            
+            mail.send(msg)
+            print("✅ Email enviado via SMTP tradicional")
         
         # Registrar log do sistema
         log = LogSistema(
@@ -1876,13 +1934,14 @@ def enviar_material_marketing():
         if not usuario or not usuario.colaborador:
             return jsonify({'error': 'Usuário inválido'}), 400
         
-        # Buscar visitas pendentes de envio
+        # Buscar visitas pendentes de envio (apenas REALIZADAS)
         if tipo_envio == 'email':
             visitas_pendentes = db.session.query(VisitaEscola).join(Escola).filter(
                 and_(
                     Escola.email.isnot(None),
                     Escola.email != '',
-                    VisitaEscola.email_enviado == False
+                    VisitaEscola.email_enviado == False,
+                    VisitaEscola.status_visita == 'realizada'  # ✅ Apenas visitas realizadas
                 )
             ).all()
         else:  # whatsapp
@@ -1890,7 +1949,8 @@ def enviar_material_marketing():
                 and_(
                     Escola.whatsapp.isnot(None),
                     Escola.whatsapp != '',
-                    VisitaEscola.whatsapp_enviado == False
+                    VisitaEscola.whatsapp_enviado == False,
+                    VisitaEscola.status_visita == 'realizada'  # ✅ Apenas visitas realizadas
                 )
             ).all()
         
@@ -1901,18 +1961,19 @@ def enviar_material_marketing():
         contador_enviados = 0
         data_envio = datetime.now()
         
+        print(f"🔍 DEBUG: Encontradas {len(visitas_pendentes)} visitas REALIZADAS pendentes para {tipo_envio}")
+        
         for visita in visitas_pendentes:
             try:
-                # Aqui seria implementada a lógica real de envio
-                # Por enquanto, apenas simulamos o envio
-                
                 if tipo_envio == 'email':
-                    # Envio real de email
+                    # Envio real de email  
+                    print(f"🔍 DEBUG: Tentando enviar email para {visita.escola.nome} ({visita.escola.email})")
                     sucesso_email = enviar_email_marketing(visita.escola, usuario.colaborador)
                     if sucesso_email:
                         print(f"📧 Email enviado com sucesso para: {visita.escola.email} - Escola: {visita.escola.nome}")
                         visita.email_enviado = True
                         visita.data_email_enviado = data_envio
+                        contador_enviados += 1  # ✅ Incrementar apenas em caso de sucesso
                     else:
                         print(f"❌ Falha ao enviar email para: {visita.escola.email} - Escola: {visita.escola.nome}")
                         continue
@@ -1928,6 +1989,7 @@ def enviar_material_marketing():
                         print(f"   Message ID: {resultado['message_id']}")
                         visita.whatsapp_enviado = True
                         visita.data_whatsapp_enviado = data_envio
+                        contador_enviados += 1  # ✅ Incrementar apenas em caso de sucesso
                         
                         # Registrar log do envio
                         registrar_log('Envio WhatsApp', 
@@ -1936,14 +1998,14 @@ def enviar_material_marketing():
                         print(f"❌ Erro ao enviar WhatsApp para {visita.escola.nome}: {resultado['error']}")
                         continue
                 
-                contador_enviados += 1
-                
             except Exception as e:
                 print(f"❌ Erro ao enviar para escola {visita.escola.nome}: {e}")
                 continue
         
         # Salvar alterações
         db.session.commit()
+        
+        print(f"🔍 DEBUG: Processo finalizado. Total enviados: {contador_enviados}")
         
         return jsonify({
             'message': f'Material enviado com sucesso por {tipo_envio}!',
@@ -2054,18 +2116,16 @@ def listar_eventos():
         except Exception as log_error:
             print(f"Erro ao gravar log: {log_error}")
         
-        # Converter objetos para dicionários simples para evitar problemas de serialização
-        categorias_receita_dict = [{'id': cat.id_categoria_receita, 'nome': cat.nome} for cat in categorias_receita]
-        categorias_despesa_dict = [{'id': cat.id_categoria_despesa, 'nome': cat.nome} for cat in categorias_despesa]
-        fornecedores_dict = [{'id': forn.id_fornecedor, 'nome': forn.nome} for forn in fornecedores]
+        # Para compatibilidade com modal_despesa_unificado.html, passar objetos originais
+        # O template espera categoria.id_categoria_despesa, não categoria.id
         
         return render_template('eventos.html', 
                              eventos=eventos, 
                              is_admin=is_admin, 
                              usuario=usuario,
-                             categorias_receita=categorias_receita_dict,
-                             categorias_despesa=categorias_despesa_dict,
-                             fornecedores=fornecedores_dict,
+                             categorias_receita=categorias_receita,
+                             categorias_despesa=categorias_despesa,
+                             fornecedores=Fornecedor.query.all(),
                              current_date=current_date,
                              period=period,
                              data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else '',
@@ -4536,6 +4596,12 @@ def salvar_despesa_individual(id_evento):
         print(f"Valor recebido: '{valor_str}'")
         print(f"Fornecedor ID: {id_fornecedor}")
         print(f"Despesa cabeça: {despesa_cabeca}")
+        print(f"Qtd Dias: {qtd_dias}")
+        print(f"Qtd Pessoas: {qtd_pessoas}")
+        print(f"Data despesa: {data_despesa}")
+        print(f"Status: {status_pagamento}")
+        print(f"Forma: {forma_pagamento}")
+        print(f"==================================")
         
         if not despesa_id or not valor_str:
             return jsonify({'success': False, 'message': 'Despesa e valor são obrigatórios'})
@@ -6061,12 +6127,44 @@ def obter_dados_completos_evento(id_evento):
     # Calcular valores usando a função unificada (única fonte de verdade)
     calculo = calcular_lucro_evento(id_evento)
     
-    # Filtrar despesas agrupadas excluindo categorias "PAGAS PELO CIRCO" e "PAGO PELO CIRCO"
+    # Filtrar despesas agrupadas para o bloco "Todas as Despesas por Categoria"
+    # Regra: considerar APENAS o valor pago por Sócrates (valor_pago_socrates)
+    # - Excluir categorias "PAGAS PELO CIRCO"/"PAGO PELO CIRCO"
+    # - Excluir itens com valor_pago_socrates ausente ou igual a zero
+    # - Recalcular o total da categoria somando somente valor_pago_socrates
     despesas_agrupadas_filtradas = []
     for categoria in despesas_agrupadas.values():
         categoria_nome_upper = categoria['categoria_nome'].upper()
-        if 'PAGAS PELO CIRCO' not in categoria_nome_upper and 'PAGO PELO CIRCO' not in categoria_nome_upper:
-            despesas_agrupadas_filtradas.append(categoria)
+        if 'PAGAS PELO CIRCO' in categoria_nome_upper or 'PAGO PELO CIRCO' in categoria_nome_upper:
+            continue
+
+        itens_socrates = []
+        total_categoria_socrates = 0.0
+
+        for item in categoria['itens']:
+            valor_soc = item.get('valor_pago_socrates')
+            if valor_soc is None:
+                valor_soc = 0.0
+            else:
+                try:
+                    valor_soc = float(valor_soc)
+                except Exception:
+                    valor_soc = 0.0
+
+            if valor_soc > 0:
+                novo_item = dict(item)
+                # Exibir apenas o valor pago por Sócrates neste bloco
+                novo_item['valor_exibicao'] = valor_soc
+                itens_socrates.append(novo_item)
+                total_categoria_socrates += valor_soc
+
+        # Incluir categoria somente se houver valor > 0 após o filtro
+        if total_categoria_socrates > 0:
+            despesas_agrupadas_filtradas.append({
+                'categoria_nome': categoria['categoria_nome'],
+                'total_categoria': total_categoria_socrates,
+                'itens': itens_socrates
+            })
     
     # Filtrar despesas de cabeça - apenas itens com despesa_cabeca=True
     # EXCETO para categoria "PAGAS PELO CIRCO" que deve aparecer completa

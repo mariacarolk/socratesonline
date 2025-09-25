@@ -89,7 +89,7 @@
                     <thead>
                         <tr>
                             <th>Escola</th>
-                            <th>Data/Hora</th>
+                            <th>Data</th>
                             <th>Promotor</th>
                             <th>Status</th>
                             <th>Observações</th>
@@ -106,7 +106,6 @@
                             </td>
                             <td>
                                 <strong>{{ visita.data_visita.strftime('%d/%m/%Y') }}</strong>
-                                <br><small class="text-muted">{{ visita.data_visita.strftime('%H:%M') }}</small>
                             </td>
                             <td>{{ visita.promotor.nome }}</td>
                             <td>

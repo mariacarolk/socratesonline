@@ -20,6 +20,35 @@
                 <option value="{{ categoria.id_categoria_despesa }}">{{ categoria.nome }}</option>
                 {% endfor %}
               </select>
+              <script>
+                // Configurar carregamento de despesas por categoria
+                document.getElementById('modal_despesa_categoria').addEventListener('change', function(e) {
+                    const valor = e.target.value;
+                    const selectDespesa = document.getElementById('modal_despesa_item');
+                    
+                    if (!valor) {
+                        selectDespesa.innerHTML = '<option value="">Primeiro selecione a categoria...</option>';
+                        return;
+                    }
+                    
+                    selectDespesa.innerHTML = '<option value="">Carregando...</option>';
+                    
+                    fetch('/api/despesas-por-categoria/' + valor)
+                        .then(r => r.json())
+                        .then(data => {
+                            let html = '<option value="">Selecione uma despesa...</option>';
+                            if (data && data.length > 0) {
+                                data.forEach(d => html += '<option value="' + d.id_despesa + '">' + d.nome + '</option>');
+                            } else {
+                                html = '<option value="">Nenhuma despesa encontrada</option>';
+                            }
+                            selectDespesa.innerHTML = html;
+                        })
+                        .catch(err => {
+                            selectDespesa.innerHTML = '<option value="">Erro ao carregar despesas</option>';
+                        });
+                });
+              </script>
             </div>
             
             <!-- Despesa -->
@@ -28,6 +57,95 @@
               <select name="despesa_id" class="form-select rounded-3" id="modal_despesa_item" required>
                 <option value="">Primeiro selecione a categoria...</option>
               </select>
+              <script>
+                // Configurar verificação de campos específicos quando despesa mudar
+                const modalDespesaItem = document.getElementById('modal_despesa_item');
+                modalDespesaItem.addEventListener('change', function(e) {
+                    const despesaId = e.target.value;
+                    const qtdDiasContainer = document.getElementById('qtd_dias_container');
+                    const qtdPessoasContainer = document.getElementById('qtd_pessoas_container');
+                    const qtdDiasInput = document.getElementById('modal_qtd_dias');
+                    const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
+                    
+                    if (!despesaId) {
+                        // Nenhuma despesa selecionada, ocultar campos
+                        qtdDiasContainer.style.display = 'none';
+                        qtdPessoasContainer.style.display = 'none';
+                        qtdDiasInput.removeAttribute('required');
+                        qtdPessoasInput.removeAttribute('required');
+                        qtdDiasInput.value = '';
+                        qtdPessoasInput.value = '';
+                        return;
+                    }
+                    
+                    // Buscar detalhes da despesa para verificar se é de alimentação
+                    fetch('/api/despesa-detalhes/' + despesaId)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.flag_alimentacao) {
+                                // É despesa de alimentação - mostrar campos
+                                qtdDiasContainer.style.display = 'block';
+                                qtdPessoasContainer.style.display = 'block';
+                                qtdDiasInput.setAttribute('required', 'required');
+                                qtdPessoasInput.setAttribute('required', 'required');
+                            } else {
+                                // Não é despesa de alimentação - ocultar campos
+                                qtdDiasContainer.style.display = 'none';
+                                qtdPessoasContainer.style.display = 'none';
+                                qtdDiasInput.removeAttribute('required');
+                                qtdPessoasInput.removeAttribute('required');
+                                qtdDiasInput.value = '';
+                                qtdPessoasInput.value = '';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro ao verificar despesa:', error);
+                            // Em caso de erro, ocultar campos
+                            qtdDiasContainer.style.display = 'none';
+                            qtdPessoasContainer.style.display = 'none';
+                            qtdDiasInput.removeAttribute('required');
+                            qtdPessoasInput.removeAttribute('required');
+                        });
+                });
+                
+                // ✅ VERIFICAÇÃO AUTOMÁTICA QUANDO MODAL É MOSTRADO
+                const modalElement = document.getElementById('modalAdicionarDespesa');
+                if (modalElement) {
+                    modalElement.addEventListener('shown.bs.modal', function() {
+                        console.log('🔍 === MODAL UNIFICADO MOSTRADO - VERIFICAÇÃO AUTOMÁTICA ===');
+                        
+                        // Aguardar um pouco para garantir que tudo foi carregado
+                        setTimeout(() => {
+                            const selectDespesa = document.getElementById('modal_despesa_item');
+                            if (selectDespesa && selectDespesa.value) {
+                                console.log('✅ Modal unificado aberto com despesa pré-selecionada:', selectDespesa.value);
+                                console.log('🔄 Executando verificação automática...');
+                                
+                                const qtdDiasContainer = document.getElementById('qtd_dias_container');
+                                const qtdPessoasContainer = document.getElementById('qtd_pessoas_container');
+                                const qtdDiasInput = document.getElementById('modal_qtd_dias');
+                                const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
+                                
+                                // Buscar detalhes da despesa
+                                fetch('/api/despesa-detalhes/' + selectDespesa.value)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.flag_alimentacao) {
+                                            console.log('✅ Despesa de alimentação detectada - mostrando campos');
+                                            qtdDiasContainer.style.display = 'block';
+                                            qtdPessoasContainer.style.display = 'block';
+                                            qtdDiasInput.setAttribute('required', 'required');
+                                            qtdPessoasInput.setAttribute('required', 'required');
+                                        }
+                                    })
+                                    .catch(error => console.error('Erro na verificação automática:', error));
+                            } else {
+                                console.log('ℹ️ Modal unificado aberto sem despesa pré-selecionada');
+                            }
+                        }, 250);
+                    }, { once: false });
+                }
+              </script>
             </div>
             
             <!-- Despesa da cabeça -->

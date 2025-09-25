@@ -4,13 +4,27 @@
  */
 
 // Função para abrir modal de despesa de forma unificada
-function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = '', nomeCategoria = '', isFixa = '', valorMedio = '') {
+function abrirModalDespesaUnificado(eventoIdOuDespesaId, categoriaId = '', nomeDespesa = '', nomeCategoria = '', isFixa = '', valorMedio = '') {
     // Determinar se estamos na tela de eventos ou novo evento
     const isNovoEvento = window.location.pathname.includes('/eventos/novo') || window.location.pathname.includes('/eventos/editar');
+
+    // Na tela de novo/editar evento, o primeiro parâmetro historicamente é DESPESA_ID.
+    // Na tela de listagem de eventos, o primeiro parâmetro é EVENTO_ID.
+    const eventoIdPagina = (isNovoEvento && typeof obterEventoId === 'function') ? obterEventoId() : null;
+    const eventoId = isNovoEvento ? (eventoIdPagina ? parseInt(eventoIdPagina) : null) : (eventoIdOuDespesaId ? parseInt(eventoIdOuDespesaId) : null);
+    const despesaIdPreSelecionada = isNovoEvento ? (eventoIdOuDespesaId ? parseInt(eventoIdOuDespesaId) : null) : null;
     
     // Limpar formulário
     const form = document.querySelector('#modalAdicionarDespesa form');
     form.reset();
+
+    // Informar contexto/IDs para a classe unificada
+    if (typeof modalDespesaUnificado !== 'undefined' && modalDespesaUnificado) {
+        modalDespesaUnificado.contexto = isNovoEvento ? 'novo_evento' : 'eventos';
+        modalDespesaUnificado.eventoId = eventoId;
+        modalDespesaUnificado.isEdicao = false;
+        modalDespesaUnificado.despesaId = null;
+    }
     
     // Pré-preencher categoria se fornecida
     if (categoriaId) {
@@ -32,16 +46,19 @@ function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = ''
             }
         }
         
-        // Se há uma despesa específica, pré-selecionar
-        if (nomeDespesa) {
+        // Se há uma despesa específica, pré-selecionar por nome ou ID
+        if (nomeDespesa || despesaIdPreSelecionada) {
             setTimeout(() => {
                 const selectDespesa = form.querySelector('[name="despesa_id"]');
                 if (selectDespesa) {
-                    // Procurar pela opção com o nome da despesa
-                    for (let option of selectDespesa.options) {
-                        if (option.text.includes(nomeDespesa)) {
-                            selectDespesa.value = option.value;
-                            break;
+                    if (despesaIdPreSelecionada) {
+                        selectDespesa.value = String(despesaIdPreSelecionada);
+                    } else if (nomeDespesa) {
+                        for (let option of selectDespesa.options) {
+                            if (option.text.includes(nomeDespesa)) {
+                                selectDespesa.value = option.value;
+                                break;
+                            }
                         }
                     }
                 }
@@ -99,12 +116,8 @@ function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = ''
         }
     }
     
-    // Ajustar form action e onsubmit baseado na tela
-    if (isNovoEvento) {
-        form.setAttribute('onsubmit', 'adicionarDespesaEvento(event)');
-    } else if (eventoId) {
-        form.setAttribute('onsubmit', `adicionarDespesaCompleta(event, '${eventoId}')`);
-    }
+    // Não usar onsubmit inline; deixar o controlador unificado tratar o submit
+    form.removeAttribute('onsubmit');
     
     // Configurar onChange para categoria na tela de eventos (sempre que houver eventoId)
     if (eventoId && !isNovoEvento) {
@@ -113,10 +126,10 @@ function abrirModalDespesaUnificado(eventoId, categoriaId = '', nomeDespesa = ''
             // Remover evento anterior se existir
             selectCategoria.removeAttribute('onchange');
             
-            // Configurar novo evento
-            selectCategoria.setAttribute('onchange', `carregarDespesasPorCategoria(this, '${eventoId}')`);
+            // NÃO configurar onchange HTML - deixar o modal-despesa-unificado.js lidar com isso
+            // O modalDespesaUnificado já tem addEventListener para 'change' configurado
             
-            console.log('🔧 Evento onChange configurado para categoria na tela de eventos');
+            console.log('🔧 Evento onChange NÃO configurado - deixando modalDespesaUnificado lidar com isso');
         }
     }
     

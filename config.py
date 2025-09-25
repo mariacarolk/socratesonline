@@ -32,3 +32,12 @@ class Config:
     # Configurações de WhatsApp (API)
     WHATSAPP_API_URL = os.environ.get('WHATSAPP_API_URL')
     WHATSAPP_API_TOKEN = os.environ.get('WHATSAPP_API_TOKEN')
+    
+    # Configurações AWS
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+    MAIL_SERVICE = os.environ.get('MAIL_SERVICE', 'smtp')  # 'smtp' ou 'aws_ses'
+    
+    # SNS Topics (opcional)
+    AWS_SNS_EMAIL_TOPIC_ARN = os.environ.get('AWS_SNS_EMAIL_TOPIC_ARN')

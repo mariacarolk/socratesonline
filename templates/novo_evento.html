@@ -1471,9 +1471,19 @@ function verificarDespesaAlimentacaoModal() {
     console.log('🔍 === INICIANDO VERIFICAÇÃO MODAL ===');
     
     const despesaSelect = document.getElementById('modal_despesa_item');
-    const camposAlimentacao = document.getElementById('modal-campos-alimentacao');
-    const qtdDiasInput = document.getElementById('modal_qtd_dias');
-    const qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
+    
+    // Tentar buscar elementos do modal unificado primeiro
+    let camposAlimentacao = document.getElementById('qtd_dias_container')?.parentElement || document.getElementById('modal-campos-alimentacao');
+    let qtdDiasInput = document.getElementById('modal_qtd_dias');
+    let qtdPessoasInput = document.getElementById('modal_qtd_pessoas');
+    
+    // Se não encontrou os campos do modal antigo, buscar do modal unificado
+    if (!qtdDiasInput) {
+        qtdDiasInput = document.getElementById('modal_qtd_dias') || document.getElementById('qtd_dias');
+    }
+    if (!qtdPessoasInput) {
+        qtdPessoasInput = document.getElementById('modal_qtd_pessoas') || document.getElementById('qtd_pessoas');
+    }
     
     console.log('📋 Elementos encontrados:', {
         despesaSelect: !!despesaSelect,
@@ -1500,22 +1510,24 @@ function verificarDespesaAlimentacaoModal() {
                 if (data.flag_alimentacao) {
                     console.log('✅ É despesa de alimentação! Mostrando campos...');
                     
-                    // Mostrar campos de quantidade
-                    if (camposAlimentacao) {
-                        console.log('🟡 Aplicando estilo ao elemento modal-campos-alimentacao...');
+                    // Tentar mostrar campos do modal unificado primeiro
+                    const qtdDiasContainer = document.getElementById('qtd_dias_container');
+                    const qtdPessoasContainer = document.getElementById('qtd_pessoas_container');
+                    
+                    if (qtdDiasContainer && qtdPessoasContainer) {
+                        console.log('🔄 Usando modal unificado - mostrando containers individuais');
+                        qtdDiasContainer.style.display = 'block';
+                        qtdPessoasContainer.style.display = 'block';
+                    } else if (camposAlimentacao) {
+                        console.log('🔄 Usando modal antigo - mostrando grupo de campos');
                         camposAlimentacao.style.display = 'block';
                         camposAlimentacao.style.backgroundColor = '#ffffcc'; // Destaque amarelo para debug
                         camposAlimentacao.style.border = '2px solid #ffc107'; // Borda amarela visível
                         camposAlimentacao.style.padding = '15px'; // Padding para visibilidade
                         camposAlimentacao.style.marginTop = '10px'; // Margem
                         console.log('✅ Campos exibidos com destaque AMARELO');
-                        console.log('🔍 Estado atual do elemento:', {
-                            display: camposAlimentacao.style.display,
-                            backgroundColor: camposAlimentacao.style.backgroundColor,
-                            visibility: getComputedStyle(camposAlimentacao).visibility
-                        });
                     } else {
-                        console.error('❌ Elemento modal-campos-alimentacao não encontrado!');
+                        console.error('❌ Nenhum elemento de campos de alimentação encontrado!');
                     }
                     
                     // Tornar campos obrigatórios
@@ -1530,8 +1542,16 @@ function verificarDespesaAlimentacaoModal() {
                 } else {
                     console.log('❌ NÃO é despesa de alimentação. Escondendo campos...');
                     
-                    // Esconder campos de quantidade
-                    if (camposAlimentacao) {
+                    // Esconder campos - tentar modal unificado primeiro
+                    const qtdDiasContainer = document.getElementById('qtd_dias_container');
+                    const qtdPessoasContainer = document.getElementById('qtd_pessoas_container');
+                    
+                    if (qtdDiasContainer && qtdPessoasContainer) {
+                        console.log('🔄 Ocultando campos do modal unificado');
+                        qtdDiasContainer.style.display = 'none';
+                        qtdPessoasContainer.style.display = 'none';
+                    } else if (camposAlimentacao) {
+                        console.log('🔄 Ocultando campos do modal antigo');
                         camposAlimentacao.style.display = 'none';
                     }
                     
@@ -1549,8 +1569,14 @@ function verificarDespesaAlimentacaoModal() {
             .catch(error => {
                 console.error('❌ Erro ao verificar despesa:', error);
                 
-                // Em caso de erro, esconder campos
-                if (camposAlimentacao) {
+                // Em caso de erro, esconder campos - tentar modal unificado primeiro
+                const qtdDiasContainer = document.getElementById('qtd_dias_container');
+                const qtdPessoasContainer = document.getElementById('qtd_pessoas_container');
+                
+                if (qtdDiasContainer && qtdPessoasContainer) {
+                    qtdDiasContainer.style.display = 'none';
+                    qtdPessoasContainer.style.display = 'none';
+                } else if (camposAlimentacao) {
                     camposAlimentacao.style.display = 'none';
                 }
                 if (qtdDiasInput) qtdDiasInput.removeAttribute('required');
@@ -1559,8 +1585,14 @@ function verificarDespesaAlimentacaoModal() {
     } else {
         console.log('⚠️ Nenhuma despesa selecionada ou despesa inválida. Escondendo campos...');
         
-        // Nenhuma despesa selecionada, esconder campos
-        if (camposAlimentacao) {
+        // Nenhuma despesa selecionada, esconder campos - tentar modal unificado primeiro
+        const qtdDiasContainer = document.getElementById('qtd_dias_container');
+        const qtdPessoasContainer = document.getElementById('qtd_pessoas_container');
+        
+        if (qtdDiasContainer && qtdPessoasContainer) {
+            qtdDiasContainer.style.display = 'none';
+            qtdPessoasContainer.style.display = 'none';
+        } else if (camposAlimentacao) {
             camposAlimentacao.style.display = 'none';
         }
         if (qtdDiasInput) {
@@ -2243,6 +2275,29 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('❌ Elemento modal_despesa_item NÃO ENCONTRADO!');
     }
     
+    // ✅ ADICIONAR EVENT LISTENER PARA VERIFICAÇÃO QUANDO MODAL É MOSTRADO
+    const modalDespesa = document.getElementById('modalAdicionarDespesa');
+    if (modalDespesa) {
+        modalDespesa.addEventListener('shown.bs.modal', function () {
+            console.log('🔍 === MODAL MOSTRADO - VERIFICAÇÃO AUTOMÁTICA ===');
+            
+            // Aguardar um pouco para garantir que tudo foi carregado
+            setTimeout(() => {
+                const selectDespesa = document.getElementById('modal_despesa_item');
+                if (selectDespesa && selectDespesa.value) {
+                    console.log('✅ Modal aberto com despesa pré-selecionada:', selectDespesa.value);
+                    console.log('🔄 Executando verificação automática de alimentação...');
+                    verificarDespesaAlimentacaoModal();
+                } else {
+                    console.log('ℹ️ Modal aberto sem despesa pré-selecionada');
+                }
+            }, 200);
+        });
+        console.log('✅ Event listener "shown.bs.modal" configurado');
+    } else {
+        console.error('❌ Modal modalAdicionarDespesa não encontrado para event listener');
+    }
+    
     var forms = document.querySelectorAll('.needs-validation');
     
     Array.from(forms).forEach(function(form) {
@@ -2585,6 +2640,36 @@ function editarDespesaModal(button) {
             });
         }
     }, 300);
+    
+    // ✅ VERIFICAÇÃO INICIAL DE ALIMENTAÇÃO PARA EDIÇÃO
+    // Aguardar um pouco para garantir que a despesa foi carregada, depois verificar se é de alimentação
+    setTimeout(() => {
+        console.log('🔍 === VERIFICAÇÃO INICIAL DE ALIMENTAÇÃO NA EDIÇÃO ===');
+        console.log('Despesa ID para verificação:', despesaId);
+        
+        if (despesaId) {
+            // Chamar a função de verificação de alimentação com a despesa já selecionada
+            const selectDespesa = document.getElementById('modal_despesa_item');
+            if (selectDespesa && selectDespesa.value === despesaId) {
+                console.log('✅ Despesa já selecionada no modal, executando verificação...');
+                verificarDespesaAlimentacaoModal();
+            } else {
+                console.log('⚠️ Aguardando despesa ser selecionada...');
+                // Aguardar mais um pouco caso a despesa ainda não tenha sido selecionada
+                setTimeout(() => {
+                    const selectDespesaRetry = document.getElementById('modal_despesa_item');
+                    if (selectDespesaRetry && selectDespesaRetry.value === despesaId) {
+                        console.log('✅ Despesa selecionada após retry, executando verificação...');
+                        verificarDespesaAlimentacaoModal();
+                    } else {
+                        console.log('❌ Despesa ainda não selecionada após retry');
+                    }
+                }, 200);
+            }
+        } else {
+            console.log('⚠️ Nenhuma despesa ID fornecida para verificação inicial');
+        }
+    }, 500);
     
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('modalAdicionarDespesa'));

@@ -401,9 +401,9 @@
 *Disponível para Promotores, Administradores e ROOT*
 
 ### **1. Dashboard Escolas** *(Apenas para administradores e ROOT)*
-- **Rota:** `/marketing/dashboard`
-- **Função:** `marketing_dashboard()` *(Linha 1612)*
-- **Template:** `marketing_dashboard.html`
+- **Rota:** `/marketing/dashboard_escolas`
+- **Função:** `dashboard_escolas()` *(Linha 1652)*
+- **Template:** `dashboard_escolas.html`
 - **Funcionalidades:**
   - Estatísticas completas de escolas e visitas
   - Controle de comunicação (email/WhatsApp)
