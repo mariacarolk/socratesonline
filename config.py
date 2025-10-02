@@ -1,4 +1,14 @@
 import os
+import locale
+
+# Set locale to UTF-8 to handle encoding issues
+try:
+    locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+    except locale.Error:
+        pass  # Use system default if UTF-8 locales are not available
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'sua-chave-secreta-aqui-mude-em-producao')
@@ -11,13 +21,23 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Banco de dados
-    database_url = os.environ.get('DATABASE_URL') or 'postgresql://postgres:postgres@localhost:5432/socrates_online'
+    database_url = os.environ.get('DATABASE_URL') or 'postgresql://postgres:postgres@localhost:5432/socrates_online_dev?client_encoding=utf8'
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    # Adicionar client_encoding=utf8 se não estiver presente
+    if 'client_encoding' not in database_url:
+        separator = '&' if '?' in database_url else '?'
+        database_url += f'{separator}client_encoding=utf8'
+    
     SQLALCHEMY_DATABASE_URI = database_url
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
+        'connect_args': {
+            'client_encoding': 'utf8',
+            'options': '-c client_encoding=utf8'
+        }
     }
     
     # Configurações de E-mail

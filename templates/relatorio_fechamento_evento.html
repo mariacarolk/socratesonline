@@ -75,16 +75,19 @@
                                                 <tr>
                                                     <th>Despesa</th>
                                                     <th>Data</th>
-                                                    <th>Fornecedor</th>
                                                     <th class="text-end">Valor</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {% for item in categoria.itens %}
                                                 <tr>
-                                                    <td>{{ item.despesa_nome }}</td>
+                                                    <td>
+                                                        {{ item.despesa_nome }}
+                                                        {% if item.observacoes %}
+                                                            <small class="text-muted"> - {{ item.observacoes }}</small>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>{{ item.data_vencimento.strftime('%d/%m/%Y') if item.data_vencimento else '—' }}</td>
-                                                    <td>{{ item.fornecedor_nome or '-' }}</td>
                                                     <td class="text-end">R$ {{ "%.2f"|format(item.valor_exibicao)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>
                                                 {% endfor %}
@@ -159,7 +162,12 @@
                                             <tbody>
                                                 {% for item in categoria.itens %}
                                                 <tr>
-                                                    <td>{{ item.receita_nome }}</td>
+                                                    <td>
+                                                        {{ item.receita_nome }}
+                                                        {% if item.observacoes %}
+                                                            <small class="text-muted"> - {{ item.observacoes }}</small>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>{{ item.data.strftime('%d/%m/%Y') }}</td>
                                                     <td class="text-end">R$ {{ "%.2f"|format(item.valor)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>
@@ -262,16 +270,19 @@
                                                 <tr>
                                                     <th>Despesa</th>
                                                     <th>Data</th>
-                                                    <th>Fornecedor</th>
                                                     <th class="text-end">Valor</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {% for item in categoria.itens %}
                                                 <tr>
-                                                    <td>{{ item.despesa_nome }}</td>
+                                                    <td>
+                                                        {{ item.despesa_nome }}
+                                                        {% if item.observacoes %}
+                                                            <small class="text-muted"> - {{ item.observacoes }}</small>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>{{ item.data_vencimento.strftime('%d/%m/%Y') if item.data_vencimento else '—' }}</td>
-                                                    <td>{{ item.fornecedor_nome or '-' }}</td>
                                                     <td class="text-end">R$ {{ "%.2f"|format(item.valor_exibicao)|replace('.', ',')|replace(',', '.', 1) }}</td>
                                                 </tr>
                                                 {% endfor %}

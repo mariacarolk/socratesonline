@@ -1,6 +1,18 @@
 ﻿from datetime import date, timedelta, datetime
 from collections import defaultdict
 import os
+import sys
+
+# Set UTF-8 encoding for stdout/stderr on Windows
+if sys.platform.startswith('win'):
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+    
+# Set environment variables for UTF-8 encoding
+os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+os.environ.setdefault('LANG', 'en_US.UTF-8')
+os.environ.setdefault('LC_ALL', 'en_US.UTF-8')
 import io
 from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, make_response, send_file
 from models import (
@@ -568,8 +580,13 @@ def login():
     criar_usuario_root()
     
     # Verificar se é o primeiro acesso (apenas usuário ROOT existe)
-    total_usuarios = Usuario.query.count()
-    primeiro_acesso = total_usuarios <= 1
+    try:
+        total_usuarios = Usuario.query.count()
+        primeiro_acesso = total_usuarios <= 1
+    except UnicodeDecodeError as e:
+        print(f"❌ Erro de encoding ao acessar banco de dados: {e}")
+        flash('Erro de configuração do banco de dados. Contate o administrador.', 'danger')
+        primeiro_acesso = True
     
     form = LoginForm()
     if form.validate_on_submit():
@@ -6836,12 +6853,27 @@ def despesas_empresa():
             filename = None
             if form.comprovante.data:
                 file = form.comprovante.data
-                if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    # Adicionar timestamp para evitar conflitos
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-                    filename = timestamp + filename
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'comprovantes', filename))
+                if file and file.filename and file.filename != '' and allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        # Adicionar timestamp para evitar conflitos
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                        filename = timestamp + filename
+                        
+                        # Garantir que o diretório existe
+                        upload_folder = app.config['UPLOAD_FOLDER']
+                        os.makedirs(upload_folder, exist_ok=True)
+                        
+                        # Salvar arquivo
+                        file_path = os.path.join(upload_folder, filename)
+                        file.save(file_path)
+                        print(f"📎 Comprovante salvo: {filename} em {file_path}")
+                    except Exception as upload_error:
+                        print(f"❌ Erro no upload: {str(upload_error)}")
+                        flash(f'Erro ao fazer upload do comprovante: {str(upload_error)}', 'warning')
+                        filename = None
+                elif form.comprovante.data and not allowed_file(file.filename):
+                    flash('Tipo de arquivo não permitido. Use JPG, PNG, PDF, DOC ou DOCX.', 'warning')
             
             despesa_empresa = DespesaEmpresa(
                 id_despesa=form.despesa_id.data,
@@ -6964,12 +6996,26 @@ def editar_despesa_empresa(id):
             # Upload do comprovante se houver
             if form.comprovante.data:
                 file = form.comprovante.data
-                if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-                    filename = timestamp + filename
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'comprovantes', filename))
-                    despesa_empresa.comprovante = filename
+                if file and file.filename and file.filename != '' and allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+                        filename = timestamp + filename
+                        
+                        # Garantir que o diretório existe
+                        upload_folder = app.config['UPLOAD_FOLDER']
+                        os.makedirs(upload_folder, exist_ok=True)
+                        
+                        # Salvar arquivo
+                        file_path = os.path.join(upload_folder, filename)
+                        file.save(file_path)
+                        despesa_empresa.comprovante = filename
+                        print(f"📎 Comprovante salvo: {filename} em {file_path}")
+                    except Exception as upload_error:
+                        print(f"❌ Erro no upload: {str(upload_error)}")
+                        flash(f'Erro ao fazer upload do comprovante: {str(upload_error)}', 'warning')
+                elif form.comprovante.data and not allowed_file(file.filename):
+                    flash('Tipo de arquivo não permitido. Use JPG, PNG, PDF, DOC ou DOCX.', 'warning')
             
             despesa_empresa.id_despesa = form.despesa_id.data
             despesa_empresa.data_vencimento = form.data_vencimento.data
@@ -7064,7 +7110,7 @@ def excluir_despesa_empresa(id):
         
         # Excluir arquivo de comprovante se existir
         if despesa_empresa.comprovante:
-            arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], 'comprovantes', despesa_empresa.comprovante)
+            arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], despesa_empresa.comprovante)
             if os.path.exists(arquivo_path):
                 os.remove(arquivo_path)
         

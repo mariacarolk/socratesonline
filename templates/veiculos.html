@@ -520,8 +520,8 @@
             initCalculoAutomaticoManutencao();
         }
         
-        // Aplicar máscaras de moeda
-        aplicarMascaraMoeda('#modalServicosContent input[type="number"]');
+        // Aplicar máscaras de moeda (excluindo campos de ano)
+        aplicarMascaraMoeda('#modalServicosContent input[type="number"]:not([name="ano_exercicio"])');
         aplicarMascaraMoeda('#modalServicosContent input[name*="valor"]');
     };
 

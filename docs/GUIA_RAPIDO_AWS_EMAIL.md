@@ -83,3 +83,10 @@ nslookup -type=TXT _amazonses.socratesonline.com
 - [Documentação Completa](./AWS_EMAIL_CONFIGURATION.md)
 
 
+
+
+
+
+
+
+
