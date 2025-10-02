@@ -1,1 +1,1 @@
-web: flask db upgrade && python app.py
+web: python railway/railway_migration_fix.py && python app.py
