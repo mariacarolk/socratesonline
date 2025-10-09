@@ -753,3 +753,8 @@ class ManutencaoVeiculoForm(FlaskForm):
             valor_esperado = float(self.valor_servico.data) + float(valor_pecas)
             if abs(float(field.data) - valor_esperado) > 0.01:
                 raise ValidationError('Valor total deve ser igual à soma do valor do serviço e das peças.')
+
+class FluxoCaixaForm(FlaskForm):
+    data_referencia = DateField('Data de Referência', validators=[InputRequired()], default=date.today)
+    saldo_inicial = FloatField('Saldo Inicial em Caixa', validators=[InputRequired()], default=0.0)
+    observacoes = TextAreaField('Observações')

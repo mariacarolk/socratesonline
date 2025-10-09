@@ -449,3 +449,14 @@ class LogSistema(db.Model):
     
     def __repr__(self):
         return f'<LogSistema {self.acao} - {self.usuario_nome} - {self.data_hora}>'
+
+class FluxoCaixa(db.Model):
+    __tablename__ = 'fluxo_caixa'
+    id_fluxo_caixa = db.Column(db.Integer, primary_key=True)
+    data_referencia = db.Column(db.Date, nullable=False, unique=True)
+    saldo_inicial = db.Column(db.Float, nullable=False, default=0.0)
+    observacoes = db.Column(db.Text, nullable=True)
+    data_criacao = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<FluxoCaixa {self.data_referencia} - R$ {self.saldo_inicial}>'

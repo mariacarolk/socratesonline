@@ -153,6 +153,30 @@
     .required {
         color: var(--accent);
     }
+
+    .password-toggle-btn {
+        cursor: pointer !important;
+        transition: all 0.3s ease;
+    }
+
+    .password-toggle-btn:hover {
+        background-color: #d0d0d0 !important;
+        transform: scale(1.05);
+    }
+
+    .password-toggle-btn:hover i {
+        color: var(--accent) !important;
+    }
+
+    .password-toggle-btn:focus {
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.3) !important;
+    }
+
+    .password-toggle-btn i {
+        pointer-events: none;
+        transition: color 0.3s ease;
+    }
 </style>
 {% endblock %}
 
@@ -237,12 +261,15 @@
                 <i class="bi bi-shield-lock me-2"></i>Dados de Acesso
             </div>
             
+            <!-- v5.0 - Toggle de senha COM FUNDO CINZA -->
             <div class="row mb-3">
                 <div class="col-md-6 mb-3">
                     {{ form.password.label(class="form-label") }} <span class="required">*</span>
-                    <div class="input-group">
-                        {{ form.password(class="form-control", placeholder="Mínimo 6 caracteres", required=true) }}
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <div class="input-group" style="position: relative;">
+                        {{ form.password(class="form-control", placeholder="Mínimo 6 caracteres", required=true, id="passwordField", type="password", style="padding-right: 50px;") }}
+                        <button type="button" class="btn password-toggle-btn" onclick="togglePassword('passwordField', this)" aria-label="Mostrar senha" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); z-index: 10; background-color: #e8e8e8 !important; border: 1px solid #ccc !important; color: #333 !important; padding: 5px 10px; border-radius: 5px; width: 40px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-eye" style="font-size: 1.1rem; color: #333 !important;"></i>
+                        </button>
                     </div>
                     {% if form.password.errors %}
                         {% for error in form.password.errors %}
@@ -253,9 +280,11 @@
                 
                 <div class="col-md-6 mb-3">
                     {{ form.confirm_password.label(class="form-label") }} <span class="required">*</span>
-                    <div class="input-group">
-                        {{ form.confirm_password(class="form-control", placeholder="Repita a senha", required=true) }}
-                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                    <div class="input-group" style="position: relative;">
+                        {{ form.confirm_password(class="form-control", placeholder="Repita a senha", required=true, id="confirmPasswordField", type="password", style="padding-right: 50px;") }}
+                        <button type="button" class="btn password-toggle-btn" onclick="togglePassword('confirmPasswordField', this)" aria-label="Mostrar senha" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); z-index: 10; background-color: #e8e8e8 !important; border: 1px solid #ccc !important; color: #333 !important; padding: 5px 10px; border-radius: 5px; width: 40px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-eye" style="font-size: 1.1rem; color: #333 !important;"></i>
+                        </button>
                     </div>
                     {% if form.confirm_password.errors %}
                         {% for error in form.confirm_password.errors %}
@@ -287,8 +316,32 @@
 
 <script src="{{ url_for('static', filename='js/masks.js') }}"></script>
 <script>
+    // Função para alternar visualização de senha
+    function togglePassword(fieldId, button) {
+        const field = document.getElementById(fieldId);
+        const iconElement = button.querySelector('i');
+        
+        if (field.type === 'password') {
+            field.type = 'text';
+            iconElement.classList.remove('bi-eye');
+            iconElement.classList.add('bi-eye-slash');
+            iconElement.title = 'Ocultar senha';
+        } else {
+            field.type = 'password';
+            iconElement.classList.remove('bi-eye-slash');
+            iconElement.classList.add('bi-eye');
+            iconElement.title = 'Mostrar senha';
+        }
+    }
+
     // Validação de formulário
     document.addEventListener('DOMContentLoaded', function() {
+        // Configurar tooltips para os ícones de senha
+        const eyeIcons = document.querySelectorAll('.password-toggle i');
+        eyeIcons.forEach(icon => {
+            icon.title = 'Mostrar senha';
+        });
+        
         const forms = document.querySelectorAll('.needs-validation');
         
         Array.from(forms).forEach(form => {

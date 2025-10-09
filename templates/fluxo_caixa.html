@@ -1,0 +1,573 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-cash-stack me-2"></i>Fluxo de Caixa</h4>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+
+    <!-- Resumo do Fluxo de Caixa -->
+    {% if fluxo_projetado.data_referencia %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-wallet2"></i> Saldo Atual</h5>
+                    <h3 class="card-text">R$ {{ "%.2f"|format(fluxo_projetado.saldo_atual) }}</h3>
+                    <small>Atualizado até hoje</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-arrow-up-circle"></i> Receitas Futuras</h5>
+                    <h3 class="card-text">R$ {{ "%.2f"|format(fluxo_projetado.receitas_futuras) }}</h3>
+                    <small>A receber</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-arrow-down-circle"></i> Despesas Pendentes</h5>
+                    <h3 class="card-text">R$ {{ "%.2f"|format(fluxo_projetado.despesas_futuras) }}</h3>
+                    <small>Total a pagar</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center {% if fluxo_projetado.saldo_projetado >= 0 %}bg-info{% else %}bg-warning{% endif %} text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-graph-up"></i> Saldo Projetado</h5>
+                    <h3 class="card-text">R$ {{ "%.2f"|format(fluxo_projetado.saldo_projetado) }}</h3>
+                    <small>Previsão</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Cards Detalhados de Despesas -->
+    {% if fluxo_projetado.data_referencia %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card text-center bg-warning text-dark">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-exclamation-triangle"></i> Despesas Vencidas</h6>
+                    <h4 class="card-text">R$ {{ "%.2f"|format(fluxo_projetado.despesas_vencidas or 0) }}</h4>
+                    <small>Despesas em atraso</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-calendar-check"></i> Despesas a Vencer</h6>
+                    <h4 class="card-text">R$ {{ "%.2f"|format(fluxo_projetado.despesas_a_vencer or 0) }}</h4>
+                    <small>Despesas futuras</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gráfico Temporal do Fluxo de Caixa -->
+    {% if dados_grafico.labels %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Evolução do Fluxo de Caixa - Mês Atual</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="graficoFluxoCaixa" width="400" height="150"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Formulário para Novo Registro -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Registrar Saldo em Caixa</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.data_referencia.id }}" class="form-label">{{ form.data_referencia.label.text }}</label>
+                            <div class="input-group">
+                                {{ form.data_referencia(class="form-control") }}
+                                <span class="input-group-text"><i class="bi bi-calendar-date"></i></span>
+                            </div>
+                            {% for error in form.data_referencia.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.saldo_inicial.id }}" class="form-label">{{ form.saldo_inicial.label.text }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                {{ form.saldo_inicial(class="form-control", step="0.01") }}
+                            </div>
+                            {% for error in form.saldo_inicial.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.observacoes.id }}" class="form-label">{{ form.observacoes.label.text }}</label>
+                            {{ form.observacoes(class="form-control", rows="3") }}
+                            {% for error in form.observacoes.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Registrar Saldo
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Próximas Movimentações -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Próximas Movimentações (30 dias)</h5>
+                </div>
+                <div class="card-body">
+                    {% if fluxo_projetado.movimentacoes %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Descrição</th>
+                                        <th class="text-end">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mov in fluxo_projetado.movimentacoes %}
+                                    <tr>
+                                        <td>
+                                            {{ mov.data.strftime('%d/%m/%Y') }}
+                                            {% if mov.tipo == 'despesa' and mov.get('vencida') %}
+                                                <span class="badge bg-warning text-dark ms-1">VENCIDA</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if mov.tipo == 'receita' %}
+                                                <i class="bi bi-arrow-up-circle text-success me-1"></i>
+                                            {% else %}
+                                                {% if mov.get('vencida') %}
+                                                    <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+                                                {% else %}
+                                                    <i class="bi bi-arrow-down-circle text-danger me-1"></i>
+                                                {% endif %}
+                                            {% endif %}
+                                            {{ mov.descricao }}
+                                        </td>
+                                        <td class="text-end {% if mov.tipo == 'receita' %}text-success{% elif mov.get('vencida') %}text-warning{% else %}text-danger{% endif %}">
+                                            {% if mov.tipo == 'receita' %}+{% else %}-{% endif %}R$ {{ "%.2f"|format(mov.valor) }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">Nenhuma movimentação prevista para os próximos 30 dias.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histórico de Registros -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de Registros</h5>
+        </div>
+        <div class="card-body">
+            {% if fluxos_caixa %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data de Referência</th>
+                                <th class="text-end">Saldo Inicial</th>
+                                <th>Observações</th>
+                                <th>Data de Criação</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fluxo in fluxos_caixa %}
+                            <tr>
+                                <td>
+                                    <strong>{{ fluxo.data_referencia.strftime('%d/%m/%Y') }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge bg-primary">R$ {{ "%.2f"|format(fluxo.saldo_inicial) }}</span>
+                                </td>
+                                <td>
+                                    {% if fluxo.observacoes %}
+                                        {{ fluxo.observacoes[:50] }}{% if fluxo.observacoes|length > 50 %}...{% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ fluxo.data_criacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-outline-primary btn-sm me-1" 
+                                            title="Editar" onclick="editarFluxo({{ fluxo.id_fluxo_caixa }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <form method="POST" action="{{ url_for('excluir_fluxo_caixa', id_fluxo=fluxo.id_fluxo_caixa) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Tem certeza que deseja excluir este registro de fluxo de caixa?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="text-muted mt-2">Nenhum registro de fluxo de caixa encontrado.</p>
+                    <p class="text-muted">Registre o primeiro saldo em caixa para começar o controle.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Modal de Edição -->
+<div class="modal fade" id="modalEditarFluxo" tabindex="-1" aria-labelledby="modalEditarFluxoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEditarFluxoLabel">
+                    <i class="bi bi-pencil me-2"></i>Editar Fluxo de Caixa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarFluxo">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editDataReferencia" class="form-label">Data de Referência</label>
+                        <div class="input-group">
+                            <input type="date" class="form-control" id="editDataReferencia" name="data_referencia" required>
+                            <span class="input-group-text"><i class="bi bi-calendar-date"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editSaldoInicial" class="form-label">Saldo Inicial em Caixa</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="editSaldoInicial" name="saldo_inicial" 
+                                   step="0.01" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editObservacoes" class="form-label">Observações</label>
+                        <textarea class="form-control" id="editObservacoes" name="observacoes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação do formulário
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Formatação automática do campo de valor
+document.addEventListener('DOMContentLoaded', function() {
+    const saldoInput = document.getElementById('{{ form.saldo_inicial.id }}');
+    if (saldoInput) {
+        saldoInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d.,]/g, '');
+            value = value.replace(',', '.');
+            e.target.value = value;
+        });
+    }
+    
+    // Formatação para o campo de edição também
+    const editSaldoInput = document.getElementById('editSaldoInicial');
+    if (editSaldoInput) {
+        editSaldoInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d.,]/g, '');
+            value = value.replace(',', '.');
+            e.target.value = value;
+        });
+    }
+});
+
+// Variável global para armazenar o ID do fluxo sendo editado
+let fluxoEditandoId = null;
+
+// Função para abrir o modal de edição
+function editarFluxo(idFluxo) {
+    fluxoEditandoId = idFluxo;
+    
+    // Buscar dados do fluxo de caixa
+    fetch(`/empresa/fluxo-caixa/editar/${idFluxo}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Preencher o formulário
+        document.getElementById('editDataReferencia').value = data.data_referencia;
+        document.getElementById('editSaldoInicial').value = data.saldo_inicial;
+        document.getElementById('editObservacoes').value = data.observacoes;
+        
+        // Abrir o modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEditarFluxo'));
+        modal.show();
+    })
+    .catch(error => {
+        console.error('Erro ao carregar dados:', error);
+        alert('Erro ao carregar dados do fluxo de caixa.');
+    });
+}
+
+// Função para salvar as alterações
+document.getElementById('formEditarFluxo').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!fluxoEditandoId) {
+        alert('Erro: ID do fluxo não encontrado.');
+        return;
+    }
+    
+    // Coletar dados do formulário
+    const formData = new FormData();
+    formData.append('data_referencia', document.getElementById('editDataReferencia').value);
+    formData.append('saldo_inicial', document.getElementById('editSaldoInicial').value);
+    formData.append('observacoes', document.getElementById('editObservacoes').value);
+    
+    // Enviar dados
+    fetch(`/empresa/fluxo-caixa/editar/${fluxoEditandoId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarFluxo'));
+            modal.hide();
+            
+            // Mostrar mensagem de sucesso
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <i class="bi bi-check-circle me-2"></i>${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Inserir o alerta no topo da página
+            const container = document.querySelector('.container-fluid');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Recarregar a página após um breve delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar alterações.');
+    });
+});
+
+// Gráfico do Fluxo de Caixa
+{% if dados_grafico.labels %}
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('graficoFluxoCaixa').getContext('2d');
+    
+    const dados = {
+        labels: {{ dados_grafico.labels | tojson }},
+        datasets: [
+            {
+                label: 'Saldo Real',
+                data: {{ dados_grafico.saldos | tojson }},
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointBackgroundColor: 'rgb(54, 162, 235)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                spanGaps: false
+            },
+            {
+                label: 'Saldo Projetado',
+                data: {{ dados_grafico.saldos_projetados | tojson }},
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                fill: false,
+                tension: 0.4,
+                borderWidth: 3,
+                borderDash: [10, 5],
+                pointBackgroundColor: 'rgb(255, 159, 64)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                spanGaps: false
+            },
+            {
+                label: 'Receitas Acumuladas',
+                data: {{ dados_grafico.receitas | tojson }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                fill: false,
+                tension: 0.4,
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointBackgroundColor: 'rgb(75, 192, 192)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+                pointRadius: 3
+            },
+            {
+                label: 'Despesas Acumuladas',
+                data: {{ dados_grafico.despesas | tojson }},
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                fill: false,
+                tension: 0.4,
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointBackgroundColor: 'rgb(255, 99, 132)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+                pointRadius: 3
+            }
+        ]
+    };
+    
+    const config = {
+        type: 'line',
+        data: dados,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Fluxo de Caixa - Real vs Projetado',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Dias do Mês'
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Valor (R$)'
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                        }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    };
+    
+    // Definir altura do canvas
+    ctx.canvas.parentNode.style.height = '400px';
+    
+    new Chart(ctx, config);
+});
+</script>
+{% endif %}
+
+{% endblock %}

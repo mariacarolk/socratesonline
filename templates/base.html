@@ -44,22 +44,13 @@
 
             {% set categoria = session['categoria'] %}
             
-            {# TEMPORÁRIO: Ocultar menu para usuários não-root - REMOVER FUTURAMENTE #}
-            {# Função is_root_user() agora está disponível globalmente via context_processor #}
-            
-            {# Dashboard - oculto temporariamente para não-root #}
-            {% if is_root_user() %}
             <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-            {% endif %}
             
-            {# Eventos - oculto temporariamente para não-root #}
-            {% if is_root_user() %}
             <a class="nav-link {% if request.endpoint == 'listar_eventos' %}active{% endif %}" href="{{ url_for('listar_eventos') }}">
                 <i class="bi bi-calendar-event"></i> Eventos
             </a>
-            {% endif %}
 
             {# Cadastros - liberado parcialmente para administrativos, completo para root #}
             {% if categoria == 'administrativo' or is_root_user() %}
@@ -77,8 +68,6 @@
                         <i class="bi bi-tags"></i> Categorias Colaboradores
                     </a>
                     
-                    {# Demais cadastros - apenas para root temporariamente #}
-                    {% if is_root_user() %}
                     <a class="nav-link {% if request.endpoint == 'cadastrar_circo' %}active{% endif %}" href="{{ url_for('cadastrar_circo') }}">
                         <i class="bi bi-building"></i> Circos
                     </a>
@@ -112,13 +101,11 @@
                     <a class="nav-link {% if request.endpoint == 'cadastrar_parametro' %}active{% endif %}" href="{{ url_for('cadastrar_parametro') }}">
                         <i class="bi bi-gear"></i> Parâmetros
                     </a>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
 
-            {# Gestão Financeira Empresa - oculto temporariamente para não-root #}
-            {% if is_root_user() %}
+            {% if categoria == 'administrativo' or is_root_user() %}
             <div class="w-100">
                 <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuGestaoFinanceira" role="button" aria-expanded="false" aria-controls="submenuGestaoFinanceira">
                     <span><i class="bi bi-bank"></i> Gestão Financeira Empresa</span>
@@ -134,12 +121,14 @@
                     <a class="nav-link {% if request.endpoint == 'financeiro_mes' %}active{% endif %}" href="{{ url_for('financeiro_mes') }}">
                         <i class="bi bi-calendar-plus"></i> Financeiro Mês
                     </a>
+                    <a class="nav-link {% if request.endpoint == 'fluxo_caixa' %}active{% endif %}" href="{{ url_for('fluxo_caixa') }}">
+                        <i class="bi bi-cash-stack"></i> Fluxo de Caixa
+                    </a>
                 </div>
             </div>
             {% endif %}
 
-            {# Relatórios - oculto temporariamente para não-root #}
-            {% if is_root_user() %}
+            {% if categoria == 'administrativo' or is_root_user() %}
             <div class="w-100">
                 <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#submenuRelatorios" role="button" aria-expanded="false" aria-controls="submenuRelatorios">
                     <span><i class="bi bi-bar-chart"></i> Relatórios</span>

@@ -22,7 +22,7 @@ from models import (
     CategoriaVeiculo, Veiculo, MultaVeiculo, IpvaVeiculo, LicenciamentoVeiculo, ManutencaoVeiculo,
     EquipeEvento, ElencoEvento, FornecedorEvento, 
     DespesaEmpresa, ReceitaEmpresa, TIPOS_DESPESA, VeiculoEvento, Parametro,
-    Escola, VisitaEscola, LogSistema
+    Escola, VisitaEscola, LogSistema, FluxoCaixa
 )
 from forms import (
     UsuarioForm, LoginForm, CircoForm, CategoriaColaboradorForm, ColaboradorForm, AutoCadastroForm,
@@ -31,7 +31,7 @@ from forms import (
     MultaVeiculoForm, IpvaVeiculoForm, LicenciamentoVeiculoForm, ManutencaoVeiculoForm,
     EquipeEventoForm, ElencoEventoForm, FornecedorEventoForm, DespesaEventoForm,
     DespesaEmpresaForm, ReceitaEmpresaForm, VeiculoEventoForm, ParametroForm,
-    EscolaForm, VisitaEscolaForm
+    EscolaForm, VisitaEscolaForm, FluxoCaixaForm
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -238,8 +238,6 @@ def dashboard():
     else:
         is_produtor = False
 
-    # TEMPORÁRIO: Lógica de eventos comentada
-    """
     # Filtro de datas da lista de eventos do dashboard
     eventos_period = request.args.get('eventos_period', '90dias')  # Mudança: padrão para 90 dias
     if eventos_period == 'hoje':
@@ -287,13 +285,16 @@ def dashboard():
         eventos_query = eventos_query.filter(Evento.data_inicio <= eventos_data_fim)
     
     eventos = eventos_query.order_by(Evento.data_inicio.desc()).all()
-    """
 
     return render_template(
         'dashboard.html',
         is_admin=is_admin,
         is_produtor=is_produtor,
-        usuario=usuario
+        usuario=usuario,
+        eventos=eventos,
+        eventos_period=eventos_period,
+        eventos_data_inicio=eventos_data_inicio,
+        eventos_data_fim=eventos_data_fim
     )
 
 def is_root_user():
@@ -6828,7 +6829,7 @@ def despesas_empresa():
         return redirect(url_for('login'))
     
     # Verificar se usuário é administrativo
-    if session.get('categoria') != 'administrativo':
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
         flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
         return redirect(url_for('dashboard'))
     
@@ -6917,7 +6918,7 @@ def receitas_empresa():
         return redirect(url_for('login'))
     
     # Verificar se usuário é administrativo
-    if session.get('categoria') != 'administrativo':
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
         flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
         return redirect(url_for('dashboard'))
     
@@ -7159,7 +7160,7 @@ def financeiro_mes():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session.get('categoria') != 'administrativo':
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
         flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
         return redirect(url_for('dashboard'))
     
@@ -7433,7 +7434,7 @@ def adicionar_despesas_fixas():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session.get('categoria') != 'administrativo':
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
         flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
         return redirect(url_for('dashboard'))
     
@@ -7462,6 +7463,448 @@ def adicionar_despesas_fixas():
     
     # Retornar para a página do financeiro com os parâmetros corretos
     return redirect(url_for('financeiro_mes') + f'?mes={mes_int}&ano={ano_int}')
+
+# ==================== FLUXO DE CAIXA ====================
+
+@app.route('/empresa/fluxo-caixa', methods=['GET', 'POST'])
+def fluxo_caixa():
+    """Gerenciar fluxo de caixa da empresa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    form = FluxoCaixaForm()
+    
+    # Buscar todos os registros de fluxo de caixa ordenados por data
+    fluxos_caixa = FluxoCaixa.query.order_by(FluxoCaixa.data_referencia.desc()).all()
+    
+    if form.validate_on_submit():
+        try:
+            # Verificar se já existe um registro para esta data
+            fluxo_existente = FluxoCaixa.query.filter_by(data_referencia=form.data_referencia.data).first()
+            if fluxo_existente:
+                flash('Já existe um registro de fluxo de caixa para esta data.', 'warning')
+                return render_template('fluxo_caixa.html', form=form, fluxos_caixa=fluxos_caixa)
+            
+            # Criar novo registro
+            novo_fluxo = FluxoCaixa(
+                data_referencia=form.data_referencia.data,
+                saldo_inicial=form.saldo_inicial.data,
+                observacoes=form.observacoes.data
+            )
+            
+            db.session.add(novo_fluxo)
+            db.session.commit()
+            
+            # Log da ação
+            log = LogSistema(
+                acao='Criar Fluxo de Caixa',
+                descricao=f'Criado fluxo de caixa para {form.data_referencia.data} com saldo inicial R$ {form.saldo_inicial.data:.2f}',
+                usuario_id=str(session['user_id']),
+                usuario_nome=session.get('user_name', 'Usuário'),
+                usuario_email=session.get('user_email', '')
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            flash('Fluxo de caixa registrado com sucesso!', 'success')
+            return redirect(url_for('fluxo_caixa'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao registrar fluxo de caixa: {str(e)}', 'danger')
+    
+    # Calcular fluxo de caixa projetado
+    fluxo_projetado = calcular_fluxo_caixa_projetado()
+    
+    # Gerar dados para o gráfico
+    dados_grafico = gerar_dados_grafico_fluxo_caixa()
+    
+    return render_template('fluxo_caixa.html', 
+                         form=form, 
+                         fluxos_caixa=fluxos_caixa,
+                         fluxo_projetado=fluxo_projetado,
+                         dados_grafico=dados_grafico)
+
+@app.route('/empresa/fluxo-caixa/editar/<int:id_fluxo>', methods=['GET', 'POST'])
+def editar_fluxo_caixa(id_fluxo):
+    """Editar registro de fluxo de caixa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    fluxo = FluxoCaixa.query.get_or_404(id_fluxo)
+    
+    if request.method == 'POST':
+        try:
+            # Capturar dados do formulário
+            nova_data = request.form.get('data_referencia')
+            novo_saldo = request.form.get('saldo_inicial')
+            novas_observacoes = request.form.get('observacoes', '')
+            
+            if not nova_data or not novo_saldo:
+                return jsonify({'success': False, 'message': 'Data e saldo são obrigatórios.'}), 400
+            
+            # Converter dados
+            from datetime import datetime
+            nova_data_obj = datetime.strptime(nova_data, '%Y-%m-%d').date()
+            novo_saldo_float = float(novo_saldo)
+            
+            # Verificar se a nova data já existe (exceto para o registro atual)
+            fluxo_existente = FluxoCaixa.query.filter(
+                and_(
+                    FluxoCaixa.data_referencia == nova_data_obj,
+                    FluxoCaixa.id_fluxo_caixa != id_fluxo
+                )
+            ).first()
+            
+            if fluxo_existente:
+                return jsonify({'success': False, 'message': 'Já existe um registro para esta data.'}), 400
+            
+            # Salvar valores antigos para o log
+            data_antiga = fluxo.data_referencia
+            saldo_antigo = fluxo.saldo_inicial
+            
+            # Atualizar registro
+            fluxo.data_referencia = nova_data_obj
+            fluxo.saldo_inicial = novo_saldo_float
+            fluxo.observacoes = novas_observacoes
+            
+            db.session.commit()
+            
+            # Log da ação
+            log = LogSistema(
+                acao='Editar Fluxo de Caixa',
+                descricao=f'Editado fluxo de caixa: {data_antiga} (R$ {saldo_antigo:.2f}) → {nova_data_obj} (R$ {novo_saldo_float:.2f})',
+                usuario_id=str(session['user_id']),
+                usuario_nome=session.get('user_name', 'Usuário'),
+                usuario_email=session.get('user_email', '')
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'message': 'Fluxo de caixa atualizado com sucesso!'})
+            
+        except ValueError as e:
+            return jsonify({'success': False, 'message': 'Dados inválidos fornecidos.'}), 400
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Erro ao atualizar: {str(e)}'}), 500
+    
+    # GET - retornar dados do registro para edição
+    return jsonify({
+        'id_fluxo_caixa': fluxo.id_fluxo_caixa,
+        'data_referencia': fluxo.data_referencia.strftime('%Y-%m-%d'),
+        'saldo_inicial': float(fluxo.saldo_inicial),
+        'observacoes': fluxo.observacoes or ''
+    })
+
+@app.route('/empresa/fluxo-caixa/excluir/<int:id_fluxo>', methods=['POST'])
+def excluir_fluxo_caixa(id_fluxo):
+    """Excluir registro de fluxo de caixa"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if not (is_root_user() or session.get('categoria') == 'administrativo'):
+        flash('Acesso negado. Apenas usuários administrativos podem acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        fluxo = FluxoCaixa.query.get_or_404(id_fluxo)
+        
+        # Log da ação antes de excluir
+        log = LogSistema(
+            acao='Excluir Fluxo de Caixa',
+            descricao=f'Excluído fluxo de caixa de {fluxo.data_referencia} com saldo R$ {fluxo.saldo_inicial:.2f}',
+            usuario_id=str(session['user_id']),
+            usuario_nome=session.get('user_name', 'Usuário'),
+            usuario_email=session.get('user_email', '')
+        )
+        db.session.add(log)
+        
+        db.session.delete(fluxo)
+        db.session.commit()
+        
+        flash('Fluxo de caixa excluído com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir fluxo de caixa: {str(e)}', 'danger')
+    
+    return redirect(url_for('fluxo_caixa'))
+
+def gerar_dados_grafico_fluxo_caixa():
+    """Gerar dados para gráfico temporal do fluxo de caixa do mês atual com projeção"""
+    try:
+        # Buscar o último registro de fluxo de caixa
+        ultimo_fluxo = FluxoCaixa.query.order_by(FluxoCaixa.data_referencia.desc()).first()
+        
+        if not ultimo_fluxo:
+            return {'labels': [], 'saldos': [], 'saldos_projetados': [], 'receitas': [], 'despesas': []}
+        
+        hoje = date.today()
+        inicio_mes = hoje.replace(day=1)
+        
+        # Calcular último dia do mês
+        if hoje.month == 12:
+            fim_mes = date(hoje.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            fim_mes = date(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
+        
+        # Se a data de referência for anterior ao início do mês, usar início do mês
+        data_inicio = max(ultimo_fluxo.data_referencia, inicio_mes)
+        
+        # Calcular saldo inicial para o período do gráfico
+        if ultimo_fluxo.data_referencia < inicio_mes:
+            # Calcular movimentações entre a data de referência e início do mês
+            receitas_periodo = db.session.query(func.sum(ReceitaEmpresa.valor)).filter(
+                and_(
+                    ReceitaEmpresa.data >= ultimo_fluxo.data_referencia,
+                    ReceitaEmpresa.data < inicio_mes
+                )
+            ).scalar() or 0.0
+            
+            despesas_periodo = db.session.query(func.sum(DespesaEmpresa.valor_pago_socrates)).filter(
+                and_(
+                    DespesaEmpresa.data_pagamento >= ultimo_fluxo.data_referencia,
+                    DespesaEmpresa.data_pagamento < inicio_mes,
+                    DespesaEmpresa.status_pagamento == 'Pago'
+                )
+            ).scalar() or 0.0
+            
+            saldo_inicial_mes = ultimo_fluxo.saldo_inicial + receitas_periodo - despesas_periodo
+        else:
+            saldo_inicial_mes = ultimo_fluxo.saldo_inicial
+        
+        # Arrays para os dados
+        labels = []
+        saldos = []
+        saldos_projetados = []
+        receitas_acumuladas = []
+        despesas_acumuladas = []
+        
+        saldo_atual = saldo_inicial_mes
+        receita_acumulada = 0.0
+        despesa_acumulada = 0.0
+        
+        # Iterar pelos dias do mês (passado, presente e futuro)
+        data_atual = data_inicio
+        while data_atual <= fim_mes:
+            if data_atual <= hoje:
+                # DADOS REAIS (até hoje)
+                # Receitas do dia
+                receitas_dia = db.session.query(func.sum(ReceitaEmpresa.valor)).filter(
+                    ReceitaEmpresa.data == data_atual
+                ).scalar() or 0.0
+                
+                # Despesas pagas no dia
+                despesas_dia = db.session.query(func.sum(DespesaEmpresa.valor_pago_socrates)).filter(
+                    and_(
+                        DespesaEmpresa.data_pagamento == data_atual,
+                        DespesaEmpresa.status_pagamento == 'Pago'
+                    )
+                ).scalar() or 0.0
+                
+                # Atualizar acumulados
+                receita_acumulada += receitas_dia
+                despesa_acumulada += despesas_dia
+                saldo_atual += receitas_dia - despesas_dia
+                
+                # Adicionar aos arrays (dados reais)
+                labels.append(data_atual.strftime('%d/%m'))
+                saldos.append(float(saldo_atual))
+                saldos_projetados.append(None)  # Sem projeção para dados reais
+                receitas_acumuladas.append(float(receita_acumulada))
+                despesas_acumuladas.append(float(despesa_acumulada))
+                
+            else:
+                # PROJEÇÃO FUTURA (após hoje)
+                # Receitas futuras programadas para este dia
+                receitas_futuras_dia = db.session.query(func.sum(ReceitaEmpresa.valor)).filter(
+                    ReceitaEmpresa.data == data_atual
+                ).scalar() or 0.0
+                
+                # Despesas pendentes que vencem neste dia
+                despesas_pendentes_dia = db.session.query(func.sum(DespesaEmpresa.valor)).filter(
+                    and_(
+                        DespesaEmpresa.data_vencimento == data_atual,
+                        DespesaEmpresa.status_pagamento.in_(['Pendente', 'A Pagar'])
+                    )
+                ).scalar() or 0.0
+                
+                # Atualizar projeção
+                receita_acumulada += receitas_futuras_dia
+                despesa_acumulada += despesas_pendentes_dia
+                saldo_atual += receitas_futuras_dia - despesas_pendentes_dia
+                
+                # Adicionar aos arrays (projeção)
+                labels.append(data_atual.strftime('%d/%m'))
+                saldos.append(None)  # Sem dados reais para o futuro
+                saldos_projetados.append(float(saldo_atual))
+                receitas_acumuladas.append(float(receita_acumulada))
+                despesas_acumuladas.append(float(despesa_acumulada))
+            
+            data_atual += timedelta(days=1)
+        
+        return {
+            'labels': labels,
+            'saldos': saldos,
+            'saldos_projetados': saldos_projetados,
+            'receitas': receitas_acumuladas,
+            'despesas': despesas_acumuladas,
+            'saldo_inicial': float(saldo_inicial_mes)
+        }
+        
+    except Exception as e:
+        print(f"Erro ao gerar dados do gráfico: {str(e)}")
+        return {'labels': [], 'saldos': [], 'saldos_projetados': [], 'receitas': [], 'despesas': []}
+
+def calcular_fluxo_caixa_projetado():
+    """Calcular fluxo de caixa projetado baseado no último saldo e movimentações futuras"""
+    try:
+        # Buscar o último registro de fluxo de caixa
+        ultimo_fluxo = FluxoCaixa.query.order_by(FluxoCaixa.data_referencia.desc()).first()
+        
+        if not ultimo_fluxo:
+            return {
+                'saldo_atual': 0.0,
+                'data_referencia': None,
+                'receitas_futuras': 0.0,
+                'despesas_futuras': 0.0,
+                'saldo_projetado': 0.0,
+                'movimentacoes': []
+            }
+        
+        data_referencia = ultimo_fluxo.data_referencia
+        saldo_inicial = ultimo_fluxo.saldo_inicial
+        
+        # Calcular movimentações desde a data de referência até hoje
+        hoje = date.today()
+        
+        # Receitas pagas desde a data de referência
+        receitas_pagas = db.session.query(func.sum(ReceitaEmpresa.valor)).filter(
+            and_(
+                ReceitaEmpresa.data >= data_referencia,
+                ReceitaEmpresa.data <= hoje
+            )
+        ).scalar() or 0.0
+        
+        # Despesas pagas desde a data de referência
+        despesas_pagas = db.session.query(func.sum(DespesaEmpresa.valor_pago_socrates)).filter(
+            and_(
+                DespesaEmpresa.data_pagamento >= data_referencia,
+                DespesaEmpresa.data_pagamento <= hoje,
+                DespesaEmpresa.status_pagamento == 'Pago'
+            )
+        ).scalar() or 0.0
+        
+        # Saldo atual
+        saldo_atual = saldo_inicial + receitas_pagas - despesas_pagas
+        
+        # Receitas futuras (ainda não recebidas)
+        receitas_futuras = db.session.query(func.sum(ReceitaEmpresa.valor)).filter(
+            ReceitaEmpresa.data > hoje
+        ).scalar() or 0.0
+        
+        # Despesas futuras - incluindo todas as pendentes (vencidas e a vencer)
+        despesas_futuras = db.session.query(func.sum(DespesaEmpresa.valor)).filter(
+            and_(
+                DespesaEmpresa.status_pagamento.in_(['Pendente', 'A Pagar'])
+            )
+        ).scalar() or 0.0
+        
+        # Separar despesas vencidas (provisões em atraso) das futuras
+        despesas_vencidas = db.session.query(func.sum(DespesaEmpresa.valor)).filter(
+            and_(
+                DespesaEmpresa.data_vencimento <= hoje,
+                DespesaEmpresa.status_pagamento.in_(['Pendente', 'A Pagar'])
+            )
+        ).scalar() or 0.0
+        
+        despesas_a_vencer = db.session.query(func.sum(DespesaEmpresa.valor)).filter(
+            and_(
+                DespesaEmpresa.data_vencimento > hoje,
+                DespesaEmpresa.status_pagamento.in_(['Pendente', 'A Pagar'])
+            )
+        ).scalar() or 0.0
+        
+        # Saldo projetado
+        saldo_projetado = saldo_atual + receitas_futuras - despesas_futuras
+        
+        # Buscar próximas movimentações (próximos 30 dias)
+        data_limite = hoje + timedelta(days=30)
+        
+        # Próximas receitas
+        proximas_receitas = ReceitaEmpresa.query.filter(
+            and_(
+                ReceitaEmpresa.data > hoje,
+                ReceitaEmpresa.data <= data_limite
+            )
+        ).order_by(ReceitaEmpresa.data).all()
+        
+        # Próximas despesas (incluindo pendentes e vencidas)
+        proximas_despesas = DespesaEmpresa.query.filter(
+            and_(
+                DespesaEmpresa.data_vencimento <= data_limite,
+                DespesaEmpresa.status_pagamento.in_(['Pendente', 'A Pagar'])
+            )
+        ).order_by(DespesaEmpresa.data_vencimento).all()
+        
+        # Organizar movimentações por data
+        movimentacoes = []
+        
+        for receita in proximas_receitas:
+            movimentacoes.append({
+                'data': receita.data,
+                'tipo': 'receita',
+                'descricao': receita.receita.nome,
+                'valor': receita.valor
+            })
+        
+        for despesa in proximas_despesas:
+            # Verificar se a despesa está vencida
+            status_desc = "VENCIDA" if despesa.data_vencimento <= hoje else "A VENCER"
+            descricao = f"{despesa.despesa.nome} ({despesa.status_pagamento} - {status_desc})"
+            
+            movimentacoes.append({
+                'data': despesa.data_vencimento,
+                'tipo': 'despesa',
+                'descricao': descricao,
+                'valor': despesa.valor,
+                'status': despesa.status_pagamento,
+                'vencida': despesa.data_vencimento <= hoje
+            })
+        
+        # Ordenar por data
+        movimentacoes.sort(key=lambda x: x['data'])
+        
+        return {
+            'saldo_atual': saldo_atual,
+            'data_referencia': data_referencia,
+            'receitas_futuras': receitas_futuras,
+            'despesas_futuras': despesas_futuras,
+            'despesas_vencidas': despesas_vencidas,
+            'despesas_a_vencer': despesas_a_vencer,
+            'saldo_projetado': saldo_projetado,
+            'movimentacoes': movimentacoes
+        }
+        
+    except Exception as e:
+        print(f"Erro ao calcular fluxo de caixa projetado: {str(e)}")
+        return {
+            'saldo_atual': 0.0,
+            'data_referencia': None,
+            'receitas_futuras': 0.0,
+            'despesas_futuras': 0.0,
+            'saldo_projetado': 0.0,
+            'movimentacoes': []
+        }
 
 # ==================== RELATÓRIO CUSTO DA FROTA ====================
 

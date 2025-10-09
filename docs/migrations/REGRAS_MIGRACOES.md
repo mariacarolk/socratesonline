@@ -26,8 +26,7 @@ models.py → nova_migracao.bat → git push → Railway aplica automaticamente
 ### 🔧 SCRIPTS DISPONÍVEIS:
 
 - **`nova_migracao.bat`** - Para todas as futuras alterações no banco
-- **`railway_auto_fix.py`** - Correção automática no Railway (já configurado)
-- **`restore_railway.py`** - Restaurar configuração permanente (usar apenas uma vez)
+- **`deploy.py`** - Script de deploy que aplica migrações automaticamente
 
 ### 🚂 CONFIGURAÇÃO RAILWAY:
 

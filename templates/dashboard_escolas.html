@@ -90,17 +90,11 @@
                     </div>
                 </div>
                 <div class="mt-3 d-grid">
-                    {# TEMPORÁRIO: Botão desativado - descomentar para reativar #}
-                    <button class="btn btn-outline-primary" disabled title="Funcionalidade temporariamente desabilitada">
-                        <i class="bi bi-envelope"></i> Enviar E-mails Pendentes ({{ escolas_pendentes_email }})
-                    </button>
-                    {# ORIGINAL (comentado temporariamente):
                     <button class="btn btn-outline-primary" onclick="enviarMaterial('email')" 
                             {% if escolas_pendentes_email == 0 %}disabled{% endif %}
                             title="Envia e-mails apenas para escolas com visitas REALIZADAS">
                         <i class="bi bi-envelope"></i> Enviar E-mails Pendentes ({{ escolas_pendentes_email }})
                     </button>
-                    #}
                 </div>
             </div>
         </div>
@@ -125,17 +119,11 @@
                     </div>
                 </div>
                 <div class="mt-3 d-grid">
-                    {# TEMPORÁRIO: Botão desativado - descomentar para reativar #}
-                    <button class="btn btn-outline-success" disabled title="Funcionalidade temporariamente desabilitada">
-                        <i class="bi bi-whatsapp"></i> Enviar WhatsApp Pendentes ({{ escolas_pendentes_whatsapp }})
-                    </button>
-                    {# ORIGINAL (comentado temporariamente):
                     <button class="btn btn-outline-success" onclick="enviarMaterial('whatsapp')" 
                             {% if escolas_pendentes_whatsapp == 0 %}disabled{% endif %}
                             title="Envia WhatsApp apenas para escolas com visitas REALIZADAS">
                         <i class="bi bi-whatsapp"></i> Enviar WhatsApp Pendentes ({{ escolas_pendentes_whatsapp }})
                     </button>
-                    #}
                 </div>
             </div>
         </div>
